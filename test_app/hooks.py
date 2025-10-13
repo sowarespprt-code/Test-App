@@ -27,6 +27,9 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/test_app/css/test_app.css"
 # app_include_js = "/assets/test_app/js/test_app.js"
+app_include_js = [
+    "/assets/test_app/js/hd_customer_override.js"
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/test_app/css/test_app.css"
@@ -145,6 +148,8 @@ app_license = "mit"
 # 	}
 # }
 
+
+
 # Scheduled Tasks
 # ---------------
 
@@ -177,6 +182,9 @@ app_license = "mit"
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "test_app.event.get_events"
 # }
+override_vue_components = {
+    "helpdesk/desk/src/components/NewCustomerDialog.vue": "test_app/public/overrides/NewCustomerDialog.vue",
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
@@ -241,4 +249,34 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
+override_doctype_class = {}
+override_whitelisted_methods = {}
+
+source_link = "File"
+
+commands = [
+    "test_app.commands.apply_overrides"
+]
+
+
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["dt", "in", ["HD Customer"]]
+        ]
+    }
+]
+
+
+# web_include_js = [
+#     "/assets/test_app/public/js/helpdesk_customer_override.js"
+# ]
+
+# app_include_js = [
+#     "/assets/test_app/public/js/helpdesk_customer_override.js",
+#     "/assets/test_app/public/js/helpdesk.bundle.js"
+# ]
+
 
