@@ -32,7 +32,8 @@ def install_overrides():
         "ProductList.vue": "desk/src/pages/ProductList.vue",
         "ProductDetail.vue": "desk/src/pages/ProductDetail.vue",
         "NewCustomerDialog.vue": "desk/src/components/desk/global/NewCustomerDialog.vue",
-        "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue"
+        "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
+        "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue"
     }
     
     success = True

@@ -264,9 +264,16 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["HD Customer"]]
+            ["dt", "in", ["HD Ticket", "HD Customer"]]
         ]
-    }
+    },
+    {
+        "dt": "Property Setter",
+        "filters": [
+            ["doc_type", "in", ["HD Ticket", "HD Customer"]]
+        ]
+    },
+    "HD Ticket Template"
 ]
 
 
