@@ -155,11 +155,15 @@ const { $dialog } = globalStore();
 const { updateOnboardingStep } = useOnboarding("helpdesk");
 const { isManager, userId: userID } = useAuthStore();
 
+// ============================================
+// ⭐ CHANGE 1: Added flags to prevent duplicate API calls
+// ============================================
 const subject = ref("");
 const description = ref("");
 const attachments = ref([]);
 const templateFields = reactive({});
-const isFetchingCustomerName = ref(false);
+const isFetchingCustomerName = ref(false);  // ← NEW: Prevents duplicate customer name fetch
+const isFetchingCustomerCode = ref(false);  // ← NEW: Prevents duplicate customer code fetch
 
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
@@ -210,9 +214,11 @@ const visibleFields = computed(() => {
 });
 
 // ============================================
-// AUTO-FETCH CUSTOMER NAME FUNCTION
+// ⭐ CHANGE 2: AUTO-FETCH CUSTOMER NAME WHEN CUSTOMER CODE IS SELECTED
+// This function is triggered when user selects a customer code
 // ============================================
 async function fetchCustomerName(customerCode) {
+  // Prevent duplicate calls
   if (!customerCode || isFetchingCustomerName.value) {
     return;
   }
@@ -220,22 +226,35 @@ async function fetchCustomerName(customerCode) {
   isFetchingCustomerName.value = true;
 
   try {
-    console.log('Fetching customer name for code:', customerCode);
+    console.log('Fetching customer for code:', customerCode);
     
-    const result = await call('frappe.client.get_value', {
+    // 🔹 IMPORTANT: Use get_list to find HD Customer by custom_customercode
+    const result = await call('frappe.client.get_list', {
       doctype: 'HD Customer',
-      filters: { custom_customercode: customerCode },
-      fieldname: ['customer_name']
+      filters: { custom_customercode: customerCode },  // Match customer code
+      fields: ['name', 'customer_name'],               // Get both name and display name
+      limit: 1
     });
 
     console.log('Fetch result:', result);
 
-    await nextTick();
-
-    if (result?.message?.customer_name) {
-      templateFields.custom_customer_name = result.message.customer_name;
-      console.log('Customer name set to:', result.message.customer_name);
+    if (result && result.length > 0) {
+      const customer = result[0];
+      
+      // Wait for Vue to process pending updates
+      await nextTick();
+      
+      // 🔹 CRITICAL: Set document name (not customer_name) because 
+      // custom_customer_name is a Link field to HD Customer
+      templateFields.custom_customer_name = customer.name;
+      
+      console.log('Customer name field set to:', customer.name);
+      console.log('Display will show:', customer.customer_name);
+      
+      // Force Vue to re-render the field by updating the key
+      await nextTick();
     } else {
+      // No customer found, clear the field
       templateFields.custom_customer_name = '';
       console.warn('No customer found for code:', customerCode);
     }
@@ -248,19 +267,88 @@ async function fetchCustomerName(customerCode) {
 }
 
 // ============================================
-// HANDLE FIELD CHANGES
+// ⭐ CHANGE 3: AUTO-FETCH CUSTOMER CODE WHEN CUSTOMER NAME IS SELECTED
+// This function is triggered when user selects a customer name
+// ============================================
+async function fetchCustomerCode(customerName) {
+  // Prevent duplicate calls
+  if (!customerName || isFetchingCustomerCode.value) {
+    return;
+  }
+
+  isFetchingCustomerCode.value = true;
+
+  try {
+    console.log('Fetching customer code for:', customerName);
+    
+    // 🔹 IMPORTANT: Fetch customer code from HD Customer using document name
+    const result = await call('frappe.client.get_value', {
+      doctype: 'HD Customer',
+      filters: { name: customerName },           // customerName is the HD Customer doc name
+      fieldname: ['custom_customercode']         // Get the customer code field
+    });
+
+    console.log('Fetch customer code result:', result);
+    console.log('Full result object:', JSON.stringify(result));
+
+    // 🔹 CRITICAL FIX: The result can be in two formats:
+    // Format 1: { message: { custom_customercode: "..." } }
+    // Format 2: { custom_customercode: "..." }
+    let customerCode = null;
+    
+    if (result?.message?.custom_customercode) {
+      customerCode = result.message.custom_customercode;
+    } else if (result?.custom_customercode) {
+      customerCode = result.custom_customercode;
+    }
+
+    console.log('Extracted customer code:', customerCode);
+
+    if (customerCode) {
+      // Wait for Vue to process pending updates
+      await nextTick();
+      
+      // 🔹 Set the customer code to the form field
+      templateFields.custom_customercode = customerCode;
+      console.log('✅ Customer code field set to:', customerCode);
+      
+      // Force Vue to re-render the field
+      await nextTick();
+    } else {
+      // No customer code found, clear the field
+      templateFields.custom_customercode = '';
+      console.warn('❌ No customer code found for:', customerName);
+      console.warn('Result structure:', result);
+    }
+  } catch (error) {
+    console.error('Error fetching customer code:', error);
+    templateFields.custom_customercode = '';
+  } finally {
+    isFetchingCustomerCode.value = false;
+  }
+}
+
+// ============================================
+// ⭐ CHANGE 4: HANDLE FIELD CHANGES WITH AUTO-FETCH TRIGGERS
+// This is the main event handler that triggers auto-fetch functions
 // ============================================
 function handleOnFieldChange(e: any, fieldname: string, fieldtype: string) {
   const newValue = e.value;
   templateFields[fieldname] = newValue;
 
-  // *** TRIGGER AUTO-FETCH WHEN CUSTOMER CODE CHANGES ***
+  // 🔹 TRIGGER 1: When Customer Code changes → Auto-fetch Customer Name
   if (fieldname === 'custom_customercode' && newValue) {
     console.log('Customer code changed to:', newValue);
-    fetchCustomerName(newValue);
+    fetchCustomerName(newValue);  // ← Calls the fetch function
   }
   
-  // Execute custom onChange functions if they exist
+  // 🔹 TRIGGER 2: When Customer Name changes → Auto-fetch Customer Code
+  if (fieldname === 'custom_customer_name' && newValue) {
+    console.log('Customer name changed to:', newValue);
+    fetchCustomerCode(newValue);  // ← Calls the fetch function
+  }
+  
+  // Execute custom onChange functions if defined
   const fieldDependentFns = customOnChange.value?.[fieldname];
   if (fieldDependentFns) {
     fieldDependentFns.forEach((fn: Function) => {
