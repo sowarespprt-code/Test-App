@@ -33,39 +33,71 @@
 
         <!-- Customer Fields -->
         <form class="w-full flex flex-col gap-4" @submit.prevent="update">
-
-          <!-- Fixed Customer Code -->
+          <!-- Customer Name -->
           <Input
-            v-model="custom_customercode"
+            v-model="formData.customer_name"
+            label="Customer Name"
+            type="text"
+            placeholder="Tesla Inc."
+            required
+          />
+
+          <!-- Customer Code (Always Editable) -->
+          <Input
+            v-model="formData.custom_customercode"
             label="Customer Code"
             placeholder="Enter Code"
-            :disabled="customerCodeFixed"
             required
           />
 
           <!-- Product Name -->
-          <Input
-            v-model="custom_productname"
-            label="Product Name"
-            placeholder="Enter Product Name"
-            required
-          />
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Product *</label>
+            <select
+              v-model="formData.custom_productname"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            >
+              <option value="" disabled>Select Product</option>
+              <option v-for="product in products" :key="product.name" :value="product.name">
+                {{ product.product }}
+              </option>
+            </select>
+          </div>
 
           <!-- Address Fields -->
-          <Input v-model="custom_address1" label="Address Line 1" />
-          <Input v-model="custom_address2" label="Address Line 2" />
-          <Input v-model="custom_place" label="Place" />
-          <Input v-model="custom_district" label="District" />
+          <Input v-model="formData.custom_address1" label="Address Line 1" />
+          <Input v-model="formData.custom_address2" label="Address Line 2" />
+          <Input v-model="formData.custom_place" label="Place" />
+          <Input v-model="formData.custom_district" label="District" />
+
+          <!-- State -->
+          <Input v-model="formData.custom_state" label="State" />
+
+          <!-- Country -->
+          <Input v-model="formData.custom_country" label="Country" />
 
           <!-- Contact Info -->
-          <Input v-model="custom_contactperson" label="Contact Person" />
-          <Input v-model="custom_phone001" label="Phone 1" />
-          <Input v-model="custom_phone002" label="Phone 2" />
-          <Input v-model="custom_email" label="Email" />
+          <Input v-model="formData.custom_contactperson" label="Contact Person" />
+          <Input v-model="formData.custom_phone001" label="Phone 1" />
+          <Input v-model="formData.custom_phone002" label="Phone 2" />
+          <Input v-model="formData.custom_email" label="Email" />
+
+          <!-- GST No -->
+          <Input v-model="formData.custom_gstno" label="GST No" />
+
+          <!-- No of License -->
+          <Input v-model="formData.custom_nooflicense" label="No of License" />
+
+          <!-- Date of AMC Last Paid -->
+          <Input
+            v-model="formData.custom_dateofamclastpaid"
+            label="Date of AMC Last Paid"
+            type="date"
+          />
 
           <!-- Domain -->
-          <Input v-model="domain" label="Domain" placeholder="example.com" />
-
+          <Input v-model="formData.domain" label="Domain" placeholder="example.com" />
         </form>
       </div>
     </template>
@@ -81,8 +113,9 @@ import {
   toast,
   Button,
   Input,
+  call,
 } from "frappe-ui";
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   name: {
@@ -93,6 +126,7 @@ const props = defineProps({
 
 const emit = defineEmits(["customer-updated"]);
 
+// Resource for customer document
 const customer = createDocumentResource({
   doctype: "HD Customer",
   name: props.name,
@@ -107,105 +141,78 @@ const customer = createDocumentResource({
   },
 });
 
-// Computed properties for each field
-const domain = computed({
-  get() {
-    return customer.doc?.domain;
-  },
-  set(d) {
-    customer.doc.domain = d;
-  },
+// Local form data to prevent auto-save
+const formData = ref({
+  customer_name: "",
+  custom_customercode: "",
+  custom_productname: "",
+  custom_address1: "",
+  custom_address2: "",
+  custom_place: "",
+  custom_district: "",
+  custom_state: "",
+  custom_country: "",
+  custom_contactperson: "",
+  custom_phone001: "",
+  custom_phone002: "",
+  custom_email: "",
+  custom_gstno: "",
+  custom_nooflicense: "",
+  custom_dateofamclastpaid: "",
+  domain: "",
 });
 
-const custom_customercode = computed({
-  get() {
-    return customer.doc?.custom_customercode;
-  },
-  set(v) {
-    customer.doc.custom_customercode = v;
-  },
-});
-const custom_productname = computed({
-  get() {
-    return customer.doc?.custom_productname;
-  },
-  set(v) {
-    customer.doc.custom_productname = v;
-  },
-});
-const custom_address1 = computed({
-  get() {
-    return customer.doc?.custom_address1;
-  },
-  set(v) {
-    customer.doc.custom_address1 = v;
-  },
-});
-const custom_address2 = computed({
-  get() {
-    return customer.doc?.custom_address2;
-  },
-  set(v) {
-    customer.doc.custom_address2 = v;
-  },
-});
-const custom_place = computed({
-  get() {
-    return customer.doc?.custom_place;
-  },
-  set(v) {
-    customer.doc.custom_place = v;
-  },
-});
-const custom_district = computed({
-  get() {
-    return customer.doc?.custom_district;
-  },
-  set(v) {
-    customer.doc.custom_district = v;
-  },
-});
-const custom_contactperson = computed({
-  get() {
-    return customer.doc?.custom_contactperson;
-  },
-  set(v) {
-    customer.doc.custom_contactperson = v;
-  },
-});
-const custom_phone001 = computed({
-  get() {
-    return customer.doc?.custom_phone001;
-  },
-  set(v) {
-    customer.doc.custom_phone001 = v;
-  },
-});
-const custom_phone002 = computed({
-  get() {
-    return customer.doc?.custom_phone002;
-  },
-  set(v) {
-    customer.doc.custom_phone002 = v;
-  },
-});
-const custom_email = computed({
-  get() {
-    return customer.doc?.custom_email;
-  },
-  set(v) {
-    customer.doc.custom_email = v;
-  },
-});
+// Products list
+const products = ref([]);
 
-// Disable customer code if already exists
-const customerCodeFixed = ref(false);
+// Watch for customer data load and populate form
+watch(
+  () => customer.doc,
+  (newDoc) => {
+    if (newDoc) {
+      formData.value = {
+        customer_name: newDoc.customer_name || "",
+        custom_customercode: newDoc.custom_customercode || "",
+        custom_productname: newDoc.custom_productname || "",
+        custom_address1: newDoc.custom_address1 || "",
+        custom_address2: newDoc.custom_address2 || "",
+        custom_place: newDoc.custom_place || "",
+        custom_district: newDoc.custom_district || "",
+        custom_state: newDoc.custom_state || "",
+        custom_country: newDoc.custom_country || "",
+        custom_contactperson: newDoc.custom_contactperson || "",
+        custom_phone001: newDoc.custom_phone001 || "",
+        custom_phone002: newDoc.custom_phone002 || "",
+        custom_email: newDoc.custom_email || "",
+        custom_gstno: newDoc.custom_gstno || "",
+        custom_nooflicense: newDoc.custom_nooflicense || "",
+        custom_dateofamclastpaid: newDoc.custom_dateofamclastpaid || "",
+        domain: newDoc.domain || "",
+      };
+      
+      // Fetch products after customer data is loaded
+      fetchProducts();
+    }
+  },
+  { immediate: true, deep: true }
+);
 
-onMounted(() => {
-  if (customer.doc?.custom_customercode) {
-    customerCodeFixed.value = true;
+// Fetch products
+const fetchProducts = async () => {
+  try {
+    console.log('Fetching products...');
+    const data = await call('frappe.client.get_list', {
+      doctype: 'Product',
+      fields: ['name', 'product', 'status', 'team'],
+      limit_page_length: 999,
+    });
+    console.log('Products fetched:', data);
+    products.value = data || [];
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    products.value = [];
   }
-});
+};
 
 // Save and Update
 const options = computed(() => ({
@@ -221,20 +228,35 @@ const options = computed(() => ({
 }));
 
 async function update() {
-  await customer.setValue.submit({
-    custom_customercode: custom_customercode.value,
-    custom_productname: custom_productname.value,
-    custom_address1: custom_address1.value,
-    custom_address2: custom_address2.value,
-    custom_place: custom_place.value,
-    custom_district: custom_district.value,
-    custom_contactperson: custom_contactperson.value,
-    custom_phone001: custom_phone001.value,
-    custom_phone002: custom_phone002.value,
-    custom_email: custom_email.value,
-    domain: domain.value,
-  });
-  emit("customer-updated");
+  try {
+    await customer.setValue.submit({
+      customer_name: formData.value.customer_name,
+      custom_customercode: formData.value.custom_customercode,
+      custom_productname: formData.value.custom_productname,
+      custom_address1: formData.value.custom_address1,
+      custom_address2: formData.value.custom_address2,
+      custom_place: formData.value.custom_place,
+      custom_district: formData.value.custom_district,
+      custom_state: formData.value.custom_state,
+      custom_country: formData.value.custom_country,
+      custom_contactperson: formData.value.custom_contactperson,
+      custom_phone001: formData.value.custom_phone001,
+      custom_phone002: formData.value.custom_phone002,
+      custom_email: formData.value.custom_email,
+      custom_gstno: formData.value.custom_gstno,
+      custom_nooflicense: formData.value.custom_nooflicense,
+      custom_dateofamclastpaid: formData.value.custom_dateofamclastpaid,
+      domain: formData.value.domain,
+    });
+    
+    // Reload the customer document to get the updated data
+    await customer.reload();
+    
+    emit("customer-updated");
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    toast.error("Failed to update customer");
+  }
 }
 
 function updateImage(file) {
