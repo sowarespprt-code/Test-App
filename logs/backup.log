@@ -1,0 +1,156 @@
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251004_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-04 12:00:38.280583
+Config  : ./test.com/private/backups/20251004_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251004_120002-test_com-database.sql.gz         263.9KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251006_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-06 12:00:03.254981
+Config  : ./test.com/private/backups/20251006_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251006_120001-test_com-database.sql.gz         293.8KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251007_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-07 12:00:03.355625
+Config  : ./test.com/private/backups/20251007_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251007_120001-test_com-database.sql.gz         321.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251007_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-07 18:01:15.935386
+Config  : ./test.com/private/backups/20251007_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251007_180002-test_com-database.sql.gz         332.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251008_120004-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-08 12:00:05.379614
+Config  : ./test.com/private/backups/20251008_120004-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251008_120004-test_com-database.sql.gz         378.1KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251008_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-08 18:00:42.041498
+Config  : ./test.com/private/backups/20251008_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251008_180002-test_com-database.sql.gz         389.8KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251009_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-09 12:00:04.100738
+Config  : ./test.com/private/backups/20251009_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251009_120002-test_com-database.sql.gz         395.2KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251010_120010-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-10 12:00:13.840452
+Config  : ./test.com/private/backups/20251010_120010-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251010_120010-test_com-database.sql.gz         420.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251011_120003-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-11 12:00:05.825318
+Config  : ./test.com/private/backups/20251011_120003-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251011_120003-test_com-database.sql.gz         438.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251013_120008-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-13 12:00:11.238420
+Config  : ./test.com/private/backups/20251013_120008-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251013_120008-test_com-database.sql.gz         453.9KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251014_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-14 12:00:11.951398
+Config  : ./test.com/private/backups/20251014_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251014_120002-test_com-database.sql.gz         460.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251014_180001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-14 18:00:05.560399
+Config  : ./test.com/private/backups/20251014_180001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251014_180001-test_com-database.sql.gz         467.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251015_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-15 12:00:14.101820
+Config  : ./test.com/private/backups/20251015_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251015_120001-test_com-database.sql.gz         459.7KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251016_120019-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-16 12:01:05.593313
+Config  : ./test.com/private/backups/20251016_120019-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251016_120019-test_com-database.sql.gz         2.2MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251017_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-17 12:00:32.744229
+Config  : ./test.com/private/backups/20251017_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251017_120002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251021_120014-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-21 12:00:32.186227
+Config  : ./test.com/private/backups/20251021_120014-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251021_120014-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251021_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-21 18:01:02.495408
+Config  : ./test.com/private/backups/20251021_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251021_180002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251022_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-22 12:00:22.048023
+Config  : ./test.com/private/backups/20251022_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251022_120002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251022_180001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-22 18:01:40.363783
+Config  : ./test.com/private/backups/20251022_180001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251022_180001-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251023_120003-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-23 12:00:13.527099
+Config  : ./test.com/private/backups/20251023_120003-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251023_120003-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251023_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-23 18:01:30.828330
+Config  : ./test.com/private/backups/20251023_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251023_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251024_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-24 12:00:23.339497
+Config  : ./test.com/private/backups/20251024_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251024_120002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251024_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-24 18:01:32.639639
+Config  : ./test.com/private/backups/20251024_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251024_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251025_120018-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-25 12:00:40.968906
+Config  : ./test.com/private/backups/20251025_120018-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251025_120018-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251027_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-27 12:00:40.205498
+Config  : ./test.com/private/backups/20251027_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251027_120002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251027_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-27 18:01:55.714995
+Config  : ./test.com/private/backups/20251027_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251027_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed

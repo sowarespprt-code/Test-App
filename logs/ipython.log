@@ -1,0 +1,44 @@
+2025-10-06 14:45:16,761 INFO ipython === bench console session ===
+2025-10-06 14:45:16,761 INFO ipython import helpdesk.helpdesk.doctype.hd_ticket.api as api
+print(dir(api))
+2025-10-06 14:45:16,761 INFO ipython import helpdesk.helpdesk.doctype.hd_ticket.api as api
+print(dir(api))
+
+# Try calling it directly
+frappe.get_attr('helpdesk.helpdesk.doctype.hd_ticket.api.new')
+2025-10-06 14:45:16,761 INFO ipython frappe.call('helpdesk.helpdesk.doctype.hd_ticket.api.new', doc={'subject': 'Test'})
+2025-10-06 14:45:16,761 INFO ipython === session end ===
+2025-10-06 17:00:50,585 INFO ipython === bench console session ===
+2025-10-06 17:00:50,598 INFO ipython frappe.get_all("HD Team", fields=["name"])
+2025-10-06 17:00:50,599 INFO ipython === session end ===
+2025-10-07 11:38:36,320 INFO ipython === bench console session ===
+2025-10-07 11:38:36,364 INFO ipython import frappe
+
+ticket = frappe.get_doc({
+    "doctype": "HD Ticket",
+    "subject": "Test Ticket",
+    "description": "This is a test description"
+})
+ticket.insert()
+frappe.db.commit()
+2025-10-07 11:38:36,365 INFO ipython import frappe
+
+ticket = frappe.get_doc({
+    "doctype": "HD Ticket",
+    "subject": "Test Ticket",
+    "description": "This is a test description",
+    "custom_product": "TEST-PRODUCT"   # mandatory field
+})
+ticket.insert()
+frappe.db.commit()
+2025-10-07 11:38:36,365 INFO ipython import frappe
+
+ticket = frappe.get_doc({
+    "doctype": "HD Ticket",
+    "subject": "Test Ticket",
+    "description": "This is a test description",
+    "custom_product": "Infi"   # mandatory field
+})
+ticket.insert()
+frappe.db.commit()
+2025-10-07 11:38:36,366 INFO ipython === session end ===
