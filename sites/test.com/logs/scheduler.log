@@ -167,3 +167,13 @@
 2025-10-24 10:31:11,334 ERROR scheduler Skipped queueing frappe.email.doctype.email_account.email_account.notify_unreplied because it was found in queue for test.com
 2025-10-24 10:31:11,354 ERROR scheduler Skipped queueing frappe.deferred_insert.save_to_db because it was found in queue for test.com
 2025-10-24 10:31:11,357 ERROR scheduler Skipped queueing frappe.email.doctype.email_account.email_account.pull because it was found in queue for test.com
+2025-10-28 16:34:02,712 ERROR scheduler Skipped queueing frappe.email.queue.retry_sending_emails because it was found in queue for test.com
+2025-10-28 16:34:08,507 ERROR scheduler Skipped queueing frappe.integrations.doctype.google_calendar.google_calendar.sync because it was found in queue for test.com
+2025-10-28 16:34:08,596 ERROR scheduler Skipped queueing helpdesk.search.download_corpus because it was found in queue for test.com
+2025-10-28 16:34:08,645 ERROR scheduler Skipped queueing helpdesk.search.build_index_if_not_exists because it was found in queue for test.com
+2025-10-28 16:34:08,749 ERROR scheduler Skipped queueing frappe.email.queue.flush because it was found in queue for test.com
+2025-10-28 16:34:08,768 ERROR scheduler Skipped queueing frappe.monitor.flush because it was found in queue for test.com
+2025-10-28 16:57:03,784 ERROR scheduler Skipped queueing frappe.email.queue.flush because it was found in queue for test.com
+2025-10-28 16:57:04,723 ERROR scheduler Skipped queueing frappe.integrations.doctype.google_calendar.google_calendar.sync because it was found in queue for test.com
+2025-10-28 16:57:04,778 ERROR scheduler Skipped queueing helpdesk.search.build_index_if_not_exists because it was found in queue for test.com
+2025-10-28 16:57:04,783 ERROR scheduler Skipped queueing frappe.monitor.flush because it was found in queue for test.com

@@ -42,3 +42,14 @@ ticket = frappe.get_doc({
 ticket.insert()
 frappe.db.commit()
 2025-10-07 11:38:36,366 INFO ipython === session end ===
+2025-10-28 16:28:45,149 INFO ipython === bench console session ===
+2025-10-28 16:28:45,161 INFO ipython from helpdesk.helpdesk.doctype.hd_customer.hd_customer import HDCustomer
+print("Import successful!")
+2025-10-28 16:28:45,161 INFO ipython doc = frappe.get_doc('HD Customer', 'Test2')
+print("Document class:", doc.__class__.__name__)
+print("Has after_save method:", hasattr(doc, 'after_save'))
+print("Has validate method:", hasattr(doc, 'validate'))
+
+# Try calling validate manually
+doc.validate()
+2025-10-28 16:28:45,161 INFO ipython === session end ===
