@@ -759,3 +759,5 @@
 2025-10-29 11:24:21,257 INFO /usr/local/bin/bench --site test.com migrate
 2025-10-29 11:29:50,076 INFO /usr/local/bin/bench --site test.com export-fixtures
 2025-10-29 12:00:01,852 INFO /usr/local/bin/bench --verbose --site all backup
+2025-10-29 12:44:42,336 INFO /usr/local/bin/bench --site test.com export-fixtures
+2025-10-29 12:45:01,283 INFO /usr/local/bin/bench --site test.com migrate

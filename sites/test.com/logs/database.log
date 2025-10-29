@@ -158,3 +158,11 @@ ALTER TABLE `tabHD Ticket` MODIFY `first_response_time` decimal(21,9), MODIFY `u
 ALTER TABLE `tabHD Ticket` MODIFY `total_hold_time` decimal(21,9), MODIFY `avg_response_time` decimal(21,9), MODIFY `feedback_rating` decimal(3,2), MODIFY `resolution_time` decimal(21,9), MODIFY `first_response_time` decimal(21,9), MODIFY `user_resolution_time` decimal(21,9)
 2025-10-29 11:24:25,975 WARNING database DDL Query made to DB:
 ALTER TABLE `tabHD Ticket` MODIFY `first_response_time` decimal(21,9), MODIFY `avg_response_time` decimal(21,9), MODIFY `user_resolution_time` decimal(21,9), MODIFY `feedback_rating` decimal(3,2), MODIFY `resolution_time` decimal(21,9), MODIFY `total_hold_time` decimal(21,9)
+2025-10-29 12:45:02,009 WARNING database DDL Query made to DB:
+alter table `tabDocType` add column if not exists migration_hash varchar(140)
+2025-10-29 12:45:05,129 WARNING database DDL Query made to DB:
+ALTER TABLE `tabHD Ticket` MODIFY `resolution_time` decimal(21,9), MODIFY `total_hold_time` decimal(21,9), MODIFY `first_response_time` decimal(21,9), MODIFY `feedback_rating` decimal(3,2), MODIFY `user_resolution_time` decimal(21,9), MODIFY `avg_response_time` decimal(21,9)
+2025-10-29 12:45:05,447 WARNING database DDL Query made to DB:
+ALTER TABLE `tabHD Ticket` MODIFY `feedback_rating` decimal(3,2), MODIFY `user_resolution_time` decimal(21,9), MODIFY `avg_response_time` decimal(21,9), MODIFY `first_response_time` decimal(21,9), MODIFY `resolution_time` decimal(21,9), MODIFY `total_hold_time` decimal(21,9)
+2025-10-29 12:45:05,762 WARNING database DDL Query made to DB:
+ALTER TABLE `tabHD Ticket` MODIFY `resolution_time` decimal(21,9), MODIFY `avg_response_time` decimal(21,9), MODIFY `feedback_rating` decimal(3,2), MODIFY `total_hold_time` decimal(21,9), MODIFY `user_resolution_time` decimal(21,9), MODIFY `first_response_time` decimal(21,9)
