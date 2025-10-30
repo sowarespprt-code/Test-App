@@ -34,11 +34,11 @@ def install_overrides():
         "NewCustomerDialog.vue": "desk/src/components/desk/global/NewCustomerDialog.vue",
         "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
-        "licence.py":"helpdesk/helpdesk/api/license.py"
-
+        "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
+        "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
+        "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py",
+        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py"
     }
-
-
     
     success = True
     for source_file, dest_path in files.items():

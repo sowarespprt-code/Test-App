@@ -6,7 +6,7 @@
   "doctype": "HD Ticket Template",
   "fields": [
    {
-    "fieldname": "custom_product",
+    "fieldname": "custom_customer_name",
     "hide_from_customer": 0,
     "parent": "Default",
     "parentfield": "fields",
@@ -22,11 +22,11 @@
     "parentfield": "fields",
     "parenttype": "HD Ticket Template",
     "placeholder": null,
-    "required": 1,
+    "required": 0,
     "url_method": null
    },
    {
-    "fieldname": "custom_customer_name",
+    "fieldname": "custom_product",
     "hide_from_customer": 0,
     "parent": "Default",
     "parentfield": "fields",
@@ -36,7 +36,7 @@
     "url_method": null
    }
   ],
-  "modified": "2025-10-13 11:09:19.434719",
+  "modified": "2025-10-29 12:44:31.651182",
   "name": "Default",
   "template_name": "Default"
  }
