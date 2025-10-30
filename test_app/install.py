@@ -33,8 +33,12 @@ def install_overrides():
         "ProductDetail.vue": "desk/src/pages/ProductDetail.vue",
         "NewCustomerDialog.vue": "desk/src/components/desk/global/NewCustomerDialog.vue",
         "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
-        "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue"
+        "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
+        "licence.py":"helpdesk/helpdesk/api/license.py"
+
     }
+
+
     
     success = True
     for source_file, dest_path in files.items():

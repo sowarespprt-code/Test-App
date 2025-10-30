@@ -4,7 +4,11 @@ app_publisher = "soware"
 app_description = "For testing"
 app_email = "test@gmail.com"
 app_license = "mit"
-
+# doc_events = {
+#     "*": {
+#         "on_update": "test_app.some_module.some_function"
+#     }
+# }
 # Apps
 # ------------------
 
