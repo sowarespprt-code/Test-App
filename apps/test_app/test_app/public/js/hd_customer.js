@@ -1,0 +1,1 @@
+frappe.ui.form.quick_entry_handlers['HD Customer'] = CustomerQuickEntryFormDynamic;

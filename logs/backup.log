@@ -1,0 +1,440 @@
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251004_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-04 12:00:38.280583
+Config  : ./test.com/private/backups/20251004_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251004_120002-test_com-database.sql.gz         263.9KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251006_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-06 12:00:03.254981
+Config  : ./test.com/private/backups/20251006_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251006_120001-test_com-database.sql.gz         293.8KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251007_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-07 12:00:03.355625
+Config  : ./test.com/private/backups/20251007_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251007_120001-test_com-database.sql.gz         321.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251007_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-07 18:01:15.935386
+Config  : ./test.com/private/backups/20251007_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251007_180002-test_com-database.sql.gz         332.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251008_120004-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-08 12:00:05.379614
+Config  : ./test.com/private/backups/20251008_120004-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251008_120004-test_com-database.sql.gz         378.1KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251008_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-08 18:00:42.041498
+Config  : ./test.com/private/backups/20251008_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251008_180002-test_com-database.sql.gz         389.8KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251009_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-09 12:00:04.100738
+Config  : ./test.com/private/backups/20251009_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251009_120002-test_com-database.sql.gz         395.2KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251010_120010-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-10 12:00:13.840452
+Config  : ./test.com/private/backups/20251010_120010-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251010_120010-test_com-database.sql.gz         420.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251011_120003-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-11 12:00:05.825318
+Config  : ./test.com/private/backups/20251011_120003-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251011_120003-test_com-database.sql.gz         438.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251013_120008-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-13 12:00:11.238420
+Config  : ./test.com/private/backups/20251013_120008-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251013_120008-test_com-database.sql.gz         453.9KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251014_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-14 12:00:11.951398
+Config  : ./test.com/private/backups/20251014_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251014_120002-test_com-database.sql.gz         460.6KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251014_180001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-14 18:00:05.560399
+Config  : ./test.com/private/backups/20251014_180001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251014_180001-test_com-database.sql.gz         467.3KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251015_120001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-15 12:00:14.101820
+Config  : ./test.com/private/backups/20251015_120001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251015_120001-test_com-database.sql.gz         459.7KiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251016_120019-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-16 12:01:05.593313
+Config  : ./test.com/private/backups/20251016_120019-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251016_120019-test_com-database.sql.gz         2.2MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251017_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-17 12:00:32.744229
+Config  : ./test.com/private/backups/20251017_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251017_120002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251021_120014-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-21 12:00:32.186227
+Config  : ./test.com/private/backups/20251021_120014-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251021_120014-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251021_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-21 18:01:02.495408
+Config  : ./test.com/private/backups/20251021_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251021_180002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251022_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-22 12:00:22.048023
+Config  : ./test.com/private/backups/20251022_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251022_120002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251022_180001-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-22 18:01:40.363783
+Config  : ./test.com/private/backups/20251022_180001-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251022_180001-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251023_120003-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-23 12:00:13.527099
+Config  : ./test.com/private/backups/20251023_120003-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251023_120003-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251023_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-23 18:01:30.828330
+Config  : ./test.com/private/backups/20251023_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251023_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251024_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-24 12:00:23.339497
+Config  : ./test.com/private/backups/20251024_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251024_120002-test_com-database.sql.gz         3.5MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251024_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-24 18:01:32.639639
+Config  : ./test.com/private/backups/20251024_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251024_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251025_120018-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-25 12:00:40.968906
+Config  : ./test.com/private/backups/20251025_120018-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251025_120018-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251027_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-27 12:00:40.205498
+Config  : ./test.com/private/backups/20251027_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251027_120002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251027_180002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-27 18:01:55.714995
+Config  : ./test.com/private/backups/20251027_180002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251027_180002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251028_120008-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-28 12:00:20.079789
+Config  : ./test.com/private/backups/20251028_120008-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251028_120008-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251028_180002-test_com-database.sql.gz
+
+b'mariadb-dump: Error 2013: Lost connection to server during query when dumping table `tabDeleted Document` at row: 2670\n'
+Backup failed for Site test.com. Database or site_config.json may be corrupted
+Traceback with variables (most recent call last):
+  File "apps/frappe/frappe/commands/site.py", line 843, in backup
+    odb = scheduled_backup(
+      context = {'sites': ['test.com'], 'force': False, 'verbose': True, 'profile': False}
+      with_files = False
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_backup_conf = False
+      verbose = True
+      compress = False
+      include = ''
+      exclude = ''
+      old_backup_metadata = False
+      scheduled_backup = <function scheduled_backup at 0x7640f54c3e20>
+      exit_code = 0
+      rollback_callback = None
+      site = 'test.com'
+  File "apps/frappe/frappe/utils/backups.py", line 568, in scheduled_backup
+    return new_backup(
+      older_than = 6
+      ignore_files = True
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_conf = False
+      include_doctypes = ''
+      exclude_doctypes = ''
+      compress = False
+      force = True
+      verbose = True
+      old_backup_metadata = False
+      rollback_callback = <frappe.utils.CallbackManager object at 0x7640f4361a20>
+  File "apps/frappe/frappe/utils/backups.py", line 626, in new_backup
+    odb.get_backup(older_than, ignore_files, force=force)
+      older_than = 6
+      ignore_files = True
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_conf = False
+      include_doctypes = ''
+      exclude_doctypes = ''
+      compress = False
+      force = True
+      verbose = True
+      old_backup_metadata = False
+      rollback_callback = <frappe.utils.CallbackManager object at 0x7640f4361a20>
+      odb = <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>
+  File "apps/frappe/frappe/utils/backups.py", line 195, in get_backup
+    self.delete_if_step_fails(self.take_dump, self.backup_path_db)
+      self = <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>
+      older_than = 6
+      ignore_files = True
+      force = True
+      last_db = False
+      last_file = False
+      last_private_file = False
+      site_config_backup_path = False
+  File "apps/frappe/frappe/utils/backups.py", line 520, in delete_if_step_fails
+    raise e
+      self = <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>
+      step = <bound method BackupGenerator.take_dump of <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>>
+      paths = ('./test.com/private/backups/20251028_180002-test_com-database.sql.gz',)
+      path = './test.com/private/backups/20251028_180002-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/backups.py", line 515, in delete_if_step_fails
+    step()
+      self = <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>
+      step = <bound method BackupGenerator.take_dump of <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>>
+      paths = ('./test.com/private/backups/20251028_180002-test_com-database.sql.gz',)
+      path = './test.com/private/backups/20251028_180002-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/backups.py", line 468, in take_dump
+    frappe.utils.execute_in_shell(command, low_priority=True, check_exit_code=True)
+      self = <frappe.utils.backups.BackupGenerator object at 0x7640f45d1be0>
+      shlex = <module 'shlex' from '/usr/lib/python3.12/shlex.py'>
+      frappe = <module 'frappe' from 'apps/frappe/frappe/__init__.py'>
+      get_app_branch = <function get_app_branch at 0x7640f3497e20>
+      gzip_exc = '/usr/bin/gzip'
+      database_header_content = ['begin frappe metadata', '[frappe]', 'version = 15.84.0', 'branch = version-15', 'end frappe metadata', '']
+      generated_header = '-- begin frappe metadata\n-- [frappe]\n-- version = 15.84.0\n-- branch = version-15\n-- end frappe metadata\n-- \n'
+      f = <_io.TextIOWrapper name='./test.com/private/backups/20251028_180002-test_com-database.sql.gz' encoding='UTF-8'>
+      cmd = ['/usr/bin/mariadb-dump', '--user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015']
+      extra = []
+      get_command = <function get_command at 0x7640f45b5ee0>
+      bin = '/usr/bin/mariadb-dump'
+      args = ['--user=_2ae79f748bca4015', '--host=127.0.0.1', '--port=3306', '--password=ICpWAhU9I61NawEH', '--single-transaction', '--quick', '--lock-tables=false', '_2ae79f748bca4015']
+      bin_name = 'mariadb-dump'
+      command = 'set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251028_180002-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/__init__.py", line 527, in execute_in_shell
+    raise frappe.CommandFailedError(
+      cmd = 'set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251028_180002-test_com-database.sql.gz'
+      verbose = False
+      low_priority = True
+      check_exit_code = True
+      shlex = <module 'shlex' from '/usr/lib/python3.12/shlex.py'>
+      tempfile = <module 'tempfile' from '/usr/lib/python3.12/tempfile.py'>
+      Popen = <class 'subprocess.Popen'>
+      stdout = <_io.BufferedRandom name=6>
+      stderr = <_io.BufferedRandom name=7>
+      kwargs = <exception while printing> Traceback (most recent call last):
+          File "env/lib/python3.12/site-packages/traceback_with_variables/core.py", line 222, in _to_cropped_str
+            raw = print_(obj)
+                  ^^^^^^^^^^^
+          File "apps/frappe/frappe/utils/__init__.py", line 369, in dict_printer
+            v = deepcopy(v)
+                ^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 136, in deepcopy
+            y = copier(x, memo)
+                ^^^^^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 221, in _deepcopy_dict
+            y[deepcopy(key, memo)] = deepcopy(value, memo)
+                                     ^^^^^^^^^^^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 151, in deepcopy
+            rv = reductor(4)
+                 ^^^^^^^^^^^
+        TypeError: cannot pickle 'BufferedRandom' instances
+        
+      p = <Popen: returncode: 3 args: 'set -o pipefail; /usr/bin/mariadb-dump --user=_...>
+      exit_code = 3
+      out = b''
+      err = b'mariadb-dump: Error 2013: Lost connection to server during query when dumping table `tabDeleted Document` at row: 2670\n'
+      failed = 3
+frappe.exceptions.CommandFailedError: Command failed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251029_120002-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-29 12:00:09.722310
+Config  : ./test.com/private/backups/20251029_120002-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251029_120002-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251029_180001-test_com-database.sql.gz
+
+b'mariadb-dump: Error 2013: Lost connection to server during query when dumping table `tabComment` at row: 7011\n'
+Backup failed for Site test.com. Database or site_config.json may be corrupted
+Traceback with variables (most recent call last):
+  File "apps/frappe/frappe/commands/site.py", line 843, in backup
+    odb = scheduled_backup(
+      context = {'sites': ['test.com'], 'force': False, 'verbose': True, 'profile': False}
+      with_files = False
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_backup_conf = False
+      verbose = True
+      compress = False
+      include = ''
+      exclude = ''
+      old_backup_metadata = False
+      scheduled_backup = <function scheduled_backup at 0x73d32a9c7e20>
+      exit_code = 0
+      rollback_callback = None
+      site = 'test.com'
+  File "apps/frappe/frappe/utils/backups.py", line 568, in scheduled_backup
+    return new_backup(
+      older_than = 6
+      ignore_files = True
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_conf = False
+      include_doctypes = ''
+      exclude_doctypes = ''
+      compress = False
+      force = True
+      verbose = True
+      old_backup_metadata = False
+      rollback_callback = <frappe.utils.CallbackManager object at 0x73d329861ae0>
+  File "apps/frappe/frappe/utils/backups.py", line 626, in new_backup
+    odb.get_backup(older_than, ignore_files, force=force)
+      older_than = 6
+      ignore_files = True
+      backup_path = None
+      backup_path_db = None
+      backup_path_files = None
+      backup_path_private_files = None
+      backup_path_conf = None
+      ignore_conf = False
+      include_doctypes = ''
+      exclude_doctypes = ''
+      compress = False
+      force = True
+      verbose = True
+      old_backup_metadata = False
+      rollback_callback = <frappe.utils.CallbackManager object at 0x73d329861ae0>
+      odb = <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>
+  File "apps/frappe/frappe/utils/backups.py", line 195, in get_backup
+    self.delete_if_step_fails(self.take_dump, self.backup_path_db)
+      self = <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>
+      older_than = 6
+      ignore_files = True
+      force = True
+      last_db = False
+      last_file = False
+      last_private_file = False
+      site_config_backup_path = False
+  File "apps/frappe/frappe/utils/backups.py", line 520, in delete_if_step_fails
+    raise e
+      self = <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>
+      step = <bound method BackupGenerator.take_dump of <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>>
+      paths = ('./test.com/private/backups/20251029_180001-test_com-database.sql.gz',)
+      path = './test.com/private/backups/20251029_180001-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/backups.py", line 515, in delete_if_step_fails
+    step()
+      self = <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>
+      step = <bound method BackupGenerator.take_dump of <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>>
+      paths = ('./test.com/private/backups/20251029_180001-test_com-database.sql.gz',)
+      path = './test.com/private/backups/20251029_180001-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/backups.py", line 468, in take_dump
+    frappe.utils.execute_in_shell(command, low_priority=True, check_exit_code=True)
+      self = <frappe.utils.backups.BackupGenerator object at 0x73d329994f20>
+      shlex = <module 'shlex' from '/usr/lib/python3.12/shlex.py'>
+      frappe = <module 'frappe' from 'apps/frappe/frappe/__init__.py'>
+      get_app_branch = <function get_app_branch at 0x73d328373e20>
+      gzip_exc = '/usr/bin/gzip'
+      database_header_content = ['begin frappe metadata', '[frappe]', 'version = 15.84.0', 'branch = version-15', 'end frappe metadata', '']
+      generated_header = '-- begin frappe metadata\n-- [frappe]\n-- version = 15.84.0\n-- branch = version-15\n-- end frappe metadata\n-- \n'
+      f = <_io.TextIOWrapper name='./test.com/private/backups/20251029_180001-test_com-database.sql.gz' encoding='UTF-8'>
+      cmd = ['/usr/bin/mariadb-dump', '--user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015']
+      extra = []
+      get_command = <function get_command at 0x73d329ab9ee0>
+      bin = '/usr/bin/mariadb-dump'
+      args = ['--user=_2ae79f748bca4015', '--host=127.0.0.1', '--port=3306', '--password=ICpWAhU9I61NawEH', '--single-transaction', '--quick', '--lock-tables=false', '_2ae79f748bca4015']
+      bin_name = 'mariadb-dump'
+      command = 'set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251029_180001-test_com-database.sql.gz'
+  File "apps/frappe/frappe/utils/__init__.py", line 527, in execute_in_shell
+    raise frappe.CommandFailedError(
+      cmd = 'set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=ICpWAhU9I61NawEH --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251029_180001-test_com-database.sql.gz'
+      verbose = False
+      low_priority = True
+      check_exit_code = True
+      shlex = <module 'shlex' from '/usr/lib/python3.12/shlex.py'>
+      tempfile = <module 'tempfile' from '/usr/lib/python3.12/tempfile.py'>
+      Popen = <class 'subprocess.Popen'>
+      stdout = <_io.BufferedRandom name=6>
+      stderr = <_io.BufferedRandom name=7>
+      kwargs = <exception while printing> Traceback (most recent call last):
+          File "env/lib/python3.12/site-packages/traceback_with_variables/core.py", line 222, in _to_cropped_str
+            raw = print_(obj)
+                  ^^^^^^^^^^^
+          File "apps/frappe/frappe/utils/__init__.py", line 369, in dict_printer
+            v = deepcopy(v)
+                ^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 136, in deepcopy
+            y = copier(x, memo)
+                ^^^^^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 221, in _deepcopy_dict
+            y[deepcopy(key, memo)] = deepcopy(value, memo)
+                                     ^^^^^^^^^^^^^^^^^^^^^
+          File "/usr/lib/python3.12/copy.py", line 151, in deepcopy
+            rv = reductor(4)
+                 ^^^^^^^^^^^
+        TypeError: cannot pickle 'BufferedRandom' instances
+        
+      p = <Popen: returncode: 3 args: 'set -o pipefail; /usr/bin/mariadb-dump --user=_...>
+      exit_code = 3
+      out = b''
+      err = b'mariadb-dump: Error 2013: Lost connection to server during query when dumping table `tabComment` at row: 7011\n'
+      failed = 3
+frappe.exceptions.CommandFailedError: Command failed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251030_120004-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-30 12:00:14.073286
+Config  : ./test.com/private/backups/20251030_120004-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251030_120004-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed

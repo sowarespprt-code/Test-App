@@ -1,3 +1,4 @@
+
 .DS_Store
 *.pyc
 *.egg-info
@@ -5,3 +6,8 @@
 tags
 node_modules
 __pycache__
+env/
+logs/
+env/
+logs/
+

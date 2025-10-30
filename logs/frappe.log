@@ -1,0 +1,180 @@
+2025-10-06 17:47:22,168 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '12', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-06 17:48:46,019 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '12', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-07 09:44:40,367 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '13', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-07 10:30:17,898 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '14', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-07 10:43:32,855 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '15', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-07 11:47:21,739 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'ticket': '18', 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.get_recent_similar_tickets'}
+2025-10-08 14:46:36,834 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'GRAND TRADERS', 'cmd': 'frappe.client.get'}
+2025-10-08 14:46:51,430 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'TCS FRESH', 'cmd': 'frappe.client.get'}
+2025-10-08 14:47:03,580 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'filters': {}, 'order_by': 'modified desc', 'page_length': 20, 'page_length_count': 20, 'view': {'view_type': 'list', 'group_by_field': 'owner'}, 'columns': [], 'rows': [], 'show_customer_portal_fields': False, 'is_default': True, 'cmd': 'helpdesk.api.doc.get_list_data'}
+2025-10-08 14:47:16,420 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'filters': {}, 'order_by': '', 'page_length': 20, 'page_length_count': 20, 'view': {'view_type': 'list', 'group_by_field': 'owner'}, 'columns': [], 'rows': [], 'show_customer_portal_fields': False, 'is_default': True, 'cmd': 'helpdesk.api.doc.get_list_data'}
+2025-10-13 10:33:05,513 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bug</p>', 'subject': 'bug', 'template': '', 'custom_product': 'Fox', 'custom_customercode': 'CU5BB742143', 'customer': '', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-16 11:02:33,542 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'data_import': 'HD Customer Import on 2025-10-16 11:02:22.324460', 'import_file': '/private/files/HD Customer(3).xlsx', 'google_sheets_url': '', 'cmd': 'frappe.core.doctype.data_import.data_import.get_preview_from_template'}
+2025-10-16 11:02:33,642 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': '{"name":"HD Customer Import on 2025-10-16 11:02:22.324460","owner":"Administrator","creation":"2025-10-16 11:02:22.324460","modified":"2025-10-16 11:02:22.324460","modified_by":"Administrator","docstatus":0,"idx":0,"reference_doctype":"HD Customer","import_type":"Insert New Records","import_file":"/private/files/HD Customer(3).xlsx","payload_count":0,"google_sheets_url":null,"status":"Pending","submit_after_import":0,"mute_emails":1,"template_options":"","template_warnings":"","show_failed_logs":0,"doctype":"Data Import","__last_sync_on":"2025-10-16T05:32:22.786Z","__unsaved":1}', 'action': 'Save', 'cmd': 'frappe.desk.form.save.savedocs'}
+2025-10-16 11:02:45,406 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': '{"name":"HD Customer Import on 2025-10-16 11:02:22.324460","owner":"Administrator","creation":"2025-10-16 11:02:22.324460","modified":"2025-10-16 11:02:22.324460","modified_by":"Administrator","docstatus":0,"idx":0,"reference_doctype":"HD Customer","import_type":"Insert New Records","import_file":"/private/files/HD Customer(3).xlsx","payload_count":0,"google_sheets_url":null,"status":"Pending","submit_after_import":0,"mute_emails":1,"template_options":"","template_warnings":"","show_failed_logs":0,"doctype":"Data Import","__last_sync_on":"2025-10-16T05:32:22.786Z","__unsaved":1}', 'action': 'Save', 'cmd': 'frappe.desk.form.save.savedocs'}
+2025-10-22 10:31:52,478 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'doctype': 'HD Customer', 'customer_name': 'Test1', 'domain': '', 'custom_customercode': 'test1', 'custom_productname': {'label': 'Infi', 'value': 'Infi'}, 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_gstno': '', 'custom_email': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': ''}, 'cmd': 'frappe.client.insert'}
+2025-10-22 10:45:55,086 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'doctype': 'HD Customer', 'customer_name': 'test1', 'domain': '', 'custom_customercode': 'test1', 'custom_productname': {'label': 'Infi', 'value': 'Infi'}, 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_gstno': '', 'custom_email': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': ''}, 'cmd': 'frappe.client.insert'}
+2025-10-22 11:10:15,857 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'doctype': 'HD Customer', 'customer_name': 'test1', 'domain': '', 'custom_customercode': 'test1', 'custom_productname': {'label': 'Infi', 'value': 'Infi'}, 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_gstno': '', 'custom_email': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': ''}, 'cmd': 'frappe.client.insert'}
+2025-10-22 11:24:19,053 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'doctype': 'HD Customer', 'customer_name': 'Test2', 'domain': '', 'custom_customercode': 'test2', 'custom_productname': 'Fox', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_gstno': '', 'custom_email': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': ''}, 'cmd': 'frappe.client.insert'}
+2025-10-22 16:36:44,836 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'helpdesk.doctype.hd_customer.hd_customer.get_customer_codes', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 16:39:10,951 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'helpdesk.helpdesk.doctype.hd_customer.hd_customer.get_custom_customercode', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 16:40:07,722 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'helpdesk.helpdesk.doctype.hd_customer.hd_customer.custom_customercode', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 16:41:10,171 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'helpdesk.helpdesk.doctype.hd_customer.hd_customer.custom_customercode', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 16:53:55,734 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.get_customer_codes', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 17:10:22,493 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.get_options', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 17:13:14,693 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.Customer_code_entry.get_options', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 17:19:07,373 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.run', 'params': '{"script":"Customer code entry","doctype":"HD Customer","filters":{"field":"custom_customer_name"}}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 17:36:30,152 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'field': 'custom_customer_name', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-22 17:48:32,924 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'field': 'custom_customer_name', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 09:17:57,468 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'field': 'custom_customer_name', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 09:19:58,334 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'field': 'custom_customer_name', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 09:26:33,554 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.get_customer_options', 'filters': '{"search_by":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 09:26:47,759 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.get_customer_options', 'filters': '{"search_by":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 11:18:19,356 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'txt': '', 'doctype': 'HD Customer', 'ignore_user_permissions': '0', 'reference_doctype': 'HD Ticket', 'page_length': '10', 'query': 'frappe.core.doctype.server_script.server_script.get_customer_options', 'filters': '{"field":"custom_customer_name"}', 'cmd': 'frappe.desk.search.search_link'}
+2025-10-23 15:31:18,104 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'IDEAL COMBINATION [ - WT000054]', 'fieldname': {'customer_name': 'IDEAL COMBINATION [ - WT000054]', 'custom_customercode': 'WT0000541', 'custom_productname': 'WinTrader', 'custom_address1': 'MANAMA COMPLEX', 'custom_address2': '', 'custom_place': '', 'custom_district': 'KANNUR', 'custom_state': '', 'custom_country': '', 'custom_contactperson': 'MUNEER', 'custom_phone001': '4972768846.0', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '0.0', 'custom_dateofamclastpaid': '2023-11-30 16:38:54', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-23 15:32:34,192 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'IDEAL COMBINATION [ - WT000054]', 'fieldname': {'customer_name': 'IDEAL COMBINATION [ - WT000054]', 'custom_customercode': 'WT0000541', 'custom_productname': 'WinTrader', 'custom_address1': 'MANAMA COMPLEX', 'custom_address2': '', 'custom_place': '', 'custom_district': 'KANNUR', 'custom_state': '', 'custom_country': '', 'custom_contactperson': 'MUNEER', 'custom_phone001': '4972768846.0', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '0.0', 'custom_dateofamclastpaid': '2023-11-30 16:38:54', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-23 15:40:10,682 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'KUNNIL HYPER MARKET-WIN(SHANAVAS) [KANIYAPURAM PO - WT000056]', 'fieldname': {'customer_name': 'KUNNIL HYPER MARKET-WIN(SHANAVAS) [KANIYAPURAM PO - WT000056]', 'custom_customercode': 'WT0000561', 'custom_productname': 'WinTrader', 'custom_address1': 'KUNNIL HEIGHTS', 'custom_address2': 'KANIYAPURAM', 'custom_place': 'KANIYAPURAM PO', 'custom_district': 'TRIVANDRUM', 'custom_state': 'KERALA', 'custom_country': 'INDIA', 'custom_contactperson': 'SHANAVAS', 'custom_phone001': '9847602100.0', 'custom_phone002': '', 'custom_email': 'kunnilkaniyapuram@gmail.com', 'custom_gstno': '32AASFM7220N1ZW', 'custom_nooflicense': '0.0', 'custom_dateofamclastpaid': '2019-06-22 12:09:28', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-24 12:41:32,509 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '54', 'cmd': 'frappe.client.get'}
+2025-10-24 12:41:38,136 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '54', 'cmd': 'frappe.client.get'}
+2025-10-24 12:41:44,080 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '53', 'cmd': 'frappe.client.get'}
+2025-10-24 12:42:02,546 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 12:51:32,451 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 12:51:57,095 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '54', 'cmd': 'frappe.client.get'}
+2025-10-24 12:59:16,553 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 13:04:16,104 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 13:07:21,145 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 13:18:03,332 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Ticket', 'name': '57', 'cmd': 'frappe.client.get'}
+2025-10-24 13:23:07,121 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bug</p>', 'subject': 'bug', 'template': '', 'custom_product': 'Infi', 'custom_customercode': 'WT000052', 'custom_customer_name': 'C.B TRADERS [KULAKKADU - WT000052]', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-27 13:00:32,169 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'Test1', 'fieldname': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Infi', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-27 13:00:39,991 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'Test1', 'fieldname': {'customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_productname': 'Infi', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-27 13:02:08,780 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'Test1', 'fieldname': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Infi', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-27 13:04:50,492 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doctype': 'HD Customer', 'name': 'Test1', 'fieldname': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Infi', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'frappe.client.set_value'}
+2025-10-28 14:14:55,741 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'customer_name': 'Test1', 'updates': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Fox', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'update_customer'}
+2025-10-28 14:15:57,078 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'customer_name': 'Test1', 'updates': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Fox', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'update_customer'}
+2025-10-28 14:29:26,040 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'customer_name': 'Test1', 'updates': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Fox', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'update_customer'}
+2025-10-28 14:34:09,982 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'customer_name': 'Test1', 'updates': {'customer_name': 'Test1', 'custom_customercode': 'test01', 'custom_productname': 'Fox', 'custom_address1': '', 'custom_address2': '', 'custom_place': '', 'custom_district': '', 'custom_state': '', 'custom_country': '', 'custom_contactperson': '', 'custom_phone001': '', 'custom_phone002': '', 'custom_email': '', 'custom_gstno': '', 'custom_nooflicense': '', 'custom_dateofamclastpaid': '', 'domain': ''}, 'cmd': 'update_customer'}
+2025-10-28 17:04:22,959 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': '{"name":"Test2","owner":"Administrator","creation":"2025-10-22 11:27:19.324808","modified":"2025-10-28 16:52:51.452276","modified_by":"Administrator","docstatus":0,"idx":6,"customer_name":"Test2","domain":"","custom_sl_no":0,"custom_customercode":"test02","custom_address1":"","custom_address2":"","custom_place":"","custom_district":"","custom_state":"","custom_country":"","custom_contactperson":"","custom_phone001":"","custom_phone002":"","custom_gstno":"","custom_email":"","custom_productname":"Infi","custom_nooflicense":"","custom_dateofamclastpaid":"","doctype":"HD Customer","__last_sync_on":"2025-10-28T11:34:10.364Z","__unsaved":1}', 'action': 'Save', 'cmd': 'frappe.desk.form.save.savedocs'}
+2025-10-29 16:27:01,057 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bug</p>', 'subject': 'bug', 'template': '', 'custom_customer_name': 'Test2', 'custom_customercode': 'test2', 'custom_product': 'Fox', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 16:31:22,076 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>sadf</p>', 'subject': 'sadf', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 16:41:57,211 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>werr</p>', 'subject': 'errr', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 17:42:13,911 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bugggg</p>', 'subject': 'bugggg', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}

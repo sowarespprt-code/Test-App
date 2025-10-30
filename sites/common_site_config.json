@@ -1,0 +1,22 @@
+{
+ "allow_cors": "",
+ "background_workers": 1,
+ "developer_mode": true,
+ "file_watcher_port": 6789,
+ "frappe_user": "user",
+ "gunicorn_workers": 9,
+ "live_reload": true,
+ "rebase_on_pull": false,
+ "redis_cache": "redis://127.0.0.1:13002",
+ "redis_queue": "redis://127.0.0.1:11002",
+ "redis_socketio": "redis://127.0.0.1:13002",
+ "restart_supervisor_on_update": false,
+ "restart_systemd_on_update": false,
+ "serve_default_site": true,
+ "server_script_enabled": 1,
+ "shallow_clone": true,
+ "socketio_host": "",
+ "socketio_port": "",
+ "use_redis_auth": false,
+ "webserver_port": 8002
+}
