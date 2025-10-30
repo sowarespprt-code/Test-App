@@ -207,5 +207,43 @@
   "reference_doctype": "HD Ticket",
   "script": "if doc.custom_product:\n    team = frappe.db.get_value(\"Product\", doc.custom_product, \"team\")\n    if team:\n        doc.agent_group = team\n    else:\n        doc.agent_group = None\n",
   "script_type": "DocType Event"
+ },
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 1,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2025-10-29 16:42:52.362934",
+  "module": "Helpdesk",
+  "name": "Capture HD Ticket Virtual Fields",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "HD Ticket",
+  "script": "# Capture virtual field values before they're lost during save\ncustom_customercode = doc.get('custom_customercode') or ''\ncustom_product = doc.get('custom_product') or ''\n\n# Store temporarily so After Insert can access them\nif custom_customercode:\n    doc.temp_customer_code = custom_customercode\nif custom_product:\n    doc.temp_product = custom_product\n",
+  "script_type": "DocType Event"
+ },
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 1,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "After Insert",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2025-10-29 16:42:47.227379",
+  "module": "Helpdesk",
+  "name": "Store HD Ticket Virtual Fields Cache",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "HD Ticket",
+  "script": "# Store virtual field values in cache after ticket creation\ncustom_customercode = getattr(doc, 'temp_customer_code', '')\ncustom_product = getattr(doc, 'temp_product', '')\n\n# Only cache if at least one field has a value\nif custom_customercode or custom_product:\n    cache_key = f'ticket_virtual_fields_{doc.name}'  # Fixed: self.name -> doc.name\n    cache_data = {\n        'custom_customercode': custom_customercode,\n        'custom_product': custom_product,\n        'timestamp': frappe.utils.now()\n    }\n    # Store in cache for 24 hours\n    frappe.cache().setex(cache_key, 86400, frappe.as_json(cache_data))\n",
+  "script_type": "DocType Event"
  }
 ]

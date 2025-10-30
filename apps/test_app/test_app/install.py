@@ -36,7 +36,8 @@ def install_overrides():
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
         "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
         "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
-        "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py"
+        "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py",
+        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py"
     }
     
     success = True

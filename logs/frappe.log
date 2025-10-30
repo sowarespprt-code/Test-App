@@ -166,3 +166,15 @@ Form Dict: {'customer_name': 'Test1', 'updates': {'customer_name': 'Test1', 'cus
 2025-10-28 17:04:22,959 ERROR frappe New Exception collected in error log
 Site: test.com
 Form Dict: {'doc': '{"name":"Test2","owner":"Administrator","creation":"2025-10-22 11:27:19.324808","modified":"2025-10-28 16:52:51.452276","modified_by":"Administrator","docstatus":0,"idx":6,"customer_name":"Test2","domain":"","custom_sl_no":0,"custom_customercode":"test02","custom_address1":"","custom_address2":"","custom_place":"","custom_district":"","custom_state":"","custom_country":"","custom_contactperson":"","custom_phone001":"","custom_phone002":"","custom_gstno":"","custom_email":"","custom_productname":"Infi","custom_nooflicense":"","custom_dateofamclastpaid":"","doctype":"HD Customer","__last_sync_on":"2025-10-28T11:34:10.364Z","__unsaved":1}', 'action': 'Save', 'cmd': 'frappe.desk.form.save.savedocs'}
+2025-10-29 16:27:01,057 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bug</p>', 'subject': 'bug', 'template': '', 'custom_customer_name': 'Test2', 'custom_customercode': 'test2', 'custom_product': 'Fox', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 16:31:22,076 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>sadf</p>', 'subject': 'sadf', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 16:41:57,211 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>werr</p>', 'subject': 'errr', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}
+2025-10-29 17:42:13,911 ERROR frappe New Exception collected in error log
+Site: test.com
+Form Dict: {'doc': {'description': '<p>bugggg</p>', 'subject': 'bugggg', 'template': '', 'custom_customer_name': 'Test1', 'custom_customercode': 'test1', 'custom_product': 'Infi', 'doctype': 'HD Ticket', 'via_customer_portal': True, 'attachments': []}, 'attachments': [], 'cmd': 'helpdesk.helpdesk.doctype.hd_ticket.api.new'}

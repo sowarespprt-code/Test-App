@@ -114,7 +114,7 @@
   "due_date_based_on": "service_level_agreement_creation",
   "field": null,
   "last_user": "agent2@gmail.com",
-  "modified": "2025-10-29 10:54:53.014682",
+  "modified": "2025-10-29 16:51:41.836626",
   "name": "Fox - Support Rotation",
   "priority": 0,
   "rule": "Round Robin",
