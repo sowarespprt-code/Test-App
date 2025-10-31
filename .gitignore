@@ -1,4 +1,14 @@
+<<<<<<< HEAD
 env/
 logs/
 env/
 logs/
+=======
+.DS_Store
+*.pyc
+*.egg-info
+*.swp
+tags
+node_modules
+__pycache__
+>>>>>>> origin/newbranch

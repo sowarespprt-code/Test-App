@@ -438,3 +438,9 @@ Backup Summary for test.com at 2025-10-30 12:00:14.073286
 Config  : ./test.com/private/backups/20251030_120004-test_com-site_config_backup.json 94.0B
 Database: ./test.com/private/backups/20251030_120004-test_com-database.sql.gz         3.6MiB
 Backup for Site test.com has been successfully completed
+set -o pipefail; /usr/bin/mariadb-dump --user=_2ae79f748bca4015 --host=127.0.0.1 --port=3306 --password=********** --single-transaction --quick --lock-tables=false _2ae79f748bca4015 | /usr/bin/gzip >> ./test.com/private/backups/20251030_180004-test_com-database.sql.gz
+
+Backup Summary for test.com at 2025-10-30 18:00:12.025138
+Config  : ./test.com/private/backups/20251030_180004-test_com-site_config_backup.json 94.0B
+Database: ./test.com/private/backups/20251030_180004-test_com-database.sql.gz         3.6MiB
+Backup for Site test.com has been successfully completed
