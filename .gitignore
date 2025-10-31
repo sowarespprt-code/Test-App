@@ -1,9 +1,8 @@
-<<<<<<< HEAD
+
 env/
 logs/
 env/
 logs/
-=======
 .DS_Store
 *.pyc
 *.egg-info
@@ -11,4 +10,3 @@ logs/
 tags
 node_modules
 __pycache__
->>>>>>> origin/newbranch
