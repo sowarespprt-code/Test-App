@@ -4,11 +4,7 @@ app_publisher = "soware"
 app_description = "For testing"
 app_email = "test@gmail.com"
 app_license = "mit"
-# doc_events = {
-#     "*": {
-#         "on_update": "test_app.some_module.some_function"
-#     }
-# }
+
 # Apps
 # ------------------
 
@@ -31,9 +27,9 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/test_app/css/test_app.css"
 # app_include_js = "/assets/test_app/js/test_app.js"
-app_include_js = [
-    "/assets/test_app/js/hd_customer_override.js"
-]
+# app_include_js = [
+#     "/assets/test_app/js/hd_customer_override.js"
+# ]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/test_app/css/test_app.css"
@@ -256,6 +252,11 @@ override_vue_components = {
 
 override_doctype_class = {}
 override_whitelisted_methods = {}
+# Override helpdesk API methods
+override_whitelisted_methods = {
+    "helpdesk.helpdesk.doctype.hd_ticket.api.get_one": "test_app.test_app.overrides.api.get_one"
+}
+
 
 source_link = "File"
 
@@ -278,6 +279,17 @@ fixtures = [
         ]
     },
     "HD Ticket Template"
+    {"dt": "Server Script"},
+    {"dt": "Assignment Rule"},
+    "HD Ticket Template",
+    {
+        "dt": "Custom Field",
+        "filters": [["dt", "in", ["HD Ticket", "HD Customer"]]]
+    },
+    {
+        "dt": "Property Setter",
+        "filters": [["doc_type", "in", ["HD Ticket", "HD Customer"]]]
+    }
 ]
 
 
