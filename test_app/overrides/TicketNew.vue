@@ -18,18 +18,18 @@
       v-if="showLicensePopup"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
         <!-- Popup Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-          <h2 class="text-xl font-semibold text-gray-800">Customer License Details</h2>
+        <div class="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
+          <h2 class="text-lg font-semibold text-gray-800">Customer License Details</h2>
           <button
             @click="showLicensePopup = false"
             class="text-gray-500 hover:text-gray-700 transition"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -44,246 +44,134 @@
         </div>
 
         <!-- Popup Body -->
-        <div class="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div class="px-5 py-3 overflow-y-auto max-h-[calc(90vh-120px)]">
           <!-- Loading State -->
-          <div v-if="licenseLoading" class="flex items-center justify-center py-12">
-            <div class="flex flex-col items-center gap-3">
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              <p class="text-gray-600">Fetching license details...</p>
+          <div v-if="licenseLoading" class="flex items-center justify-center py-8">
+            <div class="flex flex-col items-center gap-2">
+              <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+              <p class="text-sm text-gray-600">Fetching license details...</p>
             </div>
           </div>
 
           <!-- Error State -->
-          <div v-else-if="licenseError" class="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <h3 class="text-lg font-medium text-red-800 mb-2">Error Loading License Details</h3>
+          <div v-else-if="licenseError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <h3 class="text-base font-medium text-red-800 mb-1">Error Loading License Details</h3>
             <p class="text-sm text-red-700">{{ licenseError }}</p>
             <button
               @click="fetchLicenseDetails"
-              class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
+              class="mt-2 px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition"
             >
               Retry
             </button>
           </div>
 
           <!-- Success State -->
-          <div v-else-if="licenseData">
-            <!-- Customer Information -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                Customer Information
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Customer Code</label>
-                  <input
-                    type="text"
-                    :value="licenseData.CustomerCode || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Customer Name</label>
-                  <input
-                    type="text"
-                    :value="licenseData.CustomerName || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Owner Name</label>
-                  <input
-                    type="text"
-                    :value="licenseData.OwnerName || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Contact Person</label>
-                  <input
-                    type="text"
-                    :value="licenseData.ContactPerson || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
+          <div v-else-if="licenseData" class="space-y-3">
+            <!-- Customer Code and Name (Same Line) -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Customer Code</span>
+                <p class="mt-0.5 text-sm text-gray-900 font-medium">{{ licenseData.CustomerCode || 'Not available' }}</p>
+              </div>
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Customer Name</span>
+                <p class="mt-0.5 text-sm text-gray-900 font-medium">{{ licenseData.CustomerName || 'Not available' }}</p>
               </div>
             </div>
 
-            <!-- Contact Information -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                Contact Information
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Phone 1</label>
-                  <input
-                    type="text"
-                    :value="licenseData.Phone1 || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Phone 2</label>
-                  <input
-                    type="text"
-                    :value="licenseData.Phone2 || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
-                  <input
-                    type="text"
-                    :value="licenseData.EmailID || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
+            <div class="border-t border-gray-200 my-2"></div>
+
+            <!-- AMC End Date -->
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">AMC End Date</span>
+              <p
+                class="mt-0.5 text-sm font-semibold inline-block px-2 py-1 rounded"
+                :class="{
+                  'bg-red-100 text-red-800': isExpired(licenseData.AMCEndDate),
+                  'bg-yellow-100 text-yellow-800': isExpiringSoon(licenseData.AMCEndDate),
+                  'bg-green-100 text-green-800': !isExpired(licenseData.AMCEndDate) && !isExpiringSoon(licenseData.AMCEndDate)
+                }"
+              >
+                {{ formatDate(licenseData.AMCEndDate) }}
+              </p>
+            </div>
+
+            <!-- License Type and Subscription End Date -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">License Type</span>
+                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.LicenseType || 'Not available' }}</p>
+              </div>
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Subscription End Date</span>
+                <p
+                  class="mt-0.5 text-sm font-semibold inline-block px-2 py-1 rounded"
+                  :class="{
+                    'bg-red-100 text-red-800': isExpired(licenseData.SubscriptionExpDate),
+                    'bg-yellow-100 text-yellow-800': isExpiringSoon(licenseData.SubscriptionExpDate),
+                    'bg-green-100 text-green-800': !isExpired(licenseData.SubscriptionExpDate) && !isExpiringSoon(licenseData.SubscriptionExpDate)
+                  }"
+                >
+                  {{ formatDate(licenseData.SubscriptionExpDate) }}
+                </p>
               </div>
             </div>
 
-            <!-- Address Information -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                Address Information
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Address Line 1</label>
-                  <input
-                    type="text"
-                    :value="licenseData.Address1 || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Address Line 2</label>
-                  <input
-                    type="text"
-                    :value="licenseData.Address2 || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Nature of Business (GST)</label>
-                  <input
-                    type="text"
-                    :value="licenseData.NatureOfBusiness || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
+            <div class="border-t border-gray-200 my-2"></div>
+
+            <!-- Address -->
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Address</span>
+              <p class="mt-0.5 text-sm text-gray-900">
+                {{ [licenseData.Address1, licenseData.Address2].filter(Boolean).join(', ') || 'Not available' }}
+              </p>
+            </div>
+
+            <!-- Phone and Email -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Phone</span>
+                <p class="mt-0.5 text-sm text-gray-900">
+                  {{ [licenseData.Phone1, licenseData.Phone2].filter(Boolean).join(', ') || 'Not available' }}
+                </p>
+              </div>
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Email</span>
+                <p class="mt-0.5 text-sm text-gray-900 break-all">{{ licenseData.EmailID || 'Not available' }}</p>
               </div>
             </div>
 
-            <!-- License Details -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                License & Subscription Information
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">License Type</label>
-                  <input
-                    type="text"
-                    :value="licenseData.LicenseType || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Subscription Expiry Date</label>
-                  <input
-                    type="text"
-                    :value="formatDate(licenseData.SubscriptionExpDate)"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                    :class="{
-                      'bg-red-50 border-red-300 text-red-800': isExpired(licenseData.SubscriptionExpDate),
-                      'bg-green-50 border-green-300 text-green-800': !isExpired(licenseData.SubscriptionExpDate)
-                    }"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-600 mb-1">Subscription Remarks</label>
-                  <input
-                    type="text"
-                    :value="licenseData.SubscriptionRemarks || 'Not available'"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
+            <div class="border-t border-gray-200 my-2"></div>
+
+            <!-- Owner Name and Contact Person -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Owner Name</span>
+                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.OwnerName || 'Not available' }}</p>
+              </div>
+              <div>
+                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Contact Person</span>
+                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.ContactPerson || 'Not available' }}</p>
               </div>
             </div>
 
-            <!-- AMC Information -->
-            <div class="mb-6">
-              <h3 class="text-lg font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                AMC (Annual Maintenance Contract) Information
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">AMC Start Date</label>
-                  <input
-                    type="text"
-                    :value="formatDate(licenseData.AMCStartDate)"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-600 mb-1">AMC End Date</label>
-                  <input
-                    type="text"
-                    :value="formatDate(licenseData.AMCEndDate)"
-                    readonly
-                    class="w-full text-gray-900 bg-gray-50 px-3 py-2 rounded border border-gray-300 focus:outline-none"
-                    :class="{
-                      'bg-red-50 border-red-300 text-red-800': isExpired(licenseData.AMCEndDate),
-                      'bg-yellow-50 border-yellow-300 text-yellow-800': isExpiringSoon(licenseData.AMCEndDate),
-                      'bg-green-50 border-green-300 text-green-800': !isExpired(licenseData.AMCEndDate) && !isExpiringSoon(licenseData.AMCEndDate)
-                    }"
-                  />
-                </div>
-              </div>
+            <div class="border-t border-gray-200 my-2"></div>
+
+            <!-- Nature of Business -->
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nature of Business (GST)</span>
+              <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.NatureOfBusiness || 'Not available' }}</p>
             </div>
+
+            <div class="border-t border-gray-200 my-2"></div>
 
             <!-- Status Summary -->
-            <div class="p-4 rounded-lg" :class="getLicenseStatusClass()">
-              <div class="flex items-start gap-3">
+            <div class="p-3 rounded-lg" :class="getLicenseStatusClass()">
+              <div class="flex items-start gap-2">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -297,21 +185,21 @@
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
                 <div>
-                  <h3 class="text-lg font-medium mb-1">License Status</h3>
-                  <p class="text-sm">{{ getLicenseStatusMessage() }}</p>
+                  <h3 class="text-sm font-semibold mb-0.5">License Status</h3>
+                  <p class="text-xs leading-relaxed">{{ getLicenseStatusMessage() }}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- No Data State -->
-          <div v-else class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <p class="text-gray-600">No license details available. Please select a customer first.</p>
+          <div v-else class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p class="text-sm text-gray-600">No license details available. Please select a customer first.</p>
           </div>
         </div>
 
         <!-- Popup Footer -->
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t bg-gray-50">
           <Button
             label="Close"
             theme="gray"
@@ -320,7 +208,7 @@
           />
           <Button
             v-if="licenseData"
-            label="Refresh License"
+            label="Refresh"
             theme="gray"
             variant="solid"
             :loading="licenseLoading"
@@ -352,7 +240,7 @@
             "
           />
         </div>
-        
+       
         <!-- Button Near Customer Fields -->
         <div class="mt-3 flex justify-end">
           <button
@@ -523,9 +411,9 @@ const licenseData = ref(null);
 // ============================================
 async function fetchLicenseDetails() {
   const customerCode = templateFields.custom_customercode;
-  
+ 
   console.log('fetchLicenseDetails called with customerCode:', customerCode);
-  
+ 
   if (!customerCode) {
     licenseError.value = "Customer code is required";
     return;
@@ -537,7 +425,7 @@ async function fetchLicenseDetails() {
 
   try {
     console.log('Calling API with customer_code:', customerCode);
-    
+   
     const data = await call('helpdesk.api.license.get_customer_license_details', {
       customer_code: customerCode
     });
@@ -550,7 +438,7 @@ async function fetchLicenseDetails() {
 
     licenseData.value = data;
     console.log('License data stored:', licenseData.value);
-    
+   
   } catch (error) {
     console.error('Error fetching license details:', error);
     licenseError.value = error.message || 'Failed to fetch license details. Please try again.';
@@ -567,26 +455,26 @@ function openLicensePopup() {
 
 function getLicenseStatusClass() {
   if (!licenseData.value) return 'bg-gray-50 border border-gray-200';
-  
+ 
   const amcExpired = isExpired(licenseData.value.AMCEndDate);
   const subExpired = isExpired(licenseData.value.SubscriptionExpDate);
-  
+ 
   if (amcExpired || subExpired) {
     return 'bg-red-50 border border-red-200 text-red-800';
   } else if (isExpiringSoon(licenseData.value.AMCEndDate)) {
     return 'bg-yellow-50 border border-yellow-200 text-yellow-800';
   }
-  
+ 
   return 'bg-green-50 border border-green-200 text-green-800';
 }
 
 function getLicenseStatusMessage() {
   if (!licenseData.value) return 'No license information available';
-  
+ 
   const amcExpired = isExpired(licenseData.value.AMCEndDate);
   const subExpired = isExpired(licenseData.value.SubscriptionExpDate);
   const amcExpiringSoon = isExpiringSoon(licenseData.value.AMCEndDate);
-  
+ 
   if (amcExpired && subExpired) {
     return 'Both AMC and Subscription have expired. Please contact support for renewal.';
   } else if (amcExpired) {
@@ -596,7 +484,7 @@ function getLicenseStatusMessage() {
   } else if (amcExpiringSoon) {
     return `AMC is expiring soon on ${formatDate(licenseData.value.AMCEndDate)}. Consider renewing.`;
   }
-  
+ 
   return `AMC is active until ${formatDate(licenseData.value.AMCEndDate)}`;
 }
 
@@ -713,7 +601,7 @@ async function fetchCustomerName(customerCode) {
 
   try {
     console.log('Fetching customer for code:', customerCode);
-    
+   
     const result = await call('frappe.client.get_list', {
       doctype: 'HD Customer',
       filters: { custom_customercode: customerCode },
@@ -750,7 +638,7 @@ async function fetchCustomerCode(customerName) {
 
   try {
     console.log('Fetching customer code for:', customerName);
-    
+   
     const result = await call('frappe.client.get_value', {
       doctype: 'HD Customer',
       filters: { name: customerName },
@@ -758,7 +646,7 @@ async function fetchCustomerCode(customerName) {
     });
 
     console.log('Fetch customer code result:', result);
-    
+   
     let customerCode = null;
     if (result?.message?.custom_customercode) {
       customerCode = result.message.custom_customercode;
@@ -791,7 +679,7 @@ async function fetchProductName(customerName) {
 
   try {
     console.log('Fetching product name for customer:', customerName);
-    
+   
     const result = await call('frappe.client.get_value', {
       doctype: 'HD Customer',
       filters: { name: customerName },
@@ -799,7 +687,7 @@ async function fetchProductName(customerName) {
     });
 
     console.log('Fetch product name result:', result);
-    
+   
     let productName = null;
     if (result?.message?.custom_productname) {
       productName = result.message.custom_productname;
@@ -837,13 +725,13 @@ function handleOnFieldChange(e: any, fieldname: string, fieldtype: string) {
     console.log('Customer code changed to:', newValue);
     fetchCustomerName(newValue);
   }
-  
+ 
   if (fieldname === 'custom_customer_name' && newValue) {
     console.log('Customer name changed to:', newValue);
     fetchCustomerCode(newValue);
     fetchProductName(newValue);
   }
-  
+ 
   const fieldDependentFns = customOnChange.value?.[fieldname];
   if (fieldDependentFns) {
     fieldDependentFns.forEach((fn: Function) => {

@@ -35,7 +35,9 @@ def install_overrides():
         "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
         "license.py":"helpdesk/api/license.py",
-        # "__init__.py":"helpdesk/api/__init__.py",
+        "TicketAgentFields.vue":"desk/src/components/ticket/TicketAgentFields.vue",
+        "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
+        "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
 
 
         "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
