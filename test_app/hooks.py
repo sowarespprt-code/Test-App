@@ -280,7 +280,6 @@ fixtures = [
     },
     
     {"dt": "Server Script"},
-    {"dt": "Assignment Rule"},
     "HD Ticket Template",
     {
         "dt": "Custom Field",
