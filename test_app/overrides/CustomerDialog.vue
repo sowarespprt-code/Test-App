@@ -41,6 +41,8 @@
             placeholder="Enter Code"
             required
           />
+         
+          <!-- Product Select Field -->
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Product *</label>
             <select
@@ -49,6 +51,16 @@
               required
             >
               <option value="" disabled>Select Product</option>
+
+              <!-- Show previous product if it doesn't exist in Product doctype -->
+              <option
+                v-if="formData.custom_productname && !products.find(p => p.name === formData.custom_productname)"
+                :value="formData.custom_productname"
+              >
+                {{ formData.custom_productname }}
+              </option>
+
+              <!-- List all products -->
               <option
                 v-for="product in products"
                 :key="product.name"
@@ -58,6 +70,7 @@
               </option>
             </select>
           </div>
+
           <Input v-model="formData.custom_address1" label="Address Line 1" />
           <Input v-model="formData.custom_address2" label="Address Line 2" />
           <Input v-model="formData.custom_place" label="Place" />
@@ -108,13 +121,13 @@ const customer = createDocumentResource({
   name: props.name,
   auto: true,
   setValue: {
-    onSuccess() { 
+    onSuccess() {
       toast.success("Customer updated");
       emit("customer-updated");
     },
-    onError(error) { 
+    onError(error) {
       console.error("Error updating customer:", error);
-      toast.error("Error updating customer"); 
+      toast.error("Error updating customer");
     },
   },
 });
@@ -143,33 +156,27 @@ const products = ref([]);
 
 const convertToYYYYMMDD = (dateStr) => {
   if (!dateStr) return "";
-  
-  // Remove time component if present
-  if (dateStr.includes(" ")) {
-    dateStr = dateStr.split(" ")[0];
-  }
-  
-  // Already in YYYY-MM-DD format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    return dateStr;
-  }
-  
-  // Convert DD-MM-YYYY to YYYY-MM-DD
+  if (dateStr.includes(" ")) dateStr = dateStr.split(" ")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
     const [day, month, year] = dateStr.split("-");
     return `${year}-${month}-${day}`;
   }
-  
   return dateStr;
 };
 
 const updateFormData = (doc) => {
   if (!doc) return;
-  
+
+  // Match product case-insensitively
+  const matchedProduct = products.value.find(
+    p => p.product.toLowerCase() === (doc.custom_productname || "").toLowerCase()
+  );
+
   formData.value = {
     customer_name: doc.customer_name || "",
     custom_customercode: doc.custom_customercode || "",
-    custom_productname: doc.custom_productname || "",
+    custom_productname: matchedProduct ? matchedProduct.name : (doc.custom_productname || ""),
     custom_address1: doc.custom_address1 || "",
     custom_address2: doc.custom_address2 || "",
     custom_place: doc.custom_place || "",
@@ -195,9 +202,6 @@ const fetchProducts = async () => {
       limit_page_length: 999,
     });
     products.value = Array.isArray(data) ? data : [];
-    
-    // Debug: Log products to verify structure
-    console.log('Fetched products:', products.value);
   } catch (error) {
     console.error("Error fetching products:", error);
     products.value = [];
@@ -208,9 +212,7 @@ const fetchProducts = async () => {
 watch(
   () => customer.doc,
   (newDoc) => {
-    if (newDoc) {
-      updateFormData(newDoc);
-    }
+    if (newDoc) updateFormData(newDoc);
   },
   { immediate: true }
 );
@@ -234,46 +236,16 @@ const options = computed(() => ({
 
 async function update() {
   try {
-    // Debug: Log what we're about to save
-    console.log('Form data before save:', formData.value);
-    console.log('Product name being saved:', formData.value.custom_productname);
-    
-    // Get the current document
     const doc = customer.doc;
-    
-    // Update all fields from formData
     Object.keys(formData.value).forEach(key => {
       doc[key] = formData.value[key];
     });
-    
-    // Debug: Log the document before saving
-    console.log('Document before save:', {
-      name: doc.name,
-      customer_name: doc.customer_name,
-      custom_customercode: doc.custom_customercode,
-      custom_productname: doc.custom_productname
-    });
-    
-    // Use frappe.client.save which triggers all server scripts and hooks
-    const result = await call('frappe.client.save', {
-      doc: doc
-    });
-    
-    // Debug: Log the result
-    console.log('Save result:', result);
-    
-    // Reload to get the updated data
+    await call('frappe.client.save', { doc });
     await customer.reload();
-    
-    // Debug: Log after reload
-    console.log('After reload - custom_productname:', customer.doc.custom_productname);
-    
     toast.success("Customer updated successfully");
     emit("customer-updated");
-    
   } catch (error) {
     console.error("Error updating customer:", error);
-    console.error("Error details:", error.messages);
     toast.error(error.message || "Failed to update customer");
   }
 }
