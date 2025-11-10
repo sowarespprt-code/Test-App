@@ -5,7 +5,6 @@
         <Breadcrumbs :items="breadcrumbs" />
       </template>
       <template #right-header>
-        <!-- ✅ REMOVED Custom Action Button -->
         <CustomActions
           v-if="template.data?._customActions"
           :actions="template.data?._customActions"
@@ -13,210 +12,12 @@
       </template>
     </LayoutHeader>
 
-    <!-- Custom License Details Popup -->
-    <div
-      v-if="showLicensePopup"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-    >
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        <!-- Popup Header -->
-        <div class="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
-          <h2 class="text-lg font-semibold text-gray-800">Customer License Details</h2>
-          <button
-            @click="showLicensePopup = false"
-            class="text-gray-500 hover:text-gray-700 transition"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Popup Body -->
-        <div class="px-5 py-3 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <!-- Loading State -->
-          <div v-if="licenseLoading" class="flex items-center justify-center py-8">
-            <div class="flex flex-col items-center gap-2">
-              <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-              <p class="text-sm text-gray-600">Fetching license details...</p>
-            </div>
-          </div>
-
-          <!-- Error State -->
-          <div v-else-if="licenseError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <h3 class="text-base font-medium text-red-800 mb-1">Error Loading License Details</h3>
-            <p class="text-sm text-red-700">{{ licenseError }}</p>
-            <button
-              @click="fetchLicenseDetails"
-              class="mt-2 px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition"
-            >
-              Retry
-            </button>
-          </div>
-
-          <!-- Success State -->
-          <div v-else-if="licenseData" class="space-y-3">
-            <!-- Customer Code and Name (Same Line) -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Customer Code</span>
-                <p class="mt-0.5 text-sm text-gray-900 font-medium">{{ licenseData.CustomerCode || 'Not available' }}</p>
-              </div>
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Customer Name</span>
-                <p class="mt-0.5 text-sm text-gray-900 font-medium">{{ licenseData.CustomerName || 'Not available' }}</p>
-              </div>
-            </div>
-
-            <div class="border-t border-gray-200 my-2"></div>
-
-            <!-- AMC End Date -->
-            <div>
-              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">AMC End Date</span>
-              <p
-                class="mt-0.5 text-sm font-semibold inline-block px-2 py-1 rounded"
-                :class="{
-                  'bg-red-100 text-red-800': isExpired(licenseData.AMCEndDate),
-                  'bg-yellow-100 text-yellow-800': isExpiringSoon(licenseData.AMCEndDate),
-                  'bg-green-100 text-green-800': !isExpired(licenseData.AMCEndDate) && !isExpiringSoon(licenseData.AMCEndDate)
-                }"
-              >
-                {{ formatDate(licenseData.AMCEndDate) }}
-              </p>
-            </div>
-
-            <!-- License Type and Subscription End Date -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">License Type</span>
-                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.LicenseType || 'Not available' }}</p>
-              </div>
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Subscription End Date</span>
-                <p
-                  class="mt-0.5 text-sm font-semibold inline-block px-2 py-1 rounded"
-                  :class="{
-                    'bg-red-100 text-red-800': isExpired(licenseData.SubscriptionExpDate),
-                    'bg-yellow-100 text-yellow-800': isExpiringSoon(licenseData.SubscriptionExpDate),
-                    'bg-green-100 text-green-800': !isExpired(licenseData.SubscriptionExpDate) && !isExpiringSoon(licenseData.SubscriptionExpDate)
-                  }"
-                >
-                  {{ formatDate(licenseData.SubscriptionExpDate) }}
-                </p>
-              </div>
-            </div>
-
-            <div class="border-t border-gray-200 my-2"></div>
-
-            <!-- Address -->
-            <div>
-              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Address</span>
-              <p class="mt-0.5 text-sm text-gray-900">
-                {{ [licenseData.Address1, licenseData.Address2].filter(Boolean).join(', ') || 'Not available' }}
-              </p>
-            </div>
-
-            <!-- Phone and Email -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Phone</span>
-                <p class="mt-0.5 text-sm text-gray-900">
-                  {{ [licenseData.Phone1, licenseData.Phone2].filter(Boolean).join(', ') || 'Not available' }}
-                </p>
-              </div>
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Email</span>
-                <p class="mt-0.5 text-sm text-gray-900 break-all">{{ licenseData.EmailID || 'Not available' }}</p>
-              </div>
-            </div>
-
-            <div class="border-t border-gray-200 my-2"></div>
-
-            <!-- Owner Name and Contact Person -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Owner Name</span>
-                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.OwnerName || 'Not available' }}</p>
-              </div>
-              <div>
-                <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Contact Person</span>
-                <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.ContactPerson || 'Not available' }}</p>
-              </div>
-            </div>
-
-            <div class="border-t border-gray-200 my-2"></div>
-
-            <!-- Nature of Business -->
-            <div>
-              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nature of Business (GST)</span>
-              <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.NatureOfBusiness || 'Not available' }}</p>
-            </div>
-
-            <div class="border-t border-gray-200 my-2"></div>
-
-            <!-- Status Summary -->
-            <div class="p-3 rounded-lg" :class="getLicenseStatusClass()">
-              <div class="flex items-start gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="flex-shrink-0 mt-0.5"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <div>
-                  <h3 class="text-sm font-semibold mb-0.5">License Status</h3>
-                  <p class="text-xs leading-relaxed">{{ getLicenseStatusMessage() }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- No Data State -->
-          <div v-else class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <p class="text-sm text-gray-600">No license details available. Please select a customer first.</p>
-          </div>
-        </div>
-
-        <!-- Popup Footer -->
-        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t bg-gray-50">
-          <Button
-            label="Close"
-            theme="gray"
-            variant="subtle"
-            @click="showLicensePopup = false"
-          />
-          <Button
-            v-if="licenseData"
-            label="Refresh"
-            theme="gray"
-            variant="solid"
-            :loading="licenseLoading"
-            @click="fetchLicenseDetails"
-          />
-        </div>
-      </div>
-    </div>
+    <!-- Reusable License Details Popup -->
+    <LicenseDetailsPopup
+      v-model="showLicensePopup"
+      :customer-code="templateFields.custom_customercode || ''"
+      @licenseLoaded="handleLicenseLoaded"
+    />
 
     <!-- Main Container -->
     <div
@@ -230,23 +31,42 @@
       <!-- custom fields -->
       <div v-if="Boolean(visibleFields)">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <UniInput
-            v-for="field in visibleFields"
-            :key="`${field.fieldname}-${templateFields[field.fieldname]}`"
-            :field="field"
-            :value="templateFields[field.fieldname]"
-            @change="
-              (e) => handleOnFieldChange(e, field.fieldname, field.fieldtype)
-            "
-          />
+          <template v-for="field in visibleFields" :key="field.fieldname">
+            <!-- CUSTOMER CODE FIELD -->
+            <UniInput
+              v-if="field.fieldname === 'custom_customercode'"
+              :field="field"
+              :value="templateFields[field.fieldname]"
+          
+              @input="handleCustomerCodeInput"
+              @keydown.enter.prevent="event => handleCustomerCodeEnter(event)"
+              @blur="handleCustomerCodeBlur"
+            />
+           
+            <!-- CUSTOMER NAME FIELD -->
+            <UniInput
+              v-else-if="field.fieldname === 'custom_customer_name'"
+              :field="field"
+              :value="templateFields[field.fieldname]"
+              @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
+              @input="(e) => safeSetField(field.fieldname, e)"   
+            />
+
+            <!-- ALL OTHER FIELDS -->
+            <UniInput
+              v-else
+              :field="field"
+              :value="templateFields[field.fieldname]"
+              @input="(e) => safeSetField(field.fieldname, e)" 
+            />
+          </template>
         </div>
-       
+
         <!-- Button Near Customer Fields -->
         <div class="mt-3 flex justify-end">
           <button
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-400 hover:bg-blue-500 text-white font-medium rounded transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             @click="openLicensePopup"
-            :disabled="!templateFields.custom_customercode"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -347,6 +167,7 @@
 
 <script setup lang="ts">
 import { LayoutHeader, UniInput } from "@/components";
+import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue"; // Import the new component
 import {
   handleLinkFieldUpdate,
   handleSelectFieldUpdate,
@@ -399,144 +220,111 @@ const isFetchingCustomerName = ref(false);
 const isFetchingCustomerCode = ref(false);
 const isFetchingProductName = ref(false);
 const showLicensePopup = ref(false);
-const hasShownAutoPopup = ref(false);
-
-// License API state
 const licenseLoading = ref(false);
 const licenseError = ref("");
 const licenseData = ref(null);
+const lastValidatedCustomerCode = ref("");
+const MIN_CODE_LENGTH = 3;
+const invalidCodeError = ref("");
+const customerCode = ref("");
+
+// Flags to prevent circular event triggering
+const isUpdatingInternally = ref(false);
+const isManuallySelectingCustomer = ref(false);
 
 // ============================================
-// LICENSE API FUNCTIONS
+// UTILITY FUNCTIONS
 // ============================================
-async function fetchLicenseDetails() {
-  const customerCode = templateFields.custom_customercode;
- 
-  console.log('fetchLicenseDetails called with customerCode:', customerCode);
- 
-  if (!customerCode) {
-    licenseError.value = "Customer code is required";
+function extractValue(payload: any): string {
+  if (payload == null || payload === undefined) return "";
+  if (typeof payload === "string" || typeof payload === "number") {
+    return String(payload).trim();
+  }
+  if (typeof payload === "object" && "value" in payload) {
+    return String(payload.value || "").trim();
+  }
+  if (typeof payload === "object" && payload.target && "value" in payload.target) {
+    return String(payload.target.value || "").trim();
+  }
+  return "";
+}
+
+function safeSetField(fieldname: string, payload: any) {
+  const value = extractValue(payload);
+  if (templateFields[fieldname] !== value) {
+    templateFields[fieldname] = value;
+  }
+}
+
+// ============================================
+// LICENSE POPUP HANDLERS
+// ============================================
+async function openLicensePopup() {
+  // 🟢 FIX 1: Wait for Vue to flush reactivity before reading the field
+  await nextTick();
+
+  const customerCode = extractValue(templateFields.custom_customercode)?.trim() || 
+                       document.querySelector('[name="custom_customercode"]')?.value?.trim() || "";
+  console.log("🟢 Fetched customer code before popup:", customerCode);
+
+  // 🟢 FIX 2: Ensure valid value is actually present
+  if (!customerCode || customerCode === "") {
+    $dialog({
+      title: "Customer Code Required",
+      message: "Please enter a valid Customer Code first.",
+    });
     return;
   }
 
-  licenseLoading.value = true;
-  licenseError.value = "";
-  licenseData.value = null;
+  if (customerCode.length < MIN_CODE_LENGTH) {
+    $dialog({
+      title: "Invalid Customer Code",
+      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
+    });
+    return;
+  }
 
-  try {
-    console.log('Calling API with customer_code:', customerCode);
-   
-    const data = await call('helpdesk.api.license.get_customer_license_details', {
-      customer_code: customerCode
+  // 🟢 FIX 3: Validate customer existence before showing popup
+  const found = await fetchCustomerName(customerCode);
+  if (found) {
+    lastValidatedCustomerCode.value = customerCode;
+    showLicensePopup.value = true; // ✅ Correct popup for valid code
+  } else {
+    $dialog({
+      title: "Invalid Customer Code",
+      message: "No customer found for this code. Please check and try again.",
     });
 
-    console.log('API Response:', data);
-
-    if (!data) {
-      throw new Error('No license details found for this customer');
-    }
-
-    licenseData.value = data;
-    console.log('License data stored:', licenseData.value);
-   
-  } catch (error) {
-    console.error('Error fetching license details:', error);
-    licenseError.value = error.message || 'Failed to fetch license details. Please try again.';
-    licenseData.value = null;
-  } finally {
-    licenseLoading.value = false;
+    isUpdatingInternally.value = true;
+    safeSetField("custom_customer_name", "");
+    safeSetField("custom_product", "");
+    isUpdatingInternally.value = false;
+    showLicensePopup.value = false;
   }
 }
 
-function openLicensePopup() {
-  showLicensePopup.value = true;
-  fetchLicenseDetails();
-}
-
-function getLicenseStatusClass() {
-  if (!licenseData.value) return 'bg-gray-50 border border-gray-200';
- 
-  const amcExpired = isExpired(licenseData.value.AMCEndDate);
-  const subExpired = isExpired(licenseData.value.SubscriptionExpDate);
- 
-  if (amcExpired || subExpired) {
-    return 'bg-red-50 border border-red-200 text-red-800';
-  } else if (isExpiringSoon(licenseData.value.AMCEndDate)) {
-    return 'bg-yellow-50 border border-yellow-200 text-yellow-800';
-  }
- 
-  return 'bg-green-50 border border-green-200 text-green-800';
-}
-
-function getLicenseStatusMessage() {
-  if (!licenseData.value) return 'No license information available';
- 
-  const amcExpired = isExpired(licenseData.value.AMCEndDate);
-  const subExpired = isExpired(licenseData.value.SubscriptionExpDate);
-  const amcExpiringSoon = isExpiringSoon(licenseData.value.AMCEndDate);
- 
-  if (amcExpired && subExpired) {
-    return 'Both AMC and Subscription have expired. Please contact support for renewal.';
-  } else if (amcExpired) {
-    return `AMC expired on ${formatDate(licenseData.value.AMCEndDate)}. Please renew to continue receiving support.`;
-  } else if (subExpired) {
-    return `Subscription expired on ${formatDate(licenseData.value.SubscriptionExpDate)}.`;
-  } else if (amcExpiringSoon) {
-    return `AMC is expiring soon on ${formatDate(licenseData.value.AMCEndDate)}. Consider renewing.`;
-  }
- 
-  return `AMC is active until ${formatDate(licenseData.value.AMCEndDate)}`;
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'Not available';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  } catch {
-    return dateString;
-  }
-}
-
-function isExpired(dateString) {
-  if (!dateString) return false;
-  try {
-    const date = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
-  } catch {
-    return false;
-  }
-}
-
-function isExpiringSoon(dateString) {
-  if (!dateString) return false;
-  try {
-    const date = new Date(dateString);
-    const today = new Date();
-    const daysUntilExpiry = Math.floor((date - today) / (1000 * 60 * 60 * 24));
-    return daysUntilExpiry > 0 && daysUntilExpiry <= 30;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================
-// WATCHERS FOR AUTO-POPUP
+// WATCHERS - FIXED TO PREVENT CIRCULAR TRIGGERS
 // ============================================
 watch(
-  () => [
-    templateFields.custom_customer_name,
-    templateFields.custom_customercode
-  ],
-  ([name, code], [oldName, oldCode]) => {
-    if (name && code && (name !== oldName || code !== oldCode)) {
-      openLicensePopup();
+  () => templateFields.custom_customer_name,
+  (newName, oldName) => {
+    // Skip if we're updating internally to prevent circular triggers
+    if (isUpdatingInternally.value || isManuallySelectingCustomer.value) return;
+    
+    const cleanName = extractValue(newName);
+    
+    // If customer name is cleared, clear all related fields
+    if (!cleanName) {
+      isUpdatingInternally.value = true;
+      safeSetField("custom_customercode", "");
+      safeSetField("custom_product", "");
+      lastValidatedCustomerCode.value = "";
+      licenseData.value = null;
+      licenseError.value = "";
+      showLicensePopup.value = false;
+      isUpdatingInternally.value = false;
     }
   }
 );
@@ -546,9 +334,7 @@ watch(
 // ============================================
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
-  makeParams: () => ({
-    name: props.templateId || "Default",
-  }),
+  makeParams: () => ({ name: props.templateId || "Default" }),
   auto: true,
   onSuccess: (data) => {
     description.value = data.description_template || "";
@@ -575,140 +361,202 @@ let oldFields = [];
 function applyFilters(fieldname: string, filters: any = null) {
   const f: Field = template.data.fields.find((f) => f.fieldname === fieldname);
   if (!f) return;
-  if (f.fieldtype === "Select") {
+  if (f.fieldtype === "Select")
     handleSelectFieldUpdate(f, fieldname, filters, templateFields, oldFields);
-  } else if (f.fieldtype === "Link") {
+  else if (f.fieldtype === "Link")
     handleLinkFieldUpdate(f, fieldname, filters, templateFields, oldFields);
-  }
 }
 
 const customOnChange = computed(() => template.data?._customOnChange);
 
 const visibleFields = computed(() => {
-  let _fields = template.data?.fields?.filter(
+  const _fields = template.data?.fields?.filter(
     (f) => !isCustomerPortal.value || !f.hide_from_customer
   );
-  if (!_fields) return [];
-  return _fields.map((field) => parseField(field, templateFields));
+  return _fields?.map((f) => parseField(f, templateFields)) || [];
 });
+
+// ============================================
+// CUSTOMER CODE INPUT HANDLER
+// ============================================
+function handleCustomerCodeInput(event: any) {
+  const value = event.target?.value?.trim() || "";
+  safeSetField("custom_customercode", value);
+}
+
+// ============================================
+// CUSTOMER CODE HANDLERS
+// ============================================
+async function handleCustomerCodeEnter(event: any) {
+  const enteredCode = event.target.value?.trim();
+  const previousCode = lastValidatedCustomerCode.value?.trim();
+  invalidCodeError.value = "";
+
+  // 1️⃣ If empty
+  if (!enteredCode) {
+    isUpdatingInternally.value = true;
+    safeSetField("custom_customer_name", "");
+    safeSetField("custom_product", "");
+    licenseData.value = null;
+    showLicensePopup.value = false;
+    isUpdatingInternally.value = false;
+    return;
+  }
+
+  if (enteredCode.length < MIN_CODE_LENGTH) {
+    $dialog({
+      title: 'Invalid Customer Code',
+      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
+    });
+    return;
+  }
+
+  // 2️⃣ Skip re-fetch if same valid code
+  if (enteredCode === previousCode) {
+    showLicensePopup.value = true;
+    return;
+  }
+
+  safeSetField("custom_customercode", enteredCode);
+
+  // 3️⃣ Fetch customer details
+  const found = await fetchCustomerName(enteredCode);
+  if (found) {
+    lastValidatedCustomerCode.value = enteredCode;
+
+    // 🟢 FIX: Directly show license popup for valid customer
+    showLicensePopup.value = true;
+  } else {
+    // 🔴 FIX: Proper invalid popup when pressing Enter with invalid code
+    $dialog({
+      title: 'Invalid Customer Code',
+      message: 'No customer found for this code. Please check and try again.',
+    });
+
+    isUpdatingInternally.value = true;
+    safeSetField("custom_customer_name", "");
+    safeSetField("custom_product", "");
+    licenseData.value = null;
+    showLicensePopup.value = false;
+    isUpdatingInternally.value = false;
+  }
+}
+
+async function handleLicenseButtonClick() {
+  const customerCode = extractValue(templateFields.custom_customercode);
+  
+  if (!customerCode) {
+    licenseError.value = "Please enter a valid Customer Code first.";
+    showLicensePopup.value = false;
+    return;
+  }
+  
+  if (customerCode.length < MIN_CODE_LENGTH) {
+    licenseError.value = `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`;
+    showLicensePopup.value = false;
+    return;
+  }
+  
+  // Only fetch if code changed or we don't have customer name
+  if (customerCode !== lastValidatedCustomerCode.value || !templateFields.custom_customer_name) {
+    const found = await fetchCustomerName(customerCode);
+    if (found) {
+      lastValidatedCustomerCode.value = customerCode;
+      await openLicensePopup();
+      showLicensePopup.value = true;
+    } else {
+      licenseError.value = "No customer found for this code.";
+      isUpdatingInternally.value = true;
+      safeSetField("custom_customer_name", "");
+      safeSetField("custom_product", "");
+      showLicensePopup.value = false;
+      isUpdatingInternally.value = false;
+    }
+  } else {
+    // Already validated, just fetch license and show popup
+    await openLicensePopup();
+    showLicensePopup.value = true;
+  }
+}
+
 
 // ============================================
 // AUTO-FETCH FUNCTIONS
 // ============================================
-async function fetchCustomerName(customerCode) {
-  if (!customerCode || isFetchingCustomerName.value) return;
+async function fetchCustomerName(customerCode: string) {
+  if (!customerCode || isFetchingCustomerName.value) return false;
+ 
   isFetchingCustomerName.value = true;
-
   try {
-    console.log('Fetching customer for code:', customerCode);
-   
-    const result = await call('frappe.client.get_list', {
-      doctype: 'HD Customer',
+    const result = await call("frappe.client.get_list", {
+      doctype: "HD Customer",
       filters: { custom_customercode: customerCode },
-      fields: ['name', 'customer_name'],
-      limit: 1
+      fields: ["name", "customer_name"],
+      limit: 1,
     });
-
-    console.log('Fetch result:', result);
-
+   
     if (result && result.length > 0) {
       const customer = result[0];
+      isUpdatingInternally.value = true;
       await nextTick();
-      templateFields.custom_customer_name = customer.name;
-      console.log('Customer name field set to:', customer.name);
+      safeSetField("custom_customer_name", customer.name);
       await nextTick();
-      fetchProductName(customer.name);
+      await fetchProductName(customer.name);
+      isUpdatingInternally.value = false;
+      return true;
     } else {
-      templateFields.custom_customer_name = '';
-      templateFields.custom_product = '';
-      console.warn('No customer found for code:', customerCode);
+      return false;
     }
   } catch (error) {
-    console.error('Error fetching customer name:', error);
-    templateFields.custom_customer_name = '';
-    templateFields.custom_product = '';
+    console.error("Error fetching customer:", error);
+    return false;
   } finally {
     isFetchingCustomerName.value = false;
   }
 }
 
-async function fetchCustomerCode(customerName) {
+async function fetchCustomerCode(customerName: string) {
   if (!customerName || isFetchingCustomerCode.value) return;
+ 
   isFetchingCustomerCode.value = true;
-
   try {
-    console.log('Fetching customer code for:', customerName);
-   
-    const result = await call('frappe.client.get_value', {
-      doctype: 'HD Customer',
+    const result = await call("frappe.client.get_value", {
+      doctype: "HD Customer",
       filters: { name: customerName },
-      fieldname: ['custom_customercode']
+      fieldname: ["custom_customercode"],
     });
-
-    console.log('Fetch customer code result:', result);
    
-    let customerCode = null;
-    if (result?.message?.custom_customercode) {
-      customerCode = result.message.custom_customercode;
-    } else if (result?.custom_customercode) {
-      customerCode = result.custom_customercode;
-    }
-
-    console.log('Extracted customer code:', customerCode);
-
-    if (customerCode) {
+    const code = result?.message?.custom_customercode || result?.custom_customercode;
+    if (code) {
+      isUpdatingInternally.value = true;
       await nextTick();
-      templateFields.custom_customercode = customerCode;
-      console.log('✅ Customer code field set to:', customerCode);
+      safeSetField("custom_customercode", code);
+      lastValidatedCustomerCode.value = code;
       await nextTick();
-    } else {
-      templateFields.custom_customercode = '';
-      console.warn('❌ No customer code found for:', customerName);
+      isUpdatingInternally.value = false;
     }
   } catch (error) {
-    console.error('Error fetching customer code:', error);
-    templateFields.custom_customercode = '';
+    console.error("Error fetching customer code:", error);
   } finally {
     isFetchingCustomerCode.value = false;
   }
 }
 
-async function fetchProductName(customerName) {
+async function fetchProductName(customerName: string) {
   if (!customerName || isFetchingProductName.value) return;
+ 
   isFetchingProductName.value = true;
-
   try {
-    console.log('Fetching product name for customer:', customerName);
-   
-    const result = await call('frappe.client.get_value', {
-      doctype: 'HD Customer',
+    const result = await call("frappe.client.get_value", {
+      doctype: "HD Customer",
       filters: { name: customerName },
-      fieldname: ['custom_productname']
+      fieldname: ["custom_productname"],
     });
-
-    console.log('Fetch product name result:', result);
    
-    let productName = null;
-    if (result?.message?.custom_productname) {
-      productName = result.message.custom_productname;
-    } else if (result?.custom_productname) {
-      productName = result.custom_productname;
-    }
-
-    console.log('Extracted product name:', productName);
-
-    if (productName) {
-      await nextTick();
-      templateFields.custom_product = productName;
-      console.log('✅ custom_product field set to:', productName);
-      await nextTick();
-    } else {
-      templateFields.custom_product = '';
-      console.warn('❌ No product name found for customer:', customerName);
-    }
+    const product = result?.message?.custom_productname || result?.custom_productname;
+    safeSetField("custom_product", product || "");
   } catch (error) {
-    console.error('Error fetching product name:', error);
-    templateFields.custom_product = '';
+    console.error("Error fetching product name:", error);
   } finally {
     isFetchingProductName.value = false;
   }
@@ -717,25 +565,27 @@ async function fetchProductName(customerName) {
 // ============================================
 // FIELD CHANGE HANDLER
 // ============================================
-function handleOnFieldChange(e: any, fieldname: string, fieldtype: string) {
-  const newValue = e.value;
-  templateFields[fieldname] = newValue;
-
-  if (fieldname === 'custom_customercode' && newValue) {
-    console.log('Customer code changed to:', newValue);
-    fetchCustomerName(newValue);
+async function handleOnFieldChange(payload: any, fieldname: string, fieldtype: string) {
+  if (isUpdatingInternally.value) return;
+ 
+  const newValue = extractValue(payload);
+  safeSetField(fieldname, newValue);
+ 
+  if (fieldname === "custom_customer_name" && newValue) {
+    isManuallySelectingCustomer.value = true;
+    await fetchCustomerCode(newValue);
+    await fetchProductName(newValue);
+    isManuallySelectingCustomer.value = false;
   }
  
-  if (fieldname === 'custom_customer_name' && newValue) {
-    console.log('Customer name changed to:', newValue);
-    fetchCustomerCode(newValue);
-    fetchProductName(newValue);
-  }
- 
-  const fieldDependentFns = customOnChange.value?.[fieldname];
-  if (fieldDependentFns) {
-    fieldDependentFns.forEach((fn: Function) => {
-      fn(newValue, fieldtype);
+  const fieldFns = customOnChange.value?.[fieldname];
+  if (fieldFns) {
+    fieldFns.forEach((fn: Function) => {
+      try {
+        fn(newValue, fieldtype);
+      } catch (err) {
+        console.error("Error in custom onChange:", err);
+      }
     });
   }
 }
@@ -757,8 +607,7 @@ const ticket = createResource({
   }),
   validate: (params) => {
     const fields = visibleFields.value?.filter((f) => f.required) || [];
-    const toVerify = [...fields, "subject", "description"];
-    for (const field of toVerify) {
+    for (const field of [...fields, "subject", "description"]) {
       if (isEmpty(params.doc[field.fieldname || field])) {
         return `${field.label || field} is required`;
       }
@@ -769,45 +618,30 @@ const ticket = createResource({
       name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
       params: { ticketId: data.name },
     });
-    if (isManager) {
+    if (isManager)
       updateOnboardingStep("create_first_ticket", true, false, () =>
         localStorage.setItem("firstTicket", data.name)
       );
-    }
-    if (isCustomerPortal.value) {
+    if (isCustomerPortal.value)
       capture("new_ticket_submitted", {
-        data: {
-          user: userID,
-          ticketID: data.name,
-          subject: subject.value,
-          description: description.value,
-          customFields: templateFields,
-        },
+        data: { user: userID, ticketID: data.name, subject: subject.value },
       });
-    }
   },
 });
 
 // ============================================
-// UTILITIES
+// UTILITIES & SETUP
 // ============================================
 function sanitize(html: string) {
-  return sanitizeHtml(html, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-  });
+  return sanitizeHtml(html, { allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]) });
 }
 
 const breadcrumbs = computed(() => [
   {
     label: "Tickets",
-    route: {
-      name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
-    },
+    route: { name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent" },
   },
-  {
-    label: "New Ticket",
-    route: { name: "TicketNew" },
-  },
+  { label: "New Ticket", route: { name: "TicketNew" } },
 ]);
 
 usePageMeta(() => ({ title: "New Ticket" }));

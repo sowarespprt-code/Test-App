@@ -38,6 +38,8 @@ def install_overrides():
         "TicketAgentFields.vue":"desk/src/components/ticket/TicketAgentFields.vue",
         "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
         "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
+        "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
+
 
 
         "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
