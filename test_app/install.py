@@ -39,13 +39,13 @@ def install_overrides():
         "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
         "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
         "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
-
-
-
+        "CustomerSearchPopup.vue":"desk/src/components/CustomerSearchPopup.vue",
+        
         "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
         "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
         "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py",
-        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py"
+        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py",
+        "customer_api.py":"helpdesk/api/customer_api.py"
     }
     
     success = True

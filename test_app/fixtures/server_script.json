@@ -1,5 +1,24 @@
 [
  {
+  "allow_guest": 1,
+  "api_method": "helpdesk.api.customer_signup",
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Insert",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2025-11-12 17:46:37.698526",
+  "module": "Helpdesk",
+  "name": "Customer Signup",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": null,
+  "script": "def customer_signup(custom_customercode, customer_name):\n    # Step 1: Validate HD Customer\n    customer = frappe.db.get_value(\n        \"HD Customer\",\n        {\"custom_customercode\": custom_customercode, \"customer_name\": customer_name},\n        as_dict=True\n    )\n\n    if not customer:\n        frappe.throw(\"Invalid Customer Code or Customer Name.\")\n\n    # Step 2: Check if user already exists\n    if frappe.db.exists(\"User\", email):\n        frappe.throw(\"This email is already registered. Please login instead.\")\n\n    # Step 3: Create user\n    user = frappe.get_doc({\n        \"doctype\": \"User\",\n        \"first_name\": customer_name,\n        \"enabled\": 1,\n    })\n    user.insert(ignore_permissions=True)\n\n    # Step 4: Link user to HD Customer\n    frappe.db.set_value(\"HD Customer\", customer.name, \"user\", user.name)\n\n    # Step 5: Add role (Customer)\n    user.add_roles(\"Customer\")\n\n    # Step 6: Create user permission\n    frappe.get_doc({\n        \"doctype\": \"User Permission\",\n        \"user\": user.name,\n        \"allow\": \"HD Customer\",\n        \"for_value\": customer.name\n    }).insert(ignore_permissions=True)\n\n    frappe.db.commit()\n\n    return {\"status\": \"success\", \"message\": \"Signup successful! Please log in.\"}",
+  "script_type": "API"
+ },
+ {
   "allow_guest": 0,
   "api_method": null,
   "cron_format": null,

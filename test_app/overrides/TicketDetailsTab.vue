@@ -197,7 +197,15 @@ const customFields = computed(() => {
   return _customFields;
 });
 
+const isTicketCreated = computed(() => {
+  return ticket.value?.doc?.name && !ticket.value.doc.__islocal;
+});
+
 function getFieldInFormat(fieldTemplate, fieldMeta) {
+  // Check if this is the product field and ticket is already created
+  const isProductField = fieldTemplate.fieldname === "custom_product";
+  const shouldBeReadonly = isProductField && isTicketCreated.value;
+
   return {
     label: fieldMeta?.label || fieldTemplate.fieldname,
     value: ticket.value.doc[fieldTemplate.fieldname],
@@ -207,8 +215,8 @@ function getFieldInFormat(fieldTemplate, fieldMeta) {
     placeholder:
       fieldTemplate.placeholder ||
       `Enter ${fieldMeta?.label || fieldTemplate.fieldname}`,
-    readonly: Boolean(fieldMeta.readonly),
-    disabled: Boolean(fieldMeta.readonly),
+    readonly: Boolean(fieldMeta.readonly) || shouldBeReadonly,
+    disabled: Boolean(fieldMeta.readonly) || shouldBeReadonly,
     url_method: fieldTemplate.url_method || "",
     fieldname: fieldTemplate.fieldname,
     required: fieldTemplate.required || fieldMeta?.required || false,
