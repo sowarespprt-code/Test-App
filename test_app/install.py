@@ -35,17 +35,21 @@ def install_overrides():
         "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
         "license.py":"helpdesk/api/license.py",
-        "TicketAgentFields.vue":"desk/src/components/ticket/TicketAgentFields.vue",
-        "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
+        # "TicketAgentFields.vue":"desk/src/components/ticket/TicketAgentFields.vue",
+        # "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
         "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
         "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
         "CustomerSearchPopup.vue":"desk/src/components/CustomerSearchPopup.vue",
+        "ListRows.vue" : "desk/src/components/ListRows.vue",
+        "ListViewBuilder.vue" : "desk/src/components/ListViewBuilder.vue",
+        "Tickets.vue" : "desk/src/pages/ticket/Tickets.vue",
         
-        "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
-        "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
+        # "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
+        # "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
         "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py",
-        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py",
-        "customer_api.py":"helpdesk/api/customer_api.py"
+        # "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py",
+        "customer_api.py":"helpdesk/api/customer_api.py",
+        "index.ts": "desk/src/router/index.ts"
     }
     
     success = True

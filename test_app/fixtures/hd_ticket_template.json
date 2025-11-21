@@ -12,7 +12,7 @@
     "parentfield": "fields",
     "parenttype": "HD Ticket Template",
     "placeholder": null,
-    "required": 0,
+    "required": 1,
     "url_method": null
    },
    {
@@ -22,7 +22,7 @@
     "parentfield": "fields",
     "parenttype": "HD Ticket Template",
     "placeholder": null,
-    "required": 1,
+    "required": 0,
     "url_method": null
    },
    {
@@ -56,7 +56,7 @@
     "url_method": null
    }
   ],
-  "modified": "2025-11-13 12:57:16.042518",
+  "modified": "2025-11-20 11:13:10.575697",
   "name": "Default",
   "template_name": "Default"
  }

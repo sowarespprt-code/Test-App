@@ -121,11 +121,13 @@ app_license = "mit"
 # Permissions evaluated in scripted ways
 
 # permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+# # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+#     "HD Ticket":"test_app.overrides.hd_ticket_permission.get_permission_query_conditions",
 # }
-#
+# # 
 # has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
+# # 	"Event": "frappe.desk.doctype.event.event.has_permission",
+#     "HD Ticket": "test_app.overrides.hd_ticket_permission.has_permission"
 # }
 
 # DocType Class
@@ -253,9 +255,9 @@ override_vue_components = {
 override_doctype_class = {}
 override_whitelisted_methods = {}
 # Override helpdesk API methods
-override_whitelisted_methods = {
-    "helpdesk.helpdesk.doctype.hd_ticket.api.get_one": "test_app.test_app.overrides.api.get_one"
-}
+# override_whitelisted_methods = {
+#     "helpdesk.helpdesk.doctype.hd_ticket.api.get_one": "test_app.test_app.overrides.api.get_one"
+# }
 
 
 source_link = "File"
