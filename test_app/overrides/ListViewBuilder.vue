@@ -38,7 +38,7 @@
     :options="{
       selectable: options.selectable,
       showTooltip: false,
-      resizeColumn: false,
+      resizeColumn: true,
       rowClass: options.rowClass,
       getRowRoute: (row) => ({
         name: options.rowRoute?.name,
@@ -464,9 +464,50 @@ function listCell(column: any, row: any, item: any, idx: number) {
     });
   }
   if (column.type === "MultipleAvatar") {
+    // DEBUG: Log the data structure to understand what we're receiving
+    console.log("MultipleAvatar column:", column.key, "item:", item);
+    
+    // Handle different data structures for assignees
+    if (!item) {
+      return h("span", {
+        class: "truncate flex-1 text-sm text-gray-500",
+        textContent: "-",
+      });
+    }
+    
+    // If item is an array, map through it
+    if (Array.isArray(item)) {
+      const names = item.map(avatar => avatar.full_name || avatar.name).join(", ");
+      return h("span", {
+        class: "truncate flex-1 text-sm",
+        textContent: names,
+        title: names,
+      });
+    }
+    
+    // If item is a string (single assignee name)
+    if (typeof item === "string") {
+      return h("span", {
+        class: "truncate flex-1 text-sm",
+        textContent: item,
+        title: item,
+      });
+    }
+    
+    // If item is an object (single assignee)
+    if (typeof item === "object") {
+      const name = item.full_name || item.name || "";
+      return h("span", {
+        class: "truncate flex-1 text-sm",
+        textContent: name,
+        title: name,
+      });
+    }
+    
+    // Fallback - use MultipleAvatar component as before
     return h(MultipleAvatar, {
       avatars: item,
-      hideName: true,
+      hideName: false,
       class: "flex items-center truncate flex-1 flex-row-reverse justify-end",
     });
   }

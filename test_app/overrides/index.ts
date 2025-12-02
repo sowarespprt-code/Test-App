@@ -87,6 +87,11 @@ const routes = [
     component: ProductList, 
   },
   {
+    path: "/customer-alerts",
+    name: "CustomerAlertList",
+    component: () => import("@/pages/CustomerAlertList.vue"),
+  },
+  {
     path: "/agents",
     name: "AgentList",
     redirect: "/tickets",
@@ -184,6 +189,21 @@ const routes = [
     path: "/:pathMatch(.*)*",
     name: "Invalid Page",
     component: () => import("@/pages/InvalidPage.vue"),
+  },
+  {
+  path: '/products/:productId',
+  name: 'ProductDetail',
+  component: () => import('@/pages/ProductDetail.vue'), // create this component
+  props: true,
+  meta: {
+    auth: true, // or whatever access control needed
+    }
+  },
+  {
+    path: "/customer-alerts/:alertId",
+    name: "CustomerAlertDetail",
+    component: () => import("@/pages/CustomerAlertDetail.vue"),
+    props: true,
   },
 ];
 

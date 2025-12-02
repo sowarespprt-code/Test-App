@@ -5,6 +5,7 @@ import OrganizationsIcon from "~icons/lucide/building-2";
 import LucideContact2 from "~icons/lucide/contact-2";
 import LucideBox from "~icons/lucide/box";
 import PhoneIcon from "~icons/lucide/phone";
+import LucideBell from "~icons/lucide/bell";
 
 export const agentPortalSidebarOptions = [
   {
@@ -36,6 +37,11 @@ export const agentPortalSidebarOptions = [
     label: "Products",
     icon: LucideBox,
     to: "ProductList",
+  },
+  {
+    label : "Customer Alert",
+    icon : LucideBell,
+    to : "CustomerAlertList", 
   },
   {
     label: "Call Logs",

@@ -33,6 +33,7 @@
               v-for="product in products"
               :key="product.name"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
+              @click="openProductDetail(product)"
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">
@@ -145,6 +146,7 @@ import { ref, onMounted } from 'vue';
 import { call } from 'frappe-ui';
 import { Button, Dialog, Badge } from 'frappe-ui';
 import LucidePlus from '~icons/lucide/plus';
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'ProductList',
@@ -155,6 +157,7 @@ export default {
     LucidePlus
   },
   setup() {
+     const router = useRouter(); 
     const products = ref([]);
     const teams = ref([]);
     const showModal = ref(false);
@@ -181,6 +184,10 @@ export default {
       } catch (error) {
         console.error('Error fetching products:', error);
       }
+    };
+
+    const openProductDetail = (product) => {
+      router.push({ name: 'ProductDetail', params: { productId: product.name } });
     };
 
     const fetchTeams = async () => {
@@ -239,7 +246,7 @@ export default {
       }
     };
 
-    return { products, showModal, openNewProductModal, saveProduct, newProduct, isSaving, teams };
+    return { products, showModal, openNewProductModal, saveProduct, newProduct, openProductDetail, isSaving, teams };
   },
 };
 </script>

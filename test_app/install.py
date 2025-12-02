@@ -31,6 +31,8 @@ def install_overrides():
         "layoutSettings.ts": "desk/src/components/layouts/layoutSettings.ts",
         "ProductList.vue": "desk/src/pages/ProductList.vue",
         "ProductDetail.vue": "desk/src/pages/ProductDetail.vue",
+        "CustomerAlertList.vue" : "desk/src/pages/CustomerAlertList.vue",
+        "CustomerAlertDetail.vue" : "desk/src/pages/CustomerAlertDetail.vue",
         "NewCustomerDialog.vue": "desk/src/components/desk/global/NewCustomerDialog.vue",
         "CustomerDialog.vue": "desk/src/pages/desk/customer/CustomerDialog.vue",
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
@@ -40,6 +42,7 @@ def install_overrides():
         "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
         "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
         "CustomerSearchPopup.vue":"desk/src/components/CustomerSearchPopup.vue",
+        "CustomerRemarksPopup.vue" : "desk/src/components/CustomerRemarksPopup.vue",
         "ListRows.vue" : "desk/src/components/ListRows.vue",
         "ListViewBuilder.vue" : "desk/src/components/ListViewBuilder.vue",
         "Tickets.vue" : "desk/src/pages/ticket/Tickets.vue",
@@ -47,9 +50,10 @@ def install_overrides():
         # "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
         # "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
         "hd_customer.py":"helpdesk/helpdesk/doctype/hd_customer/hd_customer.py",
-        # "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py",
+        "hd_ticket.py":"helpdesk/helpdesk/doctype/hd_ticket/hd_ticket.py",
         "customer_api.py":"helpdesk/api/customer_api.py",
-        "index.ts": "desk/src/router/index.ts"
+        "index.ts": "desk/src/router/index.ts",
+        "doc.py" : "helpdesk/api/doc.py"
     }
     
     success = True

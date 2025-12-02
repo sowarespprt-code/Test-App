@@ -67,8 +67,8 @@
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select team</option>
-                <option v-for="team in teamList" :key="team.name" :value="team.name">
-                  {{ team.name }}
+                <option v-for="team in teamList" :key="team.team_name" :value="team.team_name">
+                  {{ team.team_name }}
                 </option>
               </select>
             </div>
@@ -88,9 +88,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted  } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { createResource } from "frappe-ui";
+import { createResource, call } from "frappe-ui";
 import { Button, LoadingIndicator, Autocomplete } from "frappe-ui";
 import LucideArrowLeft from "~icons/lucide/arrow-left";
 
@@ -112,22 +112,29 @@ const product = createResource({
   auto: true,
 });
 
-const teamOptions = createResource({
-  url: "frappe.client.get_list",
-  params: {
-    doctype: "HD Team",
-    fields: ["name"],
-    order_by: "name asc",
-    limit_page_length: 999,
-  },
-  auto: true,
-  transform: (data: any[]) => {
-    return data.map((team) => ({
-      label: team.name,
-      value: team.name,
-    }));
-  },
+// CHANGE: teamList reactive ref to hold teams loaded from backend
+const teamList = ref([]);
+
+// CHANGE: Load teams on component mount
+onMounted(async () => {
+  await loadTeams();
 });
+
+// CHANGE: Function to fetch teams similar to ERPNext Desk
+async function loadTeams() {
+  try {
+    const data = await call("frappe.client.get_list", {
+      doctype: "HD Team",
+      fields: ["team_name"],   // Adjusted to your team_name field
+      order_by: "team_name asc",
+      limit_page_length: 999,
+    });
+    teamList.value = data || [];
+  } catch (error) {
+    console.error("Failed to fetch teams:", error);
+    teamList.value = [];
+  }
+}
 
 async function saveProduct() {
   if (!product.data?.product || !product.data.product.trim()) {
@@ -141,16 +148,13 @@ async function saveProduct() {
 
   try {
     // @ts-ignore
-    await frappe.call({
-      method: "frappe.client.set_value",
-      args: {
-        doctype: "Product",
-        name: productId,
-        fieldname: {
-          product: product.data.product,
-          status: product.data.status,
-          team: product.data.team || "",
-        },
+    await call("frappe.client.set_value", {
+      doctype: "Product",
+      name: productId,
+      fieldname: {
+        product: product.data.product,
+        status: product.data.status,
+        team: product.data.team || "",
       },
     });
 

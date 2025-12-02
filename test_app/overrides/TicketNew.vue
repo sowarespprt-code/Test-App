@@ -25,6 +25,11 @@
       @customerSelected="handleCustomerSelected"
     />
 
+    <CustomerRemarksPopup
+      v-model="showRemarksPopup"
+      :remarks="templateFields.custom_remarks || ''"
+    />
+
     <!-- Duplicate Ticket Warning Popup -->
     <div
       v-if="showDuplicateWarning"
@@ -345,102 +350,185 @@
         <div class="prose-f" v-html="sanitize(template.data.about)" />
       </div>
 
-      <!-- custom fields -->
+      <!-- custom fields: aligned rows + AMC -->
       <div v-if="Boolean(visibleFields)">
+        <!-- Row 1: Customer Code + Customer Name with buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+          <!-- Customer Code -->
+          <div style="width: 30%; min-width: 200px;">
+            <template v-for="field in visibleFields" :key="'row1_code_' + field.fieldname">
+              <UniInput
+                v-if="field.fieldname === 'custom_customercode'"
+                :field="field"
+                :value="templateFields[field.fieldname]"
+                @input="handleCustomerCodeInput"
+                @keydown.enter.prevent="event => handleCustomerCodeEnter(event)"
+                @blur="handleCustomerCodeBlur"
+              />
+            </template>
+          </div>
+
+          <!-- Customer Name + Customer + License buttons -->
+          <div class="flex-1">
+            <template v-for="field in visibleFields" :key="'row1_name_' + field.fieldname">
+              <div v-if="field.fieldname === 'custom_customer_name'" class="relative">
+                <div class="flex gap-2 items-start">
+                  <div class="flex-1 min-w-0">
+                    <UniInput
+                      :field="field"
+                      :value="templateFields[field.fieldname]"
+                      @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
+                      @input="(e) => safeSetField(field.fieldname, e)"
+                    />
+                  </div>
+
+                  <!-- Customer Search Button -->
+                  <div class="pt-[22px]">
+                    <button
+                      class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-blue-400 hover:bg-blue-500 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
+                      @click="openCustomerSearchPopup"
+                      title="Search Customer Details"
+                      type="button"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
+                      <span class="hidden sm:inline">Customer</span>
+                    </button>
+                  </div>
+
+                  <!-- License Button -->
+                  <div class="pt-[22px]">
+                    <button
+                      class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-green-500 hover:bg-green-600 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
+                      @click="openLicensePopup"
+                      title="View License Details"
+                      type="button"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                      <span class="hidden sm:inline">License</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Row 2: Product + Phone + Contact -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+          <!-- Product -->
+          <div style="width: 30%; min-width: 200px;">
+            <template v-for="field in visibleFields" :key="'prod_' + field.fieldname">
+              <template v-if="field.fieldname === 'custom_product'">
+                <UniInput
+                  :field="field"
+                  :value="templateFields[field.fieldname]"
+                  @input="(e) => safeSetField(field.fieldname, e)"
+                />
+              </template>
+            </template>
+          </div>
+
+          <!-- Phone -->
+          <div style="width: 30%; min-width: 200px;">
+            <template v-for="field in visibleFields" :key="'phone_' + field.fieldname">
+              <template v-if="field.fieldname === 'custom_phone_number' || field.fieldname.toLowerCase().includes('phone')">
+                <UniInput
+                  :field="field"
+                  :value="templateFields[field.fieldname]"
+                  @input="(e) => safeSetField(field.fieldname, e)"
+                />
+              </template>
+            </template>
+          </div>
+
+          <!-- Contact -->
+          <div style="width: 30%; min-width: 200px;">
+            <template v-for="field in visibleFields" :key="'contact_' + field.fieldname">
+              <template v-if="field.fieldname === 'custom_contact_person' || field.fieldname.toLowerCase().includes('contact') || field.label?.toLowerCase().includes('contact')">
+                <UniInput
+                  :field="field"
+                  :value="templateFields[field.fieldname]"
+                  @input="(e) => safeSetField(field.fieldname, e)"
+                />
+              </template>
+            </template>
+          </div>
+        </div>
+
+        <!-- Row 3: AMC End Date + AMC Status -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+          <!-- AMC End Date -->
+          <div class="flex flex-col" style="width: 180px;">
+            <label class="block text-sm text-gray-700 mb-1">AMC End Date</label>
+            <div
+              class="px-3 py-2 border rounded text-sm"
+              :class="licenseLoading ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900'"
+            >
+              <span v-if="licenseLoading" class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading...
+              </span>
+              <span v-else>{{ formattedAmcEndDate }}</span>
+            </div>
+          </div>
+
+          <!-- AMC Status -->
+          <div class="flex flex-col" style="width: 150px;">
+            <label class="block text-sm text-gray-700 mb-1">AMC Status</label>
+            <div
+              class="px-3 py-2 rounded text-sm font-medium"
+              :class="amcStatusClass"
+            >
+              <span v-if="licenseLoading" class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading...
+              </span>
+              <span v-else>{{ amcStatusText }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Remaining fields -->
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <template v-for="field in visibleFields" :key="field.fieldname">
-            <!-- CUSTOMER CODE FIELD -->
+          <template v-for="field in visibleFields" :key="'other_' + field.fieldname">
             <UniInput
-              v-if="field.fieldname === 'custom_customercode'"
-              :field="field"
-              :value="templateFields[field.fieldname]"
-              @input="handleCustomerCodeInput"
-              @keydown.enter.prevent="event => handleCustomerCodeEnter(event)"
-              @blur="handleCustomerCodeBlur"
-            />
-           
-            <!-- CUSTOMER NAME FIELD WITH SEARCH -->
-            <div v-else-if="field.fieldname === 'custom_customer_name'" class="relative sm:col-span-1">
-              <div class="flex gap-2 items-start">
-                <div class="flex-1 min-w-0">
-                  <UniInput
-                    :field="field"
-                    :value="templateFields[field.fieldname]"
-                    @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
-                    @input="(e) => safeSetField(field.fieldname, e)"
-                  />
-                </div>
-
-                <!-- Customer Details Button -->
-                <div class="pt-[22px]">
-                  <button
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-blue-400 hover:bg-blue-500 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
-                    @click="openCustomerSearchPopup"
-                    title="Search Customer Details"
-                    type="button"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    <span class="hidden sm:inline">Customer</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- PRODUCT FIELD WITH LICENSE BUTTON -->
-            <div v-else-if="field.fieldname === 'custom_product'" class="relative sm:col-span-1">
-              <div class="flex gap-2 items-start">
-                <div class="flex-1 min-w-0">
-                  <UniInput
-                    :field="field"
-                    :value="templateFields[field.fieldname]"
-                    @input="(e) => safeSetField(field.fieldname, e)"
-                  />
-                </div>
-
-                <!-- View License Button -->
-                <div class="pt-[22px]">
-                  <button
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-blue-400 hover:bg-blue-500 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
-                    @click="openLicensePopup"
-                    title="View License Details"
-                    type="button"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    <span class="hidden sm:inline">License</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ALL OTHER FIELDS -->
-            <UniInput
-              v-else
+              v-if="
+                !['custom_customercode', 'custom_customer_name', 'custom_product', 'custom_contact_person', 'custom_phone_number'].includes(field.fieldname) &&
+                !field.fieldname.toLowerCase().includes('contact') &&
+                !field.fieldname.toLowerCase().includes('phone')
+              "
               :field="field"
               :value="templateFields[field.fieldname]"
               @input="(e) => safeSetField(field.fieldname, e)"
@@ -531,6 +619,7 @@
 import { LayoutHeader, UniInput } from "@/components";
 import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
 import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
+import CustomerRemarksPopup from "@/components/CustomerRemarksPopup.vue";
 import {
   handleLinkFieldUpdate,
   handleSelectFieldUpdate,
@@ -572,47 +661,242 @@ const { $dialog } = globalStore();
 const { updateOnboardingStep } = useOnboarding("helpdesk");
 const { isManager, userId: userID } = useAuthStore();
 
-// ============================================
-// STATE DECLARATIONS
-// ============================================
 const subject = ref("");
 const description = ref("");
-const attachments = ref([]);
-const templateFields = reactive({});
+const attachments = ref<any[]>([]);
+const templateFields = reactive<Record<string, any>>({});
 const isFetchingCustomerName = ref(false);
 const isFetchingCustomerCode = ref(false);
 const isFetchingProductName = ref(false);
 const showLicensePopup = ref(false);
 const licenseLoading = ref(false);
 const licenseError = ref("");
-const licenseData = ref(null);
+const licenseData = ref<any | null>(null);
 const lastValidatedCustomerCode = ref("");
-const MIN_CODE_LENGTH = 3;
+const MIN_CODE_LENGTH = 1;
 const invalidCodeError = ref("");
 const customerCode = ref("");
 
-// Customer Search State
 const showCustomerSearchPopup = ref(false);
+const showRemarksPopup = ref(false);
 
-// Duplicate Warning State
 const showDuplicateWarning = ref(false);
-const duplicateTickets = ref([]);
+const duplicateTickets = ref<any[]>([]);
 const pendingSubmission = ref(false);
 
-// Ticket Details State
 const showTicketDetailsPopup = ref(false);
 const selectedTicketId = ref("");
-const ticketDetails = ref(null);
+const ticketDetails = ref<any | null>(null);
 const ticketDetailsLoading = ref(false);
 const ticketDetailsError = ref("");
 
-// Flags to prevent circular event triggering
 const isUpdatingInternally = ref(false);
 const isManuallySelectingCustomer = ref(false);
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
+
+async function handleCustomerCodeEnter(event: any) {
+  const enteredCode = event.target.value?.trim();
+  const previousCode = lastValidatedCustomerCode.value?.trim();
+  invalidCodeError.value = "";
+
+  if (!enteredCode) {
+    // Clear all fields when empty and Enter pressed
+    isUpdatingInternally.value = true;
+    safeSetField("custom_customer_name", "");
+    safeSetField("custom_product", "");
+    licenseData.value = null;
+    showLicensePopup.value = false;
+    showRemarksPopup.value = false;
+    safeSetField("custom_remarks", "");
+    lastValidatedCustomerCode.value = "";
+    isUpdatingInternally.value = false;
+    return;
+  }
+
+  if (enteredCode.length < MIN_CODE_LENGTH) {
+    $dialog({
+      title: 'Invalid Customer Code',
+      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
+    });
+    return;
+  }
+
+  if (enteredCode === previousCode) {
+    // Check remarks first, then decide popup
+    await fetchCustomerRemarks(templateFields.custom_customer_name || "");
+    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
+      showRemarksPopup.value = true;
+      showLicensePopup.value = false;
+    } else {
+      showRemarksPopup.value = false;
+      showLicensePopup.value = true;
+    }
+    return;
+  }
+
+  safeSetField("custom_customercode", enteredCode);
+
+  const found = await fetchCustomerName(enteredCode);
+  if (found) {
+    lastValidatedCustomerCode.value = enteredCode;
+    await fetchLicenseDataInBackground(enteredCode);
+    
+    // NEW: Check remarks first, then decide popup
+    await fetchCustomerRemarks(templateFields.custom_customer_name || "");
+    
+    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
+      showRemarksPopup.value = true;
+      showLicensePopup.value = false;
+    } else {
+      showRemarksPopup.value = false;
+      showLicensePopup.value = true;
+    }
+  } else {
+    $dialog({
+      title: 'Invalid Customer Code',
+      message: 'No customer found for this code. Please check and try again.',
+    });
+
+    // Clear all fields when invalid
+    isUpdatingInternally.value = true;
+    safeSetField("custom_customer_name", "");
+    safeSetField("custom_product", "");
+    licenseData.value = null;
+    showLicensePopup.value = false;
+    showRemarksPopup.value = false;
+    safeSetField("custom_remarks", "");
+    lastValidatedCustomerCode.value = "";
+    isUpdatingInternally.value = false;
+  }
+}
+
+
+function handleCustomerCodeBlur() {
+  // Optional: you can add blur logic here if needed
+}
+
+
+// LICENSE / AMC HELPERS
+async function fetchLicenseDataInBackground(code: string) {
+  if (!code || code.length < MIN_CODE_LENGTH) {
+    licenseData.value = null;
+    return;
+  }
+  licenseLoading.value = true;
+  try {
+    const result = await call("helpdesk.api.license.get_customer_license_details", {
+      customer_code: code,
+    });
+    licenseData.value = result || null;
+  } catch (e) {
+    console.error("Error fetching license data:", e);
+    licenseData.value = null;
+  } finally {
+    licenseLoading.value = false;
+  }
+}
+
+const formattedAmcEndDate = computed(() => {
+  if (licenseLoading.value) return "Loading...";
+  if (!licenseData.value?.AMCEndDate) return "N/A";
+  try {
+    const raw = String(licenseData.value.AMCEndDate).trim();
+    if (!raw || raw === "null" || raw === "undefined") return "N/A";
+
+    if (raw.includes("/")) {
+      const datePart = raw.split(" ")[0];
+      const parts = datePart.split("/");
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          const d = new Date(year, month - 1, day);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+          }
+        }
+      }
+    }
+
+    if (raw.includes("-")) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      }
+    }
+
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    return "Invalid Date";
+  } catch (e) {
+    console.error("Error parsing AMC End Date:", e);
+    return "Invalid Date";
+  }
+});
+
+const amcStatusText = computed(() => {
+  if (licenseLoading.value) return "Loading...";
+  if (!licenseData.value?.AMCEndDate) return "Unknown";
+  try {
+    const raw = String(licenseData.value.AMCEndDate).trim();
+    if (!raw || raw === "null" || raw === "undefined") return "Unknown";
+
+    let endDate: Date | undefined;
+
+    if (raw.includes("/")) {
+      const datePart = raw.split(" ")[0];
+      const parts = datePart.split("/");
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          endDate = new Date(year, month - 1, day);
+        }
+      }
+    } else {
+      endDate = new Date(raw);
+    }
+
+    if (!endDate || isNaN(endDate.getTime())) return "Unknown";
+
+    const today = new Date();
+    endDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return endDate < today ? "Expired" : "Active";
+  } catch (e) {
+    console.error("Error calculating AMC Status:", e);
+    return "Unknown";
+  }
+});
+
+const amcStatusClass = computed(() => {
+  if (licenseLoading.value) {
+    return "bg-gray-100 text-gray-600 border border-gray-300";
+  }
+  const status = amcStatusText.value;
+  if (status === "Expired") return "bg-red-100 text-red-800 border border-red-300";
+  if (status === "Active") return "bg-green-100 text-green-800 border border-green-300";
+  return "bg-gray-100 text-gray-800 border border-gray-300";
+});
+
 function extractValue(payload: any): string {
   if (payload == null || payload === undefined) return "";
   if (typeof payload === "string" || typeof payload === "number") {
@@ -636,29 +920,26 @@ function safeSetField(fieldname: string, payload: any) {
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 function getStatusClass(status: string): string {
-  const statusMap = {
-    'Open': 'bg-yellow-100 text-yellow-800',
-    'Replied': 'bg-blue-100 text-blue-800',
-    'Resolved': 'bg-green-100 text-green-800',
-    'Closed': 'bg-gray-100 text-gray-800',
-    'Pending': 'bg-orange-100 text-orange-800',
+  const statusMap: Record<string, string> = {
+    Open: "bg-yellow-100 text-yellow-800",
+    Replied: "bg-blue-100 text-blue-800",
+    Resolved: "bg-green-100 text-green-800",
+    Closed: "bg-gray-100 text-gray-800",
+    Pending: "bg-orange-100 text-orange-800",
   };
-  return statusMap[status] || 'bg-gray-100 text-gray-800';
+  return statusMap[status] || "bg-gray-100 text-gray-800";
 }
 
-// ============================================
-// DUPLICATE WARNING FUNCTIONS
-// ============================================
 function closeDuplicateWarning() {
   showDuplicateWarning.value = false;
   duplicateTickets.value = [];
@@ -677,23 +958,49 @@ async function viewTicketDetails(ticketId: string) {
   ticketDetailsLoading.value = true;
   ticketDetailsError.value = "";
   ticketDetails.value = null;
-
   try {
     const result = await call("frappe.client.get", {
       doctype: "HD Ticket",
       name: ticketId,
     });
-   
     if (result) {
       ticketDetails.value = result;
     } else {
       ticketDetailsError.value = "Ticket not found";
     }
-  } catch (error) {
-    console.error("Error fetching ticket details:", error);
-    ticketDetailsError.value = error.message || "Failed to load ticket details";
+  } catch (e: any) {
+    console.error("Error fetching ticket details:", e);
+    ticketDetailsError.value = e.message || "Failed to load ticket details";
   } finally {
     ticketDetailsLoading.value = false;
+  }
+}
+
+// remarks
+async function fetchCustomerRemarks(customerCodeOrName: string) {
+  if (!customerCodeOrName) {
+    safeSetField("custom_remarks", "");
+    showRemarksPopup.value = false;
+    return;
+  }
+  try {
+    const result = await call("frappe.client.get_list", {
+      doctype: "Customer Alert",
+      filters: [
+        ["docstatus", "<", 2],
+        ["customer_name", "=", customerCodeOrName],
+      ],
+      fields: ["remarks"],
+      order_by: "modified desc",
+      limit: 1,
+    });
+    const remarks = result?.[0]?.remarks || "";
+    safeSetField("custom_remarks", remarks);
+    showRemarksPopup.value = !!remarks?.trim();
+  } catch (e) {
+    safeSetField("custom_remarks", "");
+    showRemarksPopup.value = false;
+    console.error("Error fetching customer remarks:", e);
   }
 }
 
@@ -709,9 +1016,6 @@ function backToDuplicateWarning() {
   showDuplicateWarning.value = true;
 }
 
-// ============================================
-// CUSTOMER SEARCH POPUP FUNCTIONS
-// ============================================
 function openCustomerSearchPopup() {
   showCustomerSearchPopup.value = true;
 }
@@ -719,56 +1023,71 @@ function openCustomerSearchPopup() {
 async function handleCustomerSelected(customer: any) {
   isManuallySelectingCustomer.value = true;
   isUpdatingInternally.value = true;
- 
-  safeSetField("custom_customer_name", customer.customer_name);
-  safeSetField("custom_customercode", customer.custom_customercode || "");
-  safeSetField("custom_product", customer.custom_productname || "");
- 
-  lastValidatedCustomerCode.value = customer.custom_customercode || "";
- 
-  await nextTick();
-  isUpdatingInternally.value = false;
-  isManuallySelectingCustomer.value = false;
+  
+  try {
+    safeSetField("custom_customer_name", customer.customer_name);
+    safeSetField("custom_customercode", customer.custom_customercode || "");
+    safeSetField("custom_product", customer.custom_productname || "");
+    lastValidatedCustomerCode.value = customer.custom_customercode || "";
+    await nextTick();
+
+    // Fetch customer remarks
+    await fetchCustomerRemarks(customer.customer_name);
+    
+    // Show remarks popup if remarks exist, else show license popup
+    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
+      showRemarksPopup.value = true;
+      showLicensePopup.value = false;
+    } else {
+      showRemarksPopup.value = false;
+      if (customer.custom_customercode) {
+        await fetchLicenseDataInBackground(customer.custom_customercode);
+        showLicensePopup.value = true;
+      } else {
+        showLicensePopup.value = false;
+      }
+    }
+  } finally {
+    isUpdatingInternally.value = false;
+    isManuallySelectingCustomer.value = false;
+  }
 }
 
-// ============================================
-// LICENSE POPUP HANDLERS
-// ============================================
+
 async function openLicensePopup() {
   await nextTick();
-
-  const customerCode = extractValue(templateFields.custom_customercode)?.trim() ||
-                       document.querySelector('[name="custom_customercode"]')?.value?.trim() || "";
-
-  if (!customerCode || customerCode === "") {
+  const code =
+    extractValue(templateFields.custom_customercode)?.trim() ||
+    (document.querySelector('[name="custom_customercode"]') as HTMLInputElement | null)?.value?.trim() ||
+    "";
+  if (!code) {
     $dialog({
       title: "Customer Code Required",
       message: "Please enter a valid Customer Code first.",
     });
     return;
   }
-
-  if (customerCode.length < MIN_CODE_LENGTH) {
+  if (code.length < MIN_CODE_LENGTH) {
     $dialog({
       title: "Invalid Customer Code",
       message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
     });
     return;
   }
-
-  const found = await fetchCustomerName(customerCode);
+  const found = await fetchCustomerName(code);
   if (found) {
-    lastValidatedCustomerCode.value = customerCode;
+    lastValidatedCustomerCode.value = code;
     showLicensePopup.value = true;
+    await fetchLicenseDataInBackground(code);
   } else {
     $dialog({
       title: "Invalid Customer Code",
       message: "No customer found for this code. Please check and try again.",
     });
-
     isUpdatingInternally.value = true;
     safeSetField("custom_customer_name", "");
     safeSetField("custom_product", "");
+    licenseData.value = null;
     isUpdatingInternally.value = false;
     showLicensePopup.value = false;
   }
@@ -778,37 +1097,31 @@ function handleLicenseLoaded(data: any) {
   licenseData.value = data;
 }
 
-// ============================================
-// WATCHERS
-// ============================================
+// watcher to clear when customer name cleared
 watch(
   () => templateFields.custom_customer_name,
-  (newName, oldName) => {
+  (newVal, oldVal) => {
     if (isUpdatingInternally.value || isManuallySelectingCustomer.value) return;
-   
-    const cleanName = extractValue(newName);
-   
-    if (!cleanName) {
+    const clean = extractValue(newVal);
+    if (!clean) {
       isUpdatingInternally.value = true;
       safeSetField("custom_customercode", "");
       safeSetField("custom_product", "");
       lastValidatedCustomerCode.value = "";
       licenseData.value = null;
       licenseError.value = "";
-      showLicensePopup.value = false;
+      licenseLoading.value = false;
+      safeSetField("custom_remarks", "");
       isUpdatingInternally.value = false;
     }
   }
 );
 
-// ============================================
-// TEMPLATE RESOURCE
-// ============================================
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
   makeParams: () => ({ name: props.templateId || "Default" }),
   auto: true,
-  onSuccess: (data) => {
+  onSuccess: (data: any) => {
     description.value = data.description_template || "";
     oldFields = window.structuredClone(data.fields || []);
     setupCustomizations(template, {
@@ -822,99 +1135,40 @@ const template = createResource({
   },
 });
 
-function setupTemplateFields(fields) {
+function setupTemplateFields(fields: Field[]) {
   fields.forEach((field: Field) => {
     templateFields[field.fieldname] = "";
   });
 }
 
-let oldFields = [];
+let oldFields: Field[] = [];
 
 function applyFilters(fieldname: string, filters: any = null) {
-  const f: Field = template.data.fields.find((f) => f.fieldname === fieldname);
+  const f: Field = template.data.fields.find((ff: Field) => ff.fieldname === fieldname);
   if (!f) return;
-  if (f.fieldtype === "Select")
+  if (f.fieldtype === "Select") {
     handleSelectFieldUpdate(f, fieldname, filters, templateFields, oldFields);
-  else if (f.fieldtype === "Link")
+  } else if (f.fieldtype === "Link") {
     handleLinkFieldUpdate(f, fieldname, filters, templateFields, oldFields);
+  }
 }
 
 const customOnChange = computed(() => template.data?._customOnChange);
 
 const visibleFields = computed(() => {
   const _fields = template.data?.fields?.filter(
-    (f) => !isCustomerPortal.value || !f.hide_from_customer
+    (f: any) => !isCustomerPortal.value || !f.hide_from_customer
   );
-  return _fields?.map((f) => parseField(f, templateFields)) || [];
+  return _fields?.map((f: Field) => parseField(f, templateFields)) || [];
 });
 
-// ============================================
-// CUSTOMER CODE HANDLERS
-// ============================================
 function handleCustomerCodeInput(event: any) {
   const value = event.target?.value?.trim() || "";
   safeSetField("custom_customercode", value);
 }
 
-async function handleCustomerCodeEnter(event: any) {
-  const enteredCode = event.target.value?.trim();
-  const previousCode = lastValidatedCustomerCode.value?.trim();
-  invalidCodeError.value = "";
-
-  if (!enteredCode) {
-    isUpdatingInternally.value = true;
-    safeSetField("custom_customer_name", "");
-    safeSetField("custom_product", "");
-    licenseData.value = null;
-    showLicensePopup.value = false;
-    isUpdatingInternally.value = false;
-    return;
-  }
-
-  if (enteredCode.length < MIN_CODE_LENGTH) {
-    $dialog({
-      title: 'Invalid Customer Code',
-      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
-    });
-    return;
-  }
-
-  if (enteredCode === previousCode) {
-    showLicensePopup.value = true;
-    return;
-  }
-
-  safeSetField("custom_customercode", enteredCode);
-
-  const found = await fetchCustomerName(enteredCode);
-  if (found) {
-    lastValidatedCustomerCode.value = enteredCode;
-    showLicensePopup.value = true;
-  } else {
-    $dialog({
-      title: 'Invalid Customer Code',
-      message: 'No customer found for this code. Please check and try again.',
-    });
-
-    isUpdatingInternally.value = true;
-    safeSetField("custom_customer_name", "");
-    safeSetField("custom_product", "");
-    licenseData.value = null;
-    showLicensePopup.value = false;
-    isUpdatingInternally.value = false;
-  }
-}
-
-function handleCustomerCodeBlur() {
-  // Optional: Add blur handling if needed
-}
-
-// ============================================
-// AUTO-FETCH FUNCTIONS
-// ============================================
 async function fetchCustomerName(customerCode: string) {
   if (!customerCode || isFetchingCustomerName.value) return false;
- 
   isFetchingCustomerName.value = true;
   try {
     const result = await call("frappe.client.get_list", {
@@ -923,7 +1177,6 @@ async function fetchCustomerName(customerCode: string) {
       fields: ["name", "customer_name"],
       limit: 1,
     });
-   
     if (result && result.length > 0) {
       const customer = result[0];
       isUpdatingInternally.value = true;
@@ -933,11 +1186,10 @@ async function fetchCustomerName(customerCode: string) {
       await fetchProductName(customer.name);
       isUpdatingInternally.value = false;
       return true;
-    } else {
-      return false;
     }
-  } catch (error) {
-    console.error("Error fetching customer:", error);
+    return false;
+  } catch (e) {
+    console.error("Error fetching customer:", e);
     return false;
   } finally {
     isFetchingCustomerName.value = false;
@@ -946,7 +1198,6 @@ async function fetchCustomerName(customerCode: string) {
 
 async function fetchCustomerCode(customerName: string) {
   if (!customerName || isFetchingCustomerCode.value) return;
- 
   isFetchingCustomerCode.value = true;
   try {
     const result = await call("frappe.client.get_value", {
@@ -954,18 +1205,18 @@ async function fetchCustomerCode(customerName: string) {
       filters: { name: customerName },
       fieldname: ["custom_customercode"],
     });
-   
     const code = result?.message?.custom_customercode || result?.custom_customercode;
     if (code) {
       isUpdatingInternally.value = true;
       await nextTick();
       safeSetField("custom_customercode", code);
       lastValidatedCustomerCode.value = code;
+      await fetchLicenseDataInBackground(code);
       await nextTick();
       isUpdatingInternally.value = false;
     }
-  } catch (error) {
-    console.error("Error fetching customer code:", error);
+  } catch (e) {
+    console.error("Error fetching customer code:", e);
   } finally {
     isFetchingCustomerCode.value = false;
   }
@@ -973,7 +1224,6 @@ async function fetchCustomerCode(customerName: string) {
 
 async function fetchProductName(customerName: string) {
   if (!customerName || isFetchingProductName.value) return;
- 
   isFetchingProductName.value = true;
   try {
     const result = await call("frappe.client.get_value", {
@@ -981,53 +1231,42 @@ async function fetchProductName(customerName: string) {
       filters: { name: customerName },
       fieldname: ["custom_productname"],
     });
-   
     const product = result?.message?.custom_productname || result?.custom_productname;
     safeSetField("custom_product", product || "");
-  } catch (error) {
-    console.error("Error fetching product name:", error);
+  } catch (e) {
+    console.error("Error fetching product name:", e);
   } finally {
     isFetchingProductName.value = false;
   }
 }
 
-// ============================================
-// FIELD CHANGE HANDLER
-// ============================================
 async function handleOnFieldChange(payload: any, fieldname: string, fieldtype: string) {
   if (isUpdatingInternally.value) return;
- 
   const newValue = extractValue(payload);
   safeSetField(fieldname, newValue);
- 
   if (fieldname === "custom_customer_name" && newValue) {
     isManuallySelectingCustomer.value = true;
     await fetchCustomerCode(newValue);
     await fetchProductName(newValue);
+    await fetchCustomerRemarks(newValue);
     isManuallySelectingCustomer.value = false;
   }
- 
   const fieldFns = customOnChange.value?.[fieldname];
   if (fieldFns) {
     fieldFns.forEach((fn: Function) => {
       try {
         fn(newValue, fieldtype);
-      } catch (err) {
-        console.error("Error in custom onChange:", err);
+      } catch (e) {
+        console.error("Error in custom onChange:", e);
       }
     });
   }
 }
 
-// ============================================
-// DUPLICATE TICKET CHECK
-// ============================================
 async function checkForDuplicates() {
-  // Only check if we have customer name and subject
   if (!templateFields.custom_customer_name || !subject.value || subject.value.length < 3) {
     return true;
   }
-
   try {
     const result = await call("frappe.client.get_list", {
       doctype: "HD Ticket",
@@ -1039,23 +1278,18 @@ async function checkForDuplicates() {
       order_by: "creation desc",
       limit: 10,
     });
-
     if (result && result.length > 0) {
       duplicateTickets.value = result;
       showDuplicateWarning.value = true;
       return false;
     }
-
     return true;
-  } catch (error) {
-    console.error("Error checking for duplicates:", error);
+  } catch (e) {
+    console.error("Error checking for duplicates:", e);
     return true;
   }
 }
 
-// ============================================
-// TICKET CREATION WITH DUPLICATE CHECK
-// ============================================
 const ticket = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket.api.new",
   debounce: 300,
@@ -1068,49 +1302,47 @@ const ticket = createResource({
     },
     attachments: attachments.value,
   }),
-  validate: (params) => {
-    const fields = visibleFields.value?.filter((f) => f.required) || [];
-    for (const field of [...fields, "subject", "description"]) {
+  validate: (params: any) => {
+    const fields = visibleFields.value?.filter((f: any) => f.required) || [];
+    for (const field of [...fields, "subject", "description"] as any[]) {
       if (isEmpty(params.doc[field.fieldname || field])) {
         return `${field.label || field} is required`;
       }
     }
   },
-  onSuccess: (data) => {
+  onSuccess: (data: any) => {
     router.push({
       name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
       params: { ticketId: data.name },
     });
-    if (isManager)
+    if (isManager) {
       updateOnboardingStep("create_first_ticket", true, false, () =>
         localStorage.setItem("firstTicket", data.name)
       );
-    if (isCustomerPortal.value)
+    }
+    if (isCustomerPortal.value) {
       capture("new_ticket_submitted", {
         data: { user: userID, ticketID: data.name, subject: subject.value },
       });
+    }
   },
 });
 
 async function handleTicketSubmit() {
-  // Skip duplicate check if already approved
   if (pendingSubmission.value) {
     pendingSubmission.value = false;
     return;
   }
-
   const shouldProceed = await checkForDuplicates();
- 
   if (shouldProceed) {
     ticket.submit();
   }
 }
 
-// ============================================
-// UTILITIES & SETUP
-// ============================================
 function sanitize(html: string) {
-  return sanitizeHtml(html, { allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]) });
+  return sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+  });
 }
 
 const breadcrumbs = computed(() => [

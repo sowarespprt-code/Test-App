@@ -1,7 +1,7 @@
 [
  {
-  "about": null,
-  "description_template": null,
+  "about": "",
+  "description_template": "<div class=\"ql-editor read-mode\"><p><br></p></div>",
   "docstatus": 0,
   "doctype": "HD Ticket Template",
   "fields": [
@@ -54,9 +54,19 @@
     "placeholder": null,
     "required": 0,
     "url_method": null
+   },
+   {
+    "fieldname": "custom_remarks",
+    "hide_from_customer": 1,
+    "parent": "Default",
+    "parentfield": "fields",
+    "parenttype": "HD Ticket Template",
+    "placeholder": "Do not type Anything",
+    "required": 0,
+    "url_method": ""
    }
   ],
-  "modified": "2025-11-20 11:13:10.575697",
+  "modified": "2025-11-28 12:58:22.221945",
   "name": "Default",
   "template_name": "Default"
  }
