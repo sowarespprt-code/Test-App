@@ -259,21 +259,18 @@ function closePopup() {
 }
 
 function handleSearch() {
-  // Clear previous timer
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer);
   }
- 
+  
   const query = searchQuery.value.trim();
- 
-  // Reset selected customer when search changes
   selectedCustomer.value = null;
- 
-  // Only search if we have at least 2 characters
+  
+  // Search with just 1 character minimum
   if (query.length >= 1) {
     searchDebounceTimer = setTimeout(() => {
       searchCustomers(query);
-    }, 2000); // 500ms debounce for better UX
+    }, 2000); // Reduced from 2000ms
   } else {
     searchResults.value = [];
   }

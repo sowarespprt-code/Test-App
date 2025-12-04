@@ -11,48 +11,54 @@ from frappe import _
 @frappe.whitelist()
 def search_hd_customers(search_term):
     """
-    Search HD Customers based on search term.
-    Returns a list of customers matching the search criteria.
+    Search HD Customers - ALL words must match (AND logic) like your example query.
     """
     try:
         if not search_term or len(search_term.strip()) < 1:
             return []
 
-        # Proper OR filtering across desired fields, without AND conflicts.
-        customers = frappe.get_all(
-            "HD Customer",
-            or_filters=[
-                ["customer_name", "like", f"%{search_term}%"],
-                ["custom_address1", "like", f"%{search_term}%"],
-                ["custom_phone001", "like", f"%{search_term}%"],
-                ["custom_address2", "like", f"%{search_term}%"],
-                ["custom_place", "like", f"%{search_term}%"],
-                ["custom_district", "like", f"%{search_term}%"],
-                ["custom_phone002", "like", f"%{search_term}%"]
-            ],
-            fields=[
-                "name",
-                "customer_name",
-                "custom_sl_no",
-                "custom_customercode",
-                "custom_productname",
-                "custom_address1",
-                "custom_address2",
-                "custom_place",
-                "custom_district",
-                "custom_phone001",
-                "custom_phone002"
-                
-            ],
-            limit=20,
-            order_by="modified desc"
-        )
+        # Clean and split search term into words
+        search_words = [word.strip() for word in search_term.split() if len(word.strip()) > 0]
+        if not search_words:
+            return []
+
+        # Build the concatenated search field exactly like your query
+        concat_field = f"""
+            CONCAT(
+                custom_customercode, ' ',
+                customer_name, ' ',
+                IFNULL(custom_address1, ''), ' ',
+                IFNULL(custom_address2, ''), ' ',
+                IFNULL(custom_place, ''), ' ',
+                IFNULL(custom_phone001, ''), ' ',
+                IFNULL(custom_phone002, '')
+            )
+        """
+
+        # Create AND conditions for each word
+        conditions = [f"({concat_field} LIKE %s)" for _ in search_words]
+        where_clause = " AND ".join(conditions)
+
+        query = f"""
+            SELECT 
+                name, customer_name, custom_sl_no, custom_customercode, 
+                custom_productname, custom_address1, custom_address2, 
+                custom_place, custom_district, custom_phone001, custom_phone002
+            FROM `tabHD Customer`
+            WHERE {where_clause}
+            ORDER BY modified DESC
+            LIMIT 20
+        """
+
+        # Parameters: each word repeated once (for AND logic)
+        params = [f"%{word}%" for word in search_words]
+
+        customers = frappe.db.sql(query, params, as_dict=True)
         return customers
 
     except Exception as e:
         frappe.log_error(f"Error in search_hd_customers: {str(e)}", "Customer Search Error")
         return []
-
 
 
 @frappe.whitelist()
