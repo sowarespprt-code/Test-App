@@ -33,6 +33,21 @@
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Customer Alert Details</h2>
           
           <div class="space-y-4">
+            <!-- Customer Code Field (NEW) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Customer Code <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="alert.data.customer_code"
+                type="text"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter customer code"
+                readonly
+              />
+            </div>
+
+            <!-- Customer Name Field -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Customer Name <span class="text-red-500">*</span>
@@ -46,15 +61,16 @@
               />
             </div>
 
+            <!-- Popup Message Field -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Remarks <span class="text-red-500">*</span>
+                Popup Message <span class="text-red-500">*</span>
               </label>
               <textarea
-                v-model="alert.data.remarks"
+                v-model="alert.data.popupmessage"
                 rows="6"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter remarks"
+                placeholder="Enter popup message"
               />
             </div>
           </div>
@@ -81,18 +97,18 @@ import LucideArrowLeft from "~icons/lucide/arrow-left";
 
 const router = useRouter();
 const route = useRoute();
-const alertId = route.params.alertId as string;  // CHANGED: from productId to alertId
+const alertId = route.params.alertId as string;
 
 const saving = ref(false);
 const deleting = ref(false);
 const saveError = ref("");
 const saveSuccess = ref(false);
 
-// CHANGED: Load Customer Alert data (not Product)
+// Load Customer Alert data with customer_code and popupmessage
 const alert = createResource({
   url: "frappe.client.get",
   params: {
-    doctype: "Customer Alert",  // CHANGED: Doctype name
+    doctype: "Customer Alert",
     name: alertId,
   },
   auto: true,
@@ -102,13 +118,17 @@ onMounted(async () => {
   // No teams needed for Customer Alert
 });
 
-async function saveAlert() {  // CHANGED: saveAlert instead of saveProduct
+async function saveAlert() {
+  if (!alert.data?.customer_code || !alert.data.customer_code.trim()) {
+    saveError.value = "Customer code is required";
+    return;
+  }
   if (!alert.data?.customer_name || !alert.data.customer_name.trim()) {
     saveError.value = "Customer name is required";
     return;
   }
-  if (!alert.data?.remarks || !alert.data.remarks.trim()) {
-    saveError.value = "Remarks are required";
+  if (!alert.data?.popupmessage || !alert.data.popupmessage.trim()) {
+    saveError.value = "Popup message is required";
     return;
   }
 
@@ -121,8 +141,9 @@ async function saveAlert() {  // CHANGED: saveAlert instead of saveProduct
       doctype: "Customer Alert",
       name: alertId,
       fieldname: {
+        customer_code: alert.data.customer_code,
         customer_name: alert.data.customer_name,
-        remarks: alert.data.remarks,
+        popupmessage: alert.data.popupmessage,
       },
     });
 
@@ -138,7 +159,7 @@ async function saveAlert() {  // CHANGED: saveAlert instead of saveProduct
   }
 }
 
-async function deleteAlert() {  // CHANGED: deleteAlert instead of deleteProduct
+async function deleteAlert() {
   if (!confirm("Are you sure you want to delete this customer alert?")) {
     return;
   }
@@ -151,7 +172,7 @@ async function deleteAlert() {  // CHANGED: deleteAlert instead of deleteProduct
       name: alertId,
     });
 
-    router.push({ name: "CustomerAlertList" });  // CHANGED: Navigate to CustomerAlertList
+    router.push({ name: "CustomerAlertList" });
   } catch (error: any) {
     saveError.value = error.message || "Failed to delete customer alert";
     console.error("Error deleting customer alert:", error);

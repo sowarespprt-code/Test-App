@@ -448,6 +448,8 @@ class HDTicket(Document):
             return frappe.db.exists("HD Agent", assignees[0].owner)
 
         return None
+    
+
 
     def on_trash(self):
         activities = frappe.db.get_all("HD Ticket Activity", {"ticket": self.name})

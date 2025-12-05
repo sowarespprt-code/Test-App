@@ -41,7 +41,7 @@
             placeholder="Enter Code"
             required
           />
-         
+
           <!-- Product Select Field -->
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Product *</label>
@@ -89,6 +89,14 @@
             type="date"
           />
           <Input v-model="formData.domain" label="Domain" placeholder="example.com" />
+
+          <!-- New Remarks field -->
+          <Input
+            v-model="formData.custom_remarks"
+            label="Remarks"
+            type="text"
+            placeholder="Enter remarks"
+          />
         </form>
       </div>
     </template>
@@ -150,6 +158,7 @@ const formData = ref({
   custom_nooflicense: "",
   custom_dateofamclastpaid: "",
   domain: "",
+  custom_remarks: "", // <-- new field
 });
 
 const products = ref([]);
@@ -191,14 +200,15 @@ const updateFormData = (doc) => {
     custom_nooflicense: doc.custom_nooflicense || "",
     custom_dateofamclastpaid: convertToYYYYMMDD(doc.custom_dateofamclastpaid || ""),
     domain: doc.domain || "",
+    custom_remarks: doc.custom_remarks || "", // <-- keep in sync with doctype
   };
 };
 
 const fetchProducts = async () => {
   try {
-    const data = await call('frappe.client.get_list', {
-      doctype: 'Product',
-      fields: ['name', 'product', 'status', 'team'],
+    const data = await call("frappe.client.get_list", {
+      doctype: "Product",
+      fields: ["name", "product", "status", "team"],
       limit_page_length: 999,
     });
     products.value = Array.isArray(data) ? data : [];
@@ -237,10 +247,10 @@ const options = computed(() => ({
 async function update() {
   try {
     const doc = customer.doc;
-    Object.keys(formData.value).forEach(key => {
+    Object.keys(formData.value).forEach((key) => {
       doc[key] = formData.value[key];
     });
-    await call('frappe.client.save', { doc });
+    await call("frappe.client.save", { doc });
     await customer.reload();
     toast.success("Customer updated successfully");
     emit("customer-updated");

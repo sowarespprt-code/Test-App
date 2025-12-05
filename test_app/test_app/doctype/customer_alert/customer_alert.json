@@ -6,8 +6,9 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "customer_code",
   "customer_name",
-  "remarks"
+  "popupmessage"
  ],
  "fields": [
   {
@@ -18,15 +19,20 @@
    "unique": 1
   },
   {
-   "fieldname": "remarks",
+   "fieldname": "popupmessage",
    "fieldtype": "Text",
-   "label": "Remarks"
+   "label": "PopupMessage"
+  },
+  {
+   "fieldname": "customer_code",
+   "fieldtype": "Data",
+   "label": "Customer Code"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-27 12:40:49.073801",
+ "modified": "2025-12-05 17:22:44.602586",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Customer Alert",

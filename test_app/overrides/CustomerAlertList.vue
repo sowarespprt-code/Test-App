@@ -35,18 +35,22 @@
           <table class="w-full divide-y">
             <thead class="bg-gray-50 sticky top-0">
               <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Code</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Customer</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Popup Message</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Created On</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="alert in filteredAlerts" :key="alert.name" class="hover:bg-gray-50 cursor-pointer transition-colors" @click="openAlertDetail(alert)">
                 <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm font-medium text-gray-900">{{ alert.customer_code || 'N/A' }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm font-medium text-gray-900">{{ alert.customer_name || 'N/A' }}</div>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="text-sm text-gray-700 truncate max-w-md">{{ alert.remarks || 'N/A' }}</div>
+                  <div class="text-sm text-gray-700 truncate max-w-md">{{ alert.popupmessage || 'N/A' }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ formatDate(alert.creation) }}</td>
               </tr>
@@ -158,16 +162,16 @@
                 </div>
               </div>
 
-              <!-- Remarks Field - Full Width Large Textarea -->
+              <!-- Popup Message Field - Full Width Large Textarea -->
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">
-                  Remarks <span class="text-red-500">*</span>
+                  Popup Message <span class="text-red-500">*</span>
                 </label>
                 <textarea
-                  v-model="newAlert.remarks"
+                  v-model="newAlert.popupmessage"
                   rows="12"
                   class="w-full rounded-lg border border-gray-300 px-4 py-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-                  placeholder="Enter detailed remarks for this customer alert..."
+                  placeholder="Enter detailed popup message for this customer alert..."
                 ></textarea>
               </div>
             </div>
@@ -206,7 +210,7 @@ const customerOptions = ref<any[]>([]);
 const invalidCodeError = ref("");
 const showNewAlertForm = ref(false); // Toggle between list and form view
 const isSaving = ref(false);
-const newAlert = reactive({ customer_name: "", customer_code: "", remarks: "" });
+const newAlert = reactive({ customer_name: "", customer_code: "", popupmessage: "" });
 
 // Customer Code State
 const isFetchingCustomerName = ref(false);
@@ -224,7 +228,7 @@ async function fetchAlerts() {
   try {
     const data = await call("frappe.client.get_list", {
       doctype: "Customer Alert",
-      fields: ["name", "customer_name", "remarks", "creation"],
+      fields: ["name", "customer_code", "customer_name", "popupmessage", "creation"],
       order_by: "creation desc",
       limit_page_length: 999,
     });
@@ -374,10 +378,10 @@ function openCustomerSearchPopup() {
 async function handleCustomerSelected(customer: any) {
   console.log("Customer selected from popup:", customer);
   if (!customer) return;
-  
+
   isManuallySelectingCustomer.value = true;
   isUpdatingInternally.value = true;
-  
+
   try {
     safeSetField("customer_name", customer.name || customer.customer_name || "");
     safeSetField("customer_code", customer.custom_customercode || "");
@@ -393,7 +397,7 @@ async function handleCustomerSelected(customer: any) {
 function openNewAlertForm() {
   newAlert.customer_name = "";
   newAlert.customer_code = "";
-  newAlert.remarks = "";
+  newAlert.popupmessage = "";
   customerOptions.value = [];
   lastValidatedCustomerCode.value = "";
   showCustomerSearchPopup.value = false;
@@ -406,18 +410,23 @@ function cancelNewAlertForm() {
   showCustomerSearchPopup.value = false;
   newAlert.customer_name = "";
   newAlert.customer_code = "";
-  newAlert.remarks = "";
+  newAlert.popupmessage = "";
 }
 
 async function saveAlert() {
-  if (!newAlert.customer_name || !newAlert.customer_code || !newAlert.remarks) {
+  if (!newAlert.customer_name || !newAlert.customer_code || !newAlert.popupmessage) {
     $dialog({ title: "Missing Information", message: "Please fill all required fields" });
     return;
   }
   isSaving.value = true;
   try {
     await call("frappe.client.insert", {
-      doc: { doctype: "Customer Alert", customer_name: newAlert.customer_name, remarks: newAlert.remarks },
+      doc: { 
+        doctype: "Customer Alert", 
+        customer_code: newAlert.customer_code,
+        customer_name: newAlert.customer_name, 
+        popupmessage: newAlert.popupmessage 
+      },
     });
     showNewAlertForm.value = false;
     await fetchAlerts();
@@ -442,6 +451,9 @@ const formatDate = (date: string) => {
 const filteredAlerts = computed(() => {
   if (!searchQuery.value) return alerts.value;
   const query = searchQuery.value.toLowerCase();
-  return alerts.value.filter((item: any) => item.customer_name?.toLowerCase().includes(query));
+  return alerts.value.filter((item: any) => 
+    item.customer_name?.toLowerCase().includes(query) || 
+    item.customer_code?.toLowerCase().includes(query)
+  );
 });
 </script>

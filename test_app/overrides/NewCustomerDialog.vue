@@ -178,6 +178,16 @@
                 placeholder="Select Date"
               />
             </div>
+
+            <!-- Remarks (new field) -->
+            <div class="space-y-1 col-span-2">
+              <Input
+                v-model="state.custom_remarks"
+                label="Remarks"
+                type="text"
+                placeholder="Enter remarks"
+              />
+            </div>
           </div>
           
           <div class="float-right flex space-x-2">
@@ -225,6 +235,7 @@ const state = reactive({
   custom_email: "",
   custom_nooflicense: "",
   custom_dateofamclastpaid: "",
+  custom_remarks: "",      // <-- new field in state
 });
 
 // Create a resource for fetching products with proper error handling
@@ -253,14 +264,14 @@ const productOptions = createResource({
 });
 
 // Handle product search with debouncing
-let searchTimeout = null;
+let searchTimeout: any = null;
 function handleProductSearch(query) {
   if (searchTimeout) {
     clearTimeout(searchTimeout);
   }
 
   searchTimeout = setTimeout(() => {
-    const params = {
+    const params: any = {
       doctype: "Product",
       fields: ["name", "product", "status", "team"],
       order_by: "product asc",
@@ -297,6 +308,7 @@ const customerResource = createResource({
     state.custom_email = "";
     state.custom_nooflicense = "";
     state.custom_dateofamclastpaid = "";
+    state.custom_remarks = "";   // reset new field
 
     productOptions.data = [];
 
@@ -324,9 +336,10 @@ function addCustomer() {
   }
 
   // Extract the value from the Autocomplete object
-  const productValue = typeof state.custom_productname === 'object' 
-    ? state.custom_productname.value 
-    : state.custom_productname;
+  const productValue =
+    typeof state.custom_productname === "object"
+      ? state.custom_productname.value
+      : state.custom_productname;
 
   customerResource.submit({
     doc: {
@@ -348,6 +361,7 @@ function addCustomer() {
       custom_email: state.custom_email,
       custom_nooflicense: state.custom_nooflicense,
       custom_dateofamclastpaid: state.custom_dateofamclastpaid,
+      custom_remarks: state.custom_remarks,   // <-- send to HD Customer
     },
   });
 }
