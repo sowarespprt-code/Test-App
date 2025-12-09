@@ -1,0 +1,101 @@
+[
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "filters": [
+   {
+    "default": null,
+    "fieldname": "custom_customer_name",
+    "fieldtype": "Link",
+    "label": "Customer Name",
+    "mandatory": 0,
+    "options": "HD Customer",
+    "parent": "Custom Ticket Report",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "status",
+    "fieldtype": "Link",
+    "label": "Status",
+    "mandatory": 0,
+    "options": "HD Ticket Status",
+    "parent": "Custom Ticket Report",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "custom_customercode",
+    "fieldtype": "Check",
+    "label": "Customer Code",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Custom Ticket Report",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   }
+  ],
+  "is_standard": "Yes",
+  "javascript": "frappe.query_reports[\"Custom Ticket Report\"] = {\n\n};",
+  "json": "{}",
+  "letter_head": null,
+  "modified": "2025-12-08 10:25:53.045740",
+  "module": "Test App",
+  "name": "Custom Ticket Report",
+  "prepared_report": 0,
+  "query": "SELECT\n    name AS \"Ticket ID:Link/HD Ticket\",\n    subject AS \"Subject\",\n    status AS \"Status\",\n    priority AS \"Priority\",\n    owner AS \"Owner:Link/User\",\n    agent_group AS \"Agent Group:Link/HD Team\",\n    customer_name AS \"Customer Name:Link/HD Customer\"\nFROM\n    `tabHD Ticket`\nLEFT JOIN\n    `tabCustomer Name` ON `tabHD Ticket`.custom_customer_name = `tabCustomer Name`.name\nWHERE\n    `tabHD Ticket`.docstatus < 2\n    AND (IFNULL(%(status)s, '') = '' OR `tabHD Ticket`.status = %(status)s)\n    AND (IFNULL(%(customer_name)s, '') = '' OR `tabHD Ticket`.custom_customer_name = %(customer_name)s)\n\n",
+  "ref_doctype": "HD Ticket",
+  "reference_report": null,
+  "report_name": "Custom Ticket Report",
+  "report_script": "def execute(filters=None):\n    columns = [\n        {\"label\": \"Ticket ID\", \"fieldname\": \"name\", \"fieldtype\": \"Link\", \"options\": \"HD Ticket\", \"width\": 120},\n        {\"label\": \"Subject\", \"fieldname\": \"subject\", \"fieldtype\": \"Data\", \"width\": 200},\n        {\"label\": \"Status\", \"fieldname\": \"status\", \"fieldtype\": \"Select\", \"width\": 100},\n        {\"label\": \"Customer Name\", \"fieldname\": \"custom_customer_name\", \"fieldtype\": \"Link\", \"options\": \"HD Customer\", \"width\": 180},\n    ]\n\n    data = frappe.get_all(\n        \"HD Ticket\",\n        fields=[\"name\", \"subject\", \"status\", \"custom_customer_name\"],\n    )\n    return columns, data\n",
+  "report_type": "Script Report",
+  "roles": [
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "All"
+   },
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Agent Manager"
+   },
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Agent"
+   },
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Ticket Creator Agent"
+   },
+   {
+    "parent": "Custom Ticket Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HD Agent - Product Restricted"
+   }
+  ],
+  "timeout": 0
+ }
+]

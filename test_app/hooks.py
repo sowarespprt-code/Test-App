@@ -290,6 +290,12 @@ fixtures = [
     {
         "dt": "Property Setter",
         "filters": [["doc_type", "in", ["HD Ticket", "HD Customer"]]]
+    },
+    {
+        "dt": "Report",
+        "filters": {
+            "name": ["in", ["Custom Ticket Report"]]
+        }
     }
 ]
 

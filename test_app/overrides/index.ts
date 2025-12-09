@@ -205,6 +205,22 @@ const routes = [
     component: () => import("@/pages/CustomerAlertDetail.vue"),
     props: true,
   },
+  {
+    path: "/show-summary",
+    name: "ShowSummary",
+    // small component that redirects to the Frappe report URL
+    component: {
+      setup() {
+        if (typeof window !== "undefined") {
+          window.location.href = "/app/query-report/Custom Ticket Report";
+        }
+        return () => null;
+      },
+    },
+    meta: {
+      auth: true,
+    },
+  },
 ];
 
 const handleMobileView = (componentName) => {

@@ -92,7 +92,6 @@ const router = useRouter();
 const route = useRoute();
 const showUpdateBanner = ref(false);
 const updateMessage = ref("");
-const isAutoRefreshActive = ref(true);
 
 const {
   getCurrentUserViews,
@@ -132,17 +131,15 @@ const debouncedReload = (message: string = "Tickets updated") => {
   if (reloadTimeout) {
     clearTimeout(reloadTimeout);
   }
-  
+
   reloadTimeout = setTimeout(() => {
     if (listViewRef.value?.reload) {
       listViewRef.value.reload();
       updateMessage.value = message;
       showUpdateBanner.value = true;
-      
-      // Play notification sound
+
       playNotificationSound();
-      
-      // Auto-hide banner after 4 seconds
+
       if (bannerTimeout) {
         clearTimeout(bannerTimeout);
       }
@@ -162,53 +159,64 @@ const dismissBanner = () => {
 
 const playNotificationSound = () => {
   try {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE=');
+    const audio = new Audio(
+      "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE="
+    );
     audio.volume = 0.3;
-    audio.play().catch(() => {
-      // Silently fail if audio can't play
-    });
-  } catch (error) {
-    // Silently fail
-  }
+    audio.play().catch(() => {});
+  } catch (error) {}
 };
 
-// Get row class based on status for color coding
+// Row class for SLA coloring
 const getRowClass = (row: any) => {
   const status = getStatus(row.status);
   if (!status) return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
-  
+
   const statusColor = status?.color || status?.parsed_color;
-  
+
   const colorMap = {
-    'red': '!bg-red-100 hover:!bg-red-200 dark:!bg-red-900/30 dark:hover:!bg-red-900/40',
-    'light-red': '!bg-red-50 hover:!bg-red-100 dark:!bg-red-900/20 dark:hover:!bg-red-900/30',
-    'orange': '!bg-orange-100 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:hover:!bg-orange-900/40',
-    'light-orange': '!bg-orange-50 hover:!bg-orange-100 dark:!bg-orange-900/20 dark:hover:!bg-orange-900/30',
-    'yellow': '!bg-yellow-100 hover:!bg-yellow-200 dark:!bg-yellow-900/30 dark:hover:!bg-yellow-900/40',
-    'light-yellow': '!bg-yellow-50 hover:!bg-yellow-100 dark:!bg-yellow-900/20 dark:hover:!bg-yellow-900/30',
-    'green': '!bg-green-100 hover:!bg-green-200 dark:!bg-green-900/30 dark:hover:!bg-green-900/40',
-    'light-green': '!bg-green-50 hover:!bg-green-100 dark:!bg-green-900/20 dark:hover:!bg-green-900/30',
-    'blue': '!bg-blue-100 hover:!bg-blue-200 dark:!bg-blue-900/30 dark:hover:!bg-blue-900/40',
-    'light-blue': '!bg-blue-50 hover:!bg-blue-100 dark:!bg-blue-900/20 dark:hover:!bg-blue-900/30',
-    'purple': '!bg-purple-100 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:hover:!bg-purple-900/40',
-    'light-purple': '!bg-purple-50 hover:!bg-purple-100 dark:!bg-purple-900/20 dark:hover:!bg-purple-900/30',
-    'pink': '!bg-pink-100 hover:!bg-pink-200 dark:!bg-pink-900/30 dark:hover:!bg-pink-900/40',
-    'light-pink': '!bg-pink-50 hover:!bg-pink-100 dark:!bg-pink-900/20 dark:hover:!bg-pink-900/30',
-    'gray': '!bg-gray-100 hover:!bg-gray-200 dark:!bg-gray-700 dark:hover:!bg-gray-600',
-    'light-gray': '!bg-gray-50 hover:!bg-gray-100 dark:!bg-gray-800 dark:hover:!bg-gray-700',
+    red: "!bg-red-100 hover:!bg-red-200 dark:!bg-red-900/30 dark:hover:!bg-red-900/40",
+    "light-red":
+      "!bg-red-50 hover:!bg-red-100 dark:!bg-red-900/20 dark:hover:!bg-red-900/30",
+    orange:
+      "!bg-orange-100 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:hover:!bg-orange-900/40",
+    "light-orange":
+      "!bg-orange-50 hover:!bg-orange-100 dark:!bg-orange-900/20 dark:hover:!bg-orange-900/30",
+    yellow:
+      "!bg-yellow-100 hover:!bg-yellow-200 dark:!bg-yellow-900/30 dark:hover:!bg-yellow-900/40",
+    "light-yellow":
+      "!bg-yellow-50 hover:!bg-yellow-100 dark:!bg-yellow-900/20 dark:hover:!bg-yellow-900/30",
+    green:
+      "!bg-green-100 hover:!bg-green-200 dark:!bg-green-900/30 dark:hover:!bg-green-900/40",
+    "light-green":
+      "!bg-green-50 hover:!bg-green-100 dark:!bg-green-900/20 dark:hover:!bg-green-900/30",
+    blue: "!bg-blue-100 hover:!bg-blue-200 dark:!bg-blue-900/30 dark:hover:!bg-blue-900/40",
+    "light-blue":
+      "!bg-blue-50 hover:!bg-blue-100 dark:!bg-blue-900/20 dark:hover:!bg-blue-900/30",
+    purple:
+      "!bg-purple-100 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:hover:!bg-purple-900/40",
+    "light-purple":
+      "!bg-purple-50 hover:!bg-purple-100 dark:!bg-purple-900/20 dark:hover:!bg-purple-900/30",
+    pink:
+      "!bg-pink-100 hover:!bg-pink-200 dark:!bg-pink-900/30 dark:hover:!bg-pink-900/40",
+    "light-pink":
+      "!bg-pink-50 hover:!bg-pink-100 dark:!bg-pink-900/20 dark:hover:!bg-pink-900/30",
+    gray: "!bg-gray-100 hover:!bg-gray-200 dark:!bg-gray-700 dark:hover:!bg-gray-600",
+    "light-gray":
+      "!bg-gray-50 hover:!bg-gray-100 dark:!bg-gray-800 dark:hover:!bg-gray-700",
   };
-  
+
   if (statusColor) {
-    const colorKey = statusColor.toLowerCase().replace(/\s+/g, '-');
+    const colorKey = statusColor.toLowerCase().replace(/\s+/g, "-");
     if (colorMap[colorKey]) {
       return colorMap[colorKey];
     }
   }
-  
+
   return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
 };
 
-// List view options
+// List view options (same as new file, no behavioral change except rowClass)
 const options = {
   doctype: "HD Ticket",
   columnConfig: {
@@ -281,7 +289,11 @@ function handleResponseByField(row: any, item: string) {
       variant: "outline",
     });
   } else {
-    return h(Tooltip, { text: dayjs(item).long() }, () => dayjs.tz(item).fromNow());
+    return h(
+      Tooltip,
+      { text: dayjs(item).long() },
+      () => dayjs.tz(item).fromNow()
+    );
   }
 }
 
@@ -306,12 +318,22 @@ function handleResolutionByField(row: any, item: string) {
       variant: "outline",
     });
   } else {
-    return h(Tooltip, { text: dayjs(item).long() }, () => dayjs.tz(item).fromNow());
+    return h(
+      Tooltip,
+      { text: dayjs(item).long() },
+      () => dayjs.tz(item).fromNow()
+    );
   }
 }
 
-// Export functionality
-async function handleExport({ export_type, export_all }: { export_type: "CSV" | "Excel"; export_all: boolean }) {
+// Export functionality (your new version kept)
+async function handleExport({
+  export_type,
+  export_all,
+}: {
+  export_type: "CSV" | "Excel";
+  export_all: boolean;
+}) {
   const list = listViewRef.value?.list;
   if (!list) return;
 
@@ -349,7 +371,7 @@ const slaStatusColorMap = {
   Paused: "blue",
 };
 
-// View management
+// ===== OLD VIEW / ADD COLUMN LOGIC (UNCHANGED) =====
 let viewDialog = reactive({
   show: false,
   view: {
@@ -370,13 +392,14 @@ const dropdownOptions = computed(() => {
           icon: "align-justify",
           onClick: () =>
             router.push({
-              name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
+              name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent"
             }),
         },
       ],
     },
-  ];
+  ];  //
 
+  // Saved Views
   if (getCurrentUserViews.value?.length !== 0) {
     items.push({
       group: "Saved Views",
@@ -439,7 +462,6 @@ const viewActions = (view) => {
       ],
     },
   ];
-  
   if (!_view.public || isManager) {
     actions[0].items.push({
       label: "Edit",
@@ -452,18 +474,19 @@ const viewActions = (view) => {
         viewDialog.show = true;
       },
     });
-    
     if (!_view.public) {
       actions[0].items.push({
         label: _view?.pinned ? "Unpin View" : "Pin View",
         icon: h(_view?.pinned ? UnpinIcon : PinIcon, { class: "h-4 w-4" }),
         onClick: () => {
-          const newView = { name: _view.name, pinned: !_view.pinned };
+          const newView = {
+            name: _view.name,
+          };
+          newView["pinned"] = !_view.pinned;
           updateView(newView);
         },
       });
     }
-    
     if (isManager && !isCustomerPortal.value) {
       actions[0].items.push({
         label: _view?.public ? "Make Private" : "Make Public",
@@ -472,12 +495,16 @@ const viewActions = (view) => {
           class: "h-4 w-4",
         }),
         onClick: () => {
-          const newView = { name: _view.name, public: !_view.public };
+          const newView = {
+            name: _view.name,
+            public: !_view.public,
+          };
 
           if (_view.public) {
             $dialog({
               title: `Make ${_view.label} private?`,
-              message: "This view is currently public. Changing it to private will hide it for all the users.",
+              message:
+                "This view is currently public. Changing it to private will hide it for all the users.",
               actions: [
                 {
                   label: "Confirm",
@@ -495,7 +522,6 @@ const viewActions = (view) => {
         },
       });
     }
-    
     actions.push({
       group: "Delete View",
       hideLabel: true,
@@ -506,8 +532,11 @@ const viewActions = (view) => {
           onClick: () => {
             $dialog({
               title: `Delete ${_view.label}?`,
-              message: `Are you sure you want to delete this view? ${
-                _view.public ? "This view is public, and will be removed for all users." : ""
+              message: `Are you sure you want to delete this view?
+              ${
+                _view.public
+                  ? "This view is public, and will be removed for all users."
+                  : ""
               }`,
               actions: [
                 {
@@ -516,7 +545,9 @@ const viewActions = (view) => {
                   onClick({ close }) {
                     if (route.query.view === _view.name) {
                       router.push({
-                        name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
+                        name: isCustomerPortal.value
+                          ? "TicketsCustomer"
+                          : "TicketAgent",
                       });
                     }
                     deleteView(_view.name);
@@ -546,7 +577,9 @@ function parseViews(views: View[]) {
         };
         router.push({
           name: view.route_name,
-          query: { view: view.name },
+          query: {
+            view: view.name,
+          },
         });
       },
     };
@@ -589,6 +622,7 @@ function handleView(viewInfo, action) {
     };
   }
 
+  // createView
   createView(view, (d) => {
     currentView.value = {
       label: d.label || "List",
@@ -596,8 +630,11 @@ function handleView(viewInfo, action) {
     };
     router.push({
       name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
-      query: { view: d.name },
+      query: {
+        view: d.name,
+      },
     });
+
     handleSuccess();
   });
 }
@@ -606,7 +643,6 @@ function handleSuccess(msg = "created") {
   toast.success(`View ${msg}`);
   resetState();
 }
-
 function resetState() {
   viewDialog.show = false;
   viewDialog.view.label = "";
@@ -707,4 +743,25 @@ onBeforeUnmount(() => {
   
   console.log("✅ Cleanup complete");
 });
+
+usePageMeta(() => {
+  return {
+    title: "Tickets",
+  };
+});
 </script>
+
+<style scoped>
+/* Fix z-index issue for column dropdowns */
+:deep(.column-settings-dropdown),
+:deep(.frappe-dropdown-menu),
+:deep([data-testid="column-settings"]) {
+  z-index: 9999 !important;
+}
+
+/* Ensure ListViewBuilder column settings appear above other dropdowns */
+:deep(.list-view-builder .dropdown-menu),
+:deep(.list-view-builder [role="menu"]) {
+  z-index: 10000 !important;
+}
+</style>

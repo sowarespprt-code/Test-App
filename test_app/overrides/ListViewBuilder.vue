@@ -39,7 +39,7 @@
       selectable: options.selectable,
       showTooltip: false,
       resizeColumn: true,
-      rowClass: options.rowClass,
+      rowClass: getRowClass,
       getRowRoute: (row) => ({
         name: options.rowRoute?.name,
         params: { [options.rowRoute?.prop]: row.name },
@@ -58,7 +58,7 @@
     </ListHeader>
     <ListRows
       :rows="rows"
-      :row-class="options.rowClass"
+      :row-class="getRowClass"
       v-slot="{ idx, column, item, row }"
       :group-by-actions="options.groupByActions"
       @scrollend="handleListScroll"
@@ -555,6 +555,31 @@ function handleFieldClick(e: MouseEvent, column, row, item) {
   applyFilters({ ...defaultParams.filters, [column.key]: item });
 }
 
+// NEW FUNCTION: Get row class for urgent + not assigned tickets
+function getRowClass(row: any) {
+  let classes = [];
+
+  // Apply urgent style only when BOTH conditions match
+  if (
+    options.value.doctype === "HD Ticket" &&
+    row.priority === "Urgent" &&
+    row.status === "Not Assigned"
+  ) {
+    classes.push("urgent-ticket-row");
+  }
+
+  // Run user-provided custom rowClass if exists
+  if (options.value.rowClass) {
+    const customClass = options.value.rowClass(row);
+    if (customClass) {
+      classes.push(customClass);
+    }
+  }
+
+  return classes.join(" ");
+}
+
+
 const showViewControls = computed(() => {
   return (
     !options.value.hideViewControls &&
@@ -747,3 +772,63 @@ onMounted(async () => {
 
 defineExpose(exposeFunctions);
 </script>
+
+<style scoped>
+/* Neon Orange Urgent border + glowing background */
+:deep(.urgent-ticket-row) {
+  position: relative;
+  background: rgba(255, 140, 0, 0.12) !important;
+  box-shadow: inset 0 0 18px rgba(255, 115, 0, 0.35);
+  animation: urgent-glow 1.8s ease-in-out infinite;
+  overflow: hidden;
+}
+
+@keyframes urgent-glow {
+  0%, 100% {
+    box-shadow: inset 0 0 18px rgba(255, 115, 0, 0.35),
+                0 0 12px rgba(255, 140, 0, 0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 28px rgba(255, 115, 0, 0.6),
+                0 0 22px rgba(255, 140, 0, 0.8);
+  }
+}
+
+/* Racing streak highlight */
+:deep(.urgent-ticket-row::before) {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 160, 69, 0.5),
+    transparent
+  );
+  animation: streak-run 1.8s linear infinite;
+}
+
+@keyframes streak-run {
+  0% { left: -120%; }
+  100% { left: 120%; }
+}
+
+@keyframes urgent-badge-pulse {
+  0%, 100% { transform: translateY(-50%) scale(1); }
+  50% { transform: translateY(-50%) scale(1.15); }
+}
+
+/* shake on hover */
+:deep(.urgent-ticket-row:hover) {
+  animation: shake 0.35s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+</style>

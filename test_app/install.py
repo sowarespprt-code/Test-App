@@ -47,6 +47,7 @@ def install_overrides():
         "ListRows.vue" : "desk/src/components/ListRows.vue",
         "ListViewBuilder.vue" : "desk/src/components/ListViewBuilder.vue",
         "Tickets.vue" : "desk/src/pages/ticket/Tickets.vue",
+        # "Sidebar.vue" : "desk/src/components/layouts/Sidebar.vue",
         
         # "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
         # "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",

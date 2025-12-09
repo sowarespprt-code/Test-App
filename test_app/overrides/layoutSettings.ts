@@ -6,6 +6,7 @@ import LucideContact2 from "~icons/lucide/contact-2";
 import LucideBox from "~icons/lucide/box";
 import PhoneIcon from "~icons/lucide/phone";
 import LucideBell from "~icons/lucide/bell";
+import LucidePanelLeft from "~icons/lucide/layout-panel-left";
 
 export const agentPortalSidebarOptions = [
   {
@@ -42,6 +43,13 @@ export const agentPortalSidebarOptions = [
     label : "Customer Alert",
     icon : LucideBell,
     to : "CustomerAlertList", 
+  },
+  {
+    label: "Show summary",          // NEW
+    icon: LucidePanelLeft,          // NEW icon
+    to: "ShowSummary",
+    external: true,
+    href: "/app/query-report/Custom Ticket Report",              // MUST match route name below
   },
   {
     label: "Call Logs",

@@ -1,7 +1,5 @@
 <template>
   <FrappeUIProvider>
-
-
     <PortalRoot />
   </FrappeUIProvider>
   <KeymapDialog />
@@ -14,25 +12,11 @@ import KeymapDialog from "@/pages/KeymapDialog.vue";
 import { useConfigStore } from "@/stores/config";
 import { stopSession } from "@/telemetry";
 import { FrappeUIProvider, toast } from "frappe-ui";
-import { computed, defineAsyncComponent, h, ref, onMounted, onUnmounted } from "vue";
+import { computed, defineAsyncComponent, h, onMounted, onUnmounted } from "vue";
 import Wifi from "~icons/lucide/wifi";
 import WifiOff from "~icons/lucide/wifi-off";
 import { useAuthStore } from "./stores/auth";
 useConfigStore();
-
-const isDark = ref(false);
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value;
-
-  if (isDark.value) {
-    document.documentElement.classList.add("dark");
-    localStorage.setItem("helpdesk_theme", "dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-    localStorage.setItem("helpdesk_theme", "light");
-  }
-};
 
 onMounted(() => {
   window.addEventListener("online", () => {
@@ -48,13 +32,7 @@ onMounted(() => {
       icon: h(WifiOff),
     });
   });
-  const savedTheme = localStorage.getItem("helpdesk_theme");
-  if (savedTheme === "dark") {
-    isDark.value = true;
-    document.documentElement.classList.add("dark");
-  }
 });
-
 
 const AgentPortalRoot = defineAsyncComponent(
   () => import("@/pages/desk/AgentRoot.vue")
