@@ -13,14 +13,15 @@ def execute(filters=None):
 
 def get_columns():
     return [
-        {"label": "SL No", "fieldname": "sl_no", "fieldtype": "Int", "width": 80},
         {"label": "Ticket ID", "fieldname": "name", "fieldtype": "Link", "options": "HD Ticket", "width": 120},
         {"label": "Created Date", "fieldname": "creation", "fieldtype": "Datetime", "width": 170},
         {"label": "Subject", "fieldname": "subject", "fieldtype": "Data", "width": 200},
         {"label": "Customer", "fieldname": "custom_customer_name", "fieldtype": "Link", "options": "HD Customer", "width": 150},
         {"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 120},
         {"label": "Priority", "fieldname": "priority", "fieldtype": "Data", "width": 120},
-        {"label": "Owner", "fieldname": "owner", "fieldtype": "Data", "width": 120},
+        {"label": "Assigned To", "fieldname": "assigned_to", "fieldtype": "Data", "width": 150},
+        {"label": "Latest Comment", "fieldname": "latest_comment", "fieldtype": "Data", "width": 300},
+
     ]
 
 
@@ -29,23 +30,40 @@ def get_data(filters):
 
     # Filter by dates
     if filters.get("from_date"):
-        conditions += f" AND DATE(creation) >= '{filters.get('from_date')}'"
+        conditions += f" AND DATE(t.creation) >= '{filters.get('from_date')}'"
     if filters.get("to_date"):
-        conditions += f" AND DATE(creation) <= '{filters.get('to_date')}'"
+        conditions += f" AND DATE(t.creation) <= '{filters.get('to_date')}'"
+
 
     # Optional filters
     if filters.get("status"):
-        conditions += f" AND status = '{filters.get('status')}'"
+        conditions += f" AND t.status = '{filters.get('status')}'"
     if filters.get("priority"):
-        conditions += f" AND priority = '{filters.get('priority')}'"
+        conditions += f" AND t.priority = '{filters.get('priority')}'"
     if filters.get("custom_customer_name"):
-        conditions += f" AND custom_customer_name = '{filters.get('custom_customer_name')}'"
+        conditions += f" AND t.custom_customer_name = '{filters.get('custom_customer_name')}'"
 
     return frappe.db.sql(f"""
         SELECT
-            name, creation, subject, custom_customer_name,
-            status, priority, owner
-        FROM `tabHD Ticket`
+            t.name,
+            t.creation,
+            t.subject,
+            t.custom_customer_name,
+            t.status,
+            t.priority,
+            GROUP_CONCAT(DISTINCT a.owner SEPARATOR ', ') AS assigned_to,
+            COALESCE(GROUP_CONCAT(DISTINCT c.content SEPARATOR ' || '), '') AS latest_comment
+        FROM `tabHD Ticket` t
+        LEFT JOIN `tabToDo` a 
+            ON a.reference_type = 'HD Ticket' 
+            AND a.reference_name = t.name
+        LEFT JOIN `tabHD Ticket Comment` c
+            ON c.reference_ticket = t.name
         WHERE {conditions}
-        ORDER BY creation DESC
+        GROUP BY t.name
+        ORDER BY t.creation DESC
     """, as_dict=True)
+
+
+
+

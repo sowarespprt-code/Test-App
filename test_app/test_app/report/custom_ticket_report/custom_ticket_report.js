@@ -7,18 +7,30 @@ function debounce(fn, delay) {
 }
 
 frappe.query_reports["Custom Ticket Report"] = {
+    add_index: 0,
+
+    initial_depth: 1,
+
+    get_datatable_options(options) {
+        // Hide rows on first load
+        if (!frappe.query_report.filters_set) {
+            return Object.assign(options, {
+                data: []   // Prevent automatic rendering
+            });
+        }
+        return options;
+    },
+    
     filters: [
         {
             fieldname: "from_date",
             label: "From Date",
             fieldtype: "Date",
-            default: frappe.datetime.month_start()
         },
         {
             fieldname: "to_date",
             label: "To Date",
             fieldtype: "Date",
-            default: frappe.datetime.month_end()
         },
         {
             fieldname: "custom_customer_name",
@@ -31,12 +43,111 @@ frappe.query_reports["Custom Ticket Report"] = {
             label: "Priority",
             fieldtype: "Select",
             options: "\nLow\nMedium\nHigh\nUrgent"
+        },
+        {
+            fieldname: "status",
+            label: "Status",
+            fieldtype: "Select",
+            options: "\nNot Assigned\nIn Progress\nOther\nClosed"
         }
     ],
     
     onload: function(report) {
+         report.set_filter_value("from_date", "");
+        report.set_filter_value("to_date", "");
+        report.set_filter_value("custom_customer_name", "");
+        report.set_filter_value("priority", "");
+        report.set_filter_value("status", "");
+        
+        // Clear the datatable on load
+        if (report.datatable) {
+            report.datatable.refresh([]);
+        }
         // Add Search Customer button AFTER priority field (at the end, same line)
+         // ✨ CHANGE 2: Clear the datatable on load to show empty state
         setTimeout(function() {
+            if (report.datatable && report.datatable.datamanager) {
+                report.datatable.refresh([]);
+            }
+        }, 100);
+        
+        setTimeout(function() {
+            // ✨ FIRST: Disable auto-refresh for ALL filter fields
+            setTimeout(function() {
+                // ✨ Disable date field auto-refresh
+                const from_date = report.get_filter("from_date");
+                const to_date = report.get_filter("to_date");
+
+                if (from_date) {
+                    from_date.df.onchange = () => {};     // disable frappe handler
+                    from_date.$input.off("change");       // disable DOM event
+                    from_date.$input.off("blur");         // VERY important
+                    from_date.$input.off("input");        // internal trigger
+                }
+
+                if (to_date) {
+                    to_date.df.onchange = () => {};
+                    to_date.$input.off("change");
+                    to_date.$input.off("blur");
+                    to_date.$input.off("input");
+                }
+                
+                // Disable customer field auto-refresh
+                report.page.fields_dict.custom_customer_name.$input.off('change awesomplete-selectcomplete');
+                
+                // Disable priority field auto-refresh
+                report.page.fields_dict.priority.$input.off('change');
+                
+                // Disable status field auto-refresh
+                report.page.fields_dict.status.$input.off('change');
+                
+                // ✨ CRITICAL: Completely disable onchange handlers
+                report.page.fields_dict.from_date.df.onchange = null;
+                report.page.fields_dict.to_date.df.onchange = null;
+                report.page.fields_dict.priority.df.onchange = null;
+                report.page.fields_dict.status.df.onchange = null;
+            }, 2000);
+
+            setTimeout(() => {
+                // ✨ Disable from_date filter
+                const from_date_filter = report.get_filter('from_date');
+                if (from_date_filter) {
+                    from_date_filter.df.onchange = null;
+                    from_date_filter.$input.off('change');
+                    from_date_filter.$input.off('blur');
+                }
+                
+                // ✨ Disable to_date filter
+                const to_date_filter = report.get_filter('to_date');
+                if (to_date_filter) {
+                    to_date_filter.df.onchange = null;
+                    to_date_filter.$input.off('change');
+                    to_date_filter.$input.off('blur');
+                }
+                
+                // Disable customer filter
+                const customer_filter = report.get_filter('custom_customer_name');
+                if (customer_filter) {
+                    customer_filter.df.onchange = () => {};  // disable refresh
+                    customer_filter.$input.off('awesomplete-selectcomplete');
+                    customer_filter.$input.off('focusout');
+                    customer_filter.$input.off('change');
+                }
+                
+                // ✨ Double-check: Disable priority and status onchange again
+                const priority_filter = report.get_filter('priority');
+                if (priority_filter) {
+                    priority_filter.df.onchange = null;
+                    priority_filter.$input.off('change');
+                }
+                
+                const status_filter = report.get_filter('status');
+                if (status_filter) {
+                    status_filter.df.onchange = null;
+                    status_filter.$input.off('change');
+                }
+            }, 2200);
+
             // Make sure filters are displayed inline first
             $('.page-form .form-section').css({
                 'display': 'flex',
@@ -44,41 +155,42 @@ frappe.query_reports["Custom Ticket Report"] = {
                 'gap': '10px',
                 'align-items': 'flex-end'
             });
+
             
-            const priority_wrapper = report.page.fields_dict.priority.$wrapper;
             
-            if (priority_wrapper) {
-                // Remove existing button if any
-                $('#customer-search-btn-wrapper').remove();
+            const custom_customer_name_wrapper = report.page.fields_dict.custom_customer_name.$wrapper;
+            
+            if (custom_customer_name_wrapper) {
+               
                 
                 // Create button wrapper with inline-block display
                 const search_button_wrapper = $(`
                     <div id="customer-search-btn-wrapper" class="frappe-control" 
-                         style="display: inline-block; vertical-align: top; min-width: 150px;">
+                         style="display: inline-block; vertical-align: top; min-width: auto; margin-left: 4px !important;">
                         <div class="form-group" style="margin-bottom: 0;">
                             <div class="clearfix">
-                                <label class="control-label" style="padding-right: 0px; visibility: hidden;">Search</label>
+                                <label class="control-label" style="display:none;">Search</label>
                             </div>
                             <div class="control-input-wrapper">
                                 <div class="control-input">
                                     <button class="btn btn-default btn-sm" 
                                             id="customer-search-btn"
-                                            style="width: 100%; 
+                                            style="width: 100px; 
                                                    background: #000; 
                                                    color: #fff; 
                                                    border: 1px solid #000;
                                                    border-radius: var(--border-radius);
                                                    font-weight: 500;
-                                                   font-size: 12px;
+                                                   font-size: 8px;
                                                    display: flex;
                                                    align-items: center;
                                                    justify-content: center;
-                                                   gap: 6px;
+                                                   gap: 2px;
                                                    transition: all 0.2s;
                                                    cursor: pointer;
                                                    padding: 5px 12px;
                                                    white-space: nowrap;">
-                                        <svg style="width: 14px; height: 14px; flex-shrink: 0;" 
+                                        <svg style="width: 13px; height: 13px; flex-shrink: 0;" 
                                              xmlns="http://www.w3.org/2000/svg" 
                                              viewBox="0 0 24 24" 
                                              fill="none" 
@@ -98,7 +210,7 @@ frappe.query_reports["Custom Ticket Report"] = {
                 `);
                 
                 // Insert AFTER priority field
-                priority_wrapper.after(search_button_wrapper);
+                custom_customer_name_wrapper.after(search_button_wrapper);
                 
                 // Add hover effect
                 $('#customer-search-btn').hover(
@@ -125,21 +237,102 @@ frappe.query_reports["Custom Ticket Report"] = {
             }
         }, 600);
 
-        // NO auto-refresh bindings here: typing in filters will not refresh or clear values
+         // Add Show Report button next to Actions
+        setTimeout(function() {
+            // Check if button already exists
+            if (!$('#show-report-btn').length) {
+                const show_report_btn = $(`
+                    <button class="btn btn-default btn-sm" 
+                            id="show-report-btn"
+                            style="background: #000; 
+                                   color: #fff; 
+                                   border: 1px solid #000;
+                                   border-radius: var(--border-radius);
+                                   font-weight: 500;
+                                   margin-left: 8px;
+                                   padding: 6px 14px;
+                                   transition: all 0.2s;
+                                   cursor: pointer;">
+                        Show Report
+                    </button>
+                `);
+                
+                // Insert after the grey Actions button
+                $('.page-head-content .standard-actions').append(show_report_btn);
+                
+                // Add hover effect
+                $('#show-report-btn').hover(
+                    function() {
+                        $(this).css({
+                            'background': '#333',
+                            'box-shadow': '0 1px 3px rgba(0,0,0,0.12)'
+                        });
+                    },
+                    function() {
+                        $(this).css({
+                            'background': '#000',
+                            'box-shadow': 'none'
+                        });
+                    }
+                );
+                
+                // Add click handler to refresh report
+                $('#show-report-btn').on('click', function() {
+                    report.refresh();
+                });
+            }
+        }, 800);
 
+        // ✨ CHANGE 4: Function to hide column filter inputs
+        function hide_row_filters() {
+            $('.dt-row-filter').hide();
+            $('.dt-filter').hide();
+            $('.data-table .form-control').hide();
+            // ✨ NEW: More aggressive hiding of column filter inputs
+            $('.dt-cell--header input[type="text"]').hide();
+            $('.dt-cell--header .dt-dropdown').hide();
+            $('.dt-scrollable .dt-cell--header input').hide();
+        }
+
+        // ✨ CHANGE 5: Initial hide - multiple attempts for reliability
+        setTimeout(hide_row_filters, 100);
+        setTimeout(hide_row_filters, 300);
+        setTimeout(hide_row_filters, 500);
+        setTimeout(hide_row_filters, 1000);
+
+        // ✨ CHANGE 6: Hide again whenever report refreshes (fixed implementation)
+        const originalRefresh = report.refresh.bind(report);
+        report.refresh = function() {
+            originalRefresh();
+            setTimeout(hide_row_filters, 100);
+            setTimeout(hide_row_filters, 300);
+        };
+
+        // ✨ CHANGE 7: Hide again when data table re-renders (very important)
+        $(document).on('data-table-render', function () {
+            hide_row_filters();
+        });
+
+        // ✨ CHANGE 8: Monitor for any DOM changes and hide filters
+        const observer = new MutationObserver(function() {
+            hide_row_filters();
+        });
+        
+        setTimeout(function() {
+            const reportWrapper = document.querySelector('.report-wrapper');
+            if (reportWrapper) {
+                observer.observe(reportWrapper, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }, 1000);
+        
         // Make report mobile responsive
         add_mobile_styles();
-        
-        // Export actions
-        report.page.add_action_item(__("Export Excel"), function() {
-            export_report(report, "xlsx");
-        });
-        
-        report.page.add_action_item(__("Export CSV"), function() {
-            export_report(report, "csv");
-        });
     }
 };
+
 
 // Add mobile responsive styles
 function add_mobile_styles() {
@@ -207,27 +400,7 @@ function add_mobile_styles() {
     }
 }
 
-// Export function
-function export_report(report, file_format) {
-    frappe.call({
-        method: "frappe.desk.query_report.run",
-        type: "GET",
-        args: {
-            report_name: report.report_name,
-            filters: report.get_values(),
-            file_format_type: file_format
-        },
-        callback: function(r) {
-            if (!r.exc && r.message) {
-                const url = r.message;
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = report.report_name + "." + file_format;
-                link.click();
-            }
-        }
-    });
-}
+
 
 // Customer Search Popup
 function show_customer_search_popup(report) {
