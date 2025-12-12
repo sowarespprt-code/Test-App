@@ -82,24 +82,27 @@ const customizations = inject(CustomizationSymbol);
 const { getFields, getField } = getMeta("HD Ticket");
 const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
 
-// ✅ Virtual fields state
+// Virtual fields state (includes popup messages from localStorage)
 const virtualFields = ref({
   custom_customercode: "",
   custom_product: "",
+  custom_popup_messages: "", // ← Loaded from localStorage
 });
 
-// ✅ Fetch virtual fields from HD Customer based on customer_name
+// Fetch virtual fields from HD Customer and localStorage
 async function loadVirtualFields() {
   const customerName = ticket?.value?.doc?.custom_customer_name;
+  const ticketName = ticket?.value?.doc?.name;
   
   if (!customerName) {
     console.log("[DETAILS TAB] ⚠️ No customer name available");
     return;
   }
 
-  console.log("[DETAILS TAB] 📥 Fetching virtual fields for:", customerName);
+  console.log("[DETAILS TAB] 📥 Fetching virtual fields for:", customerName, "Ticket:", ticketName);
 
   try {
+    // Fetch customer code and product name
     const result = await call("frappe.client.get_value", {
       doctype: "HD Customer",
       filters: { name: customerName },
@@ -116,9 +119,65 @@ async function loadVirtualFields() {
       virtualFields.value.custom_product = result.custom_productname || "";
     }
 
+    // ✅ CRITICAL: Load popup messages from localStorage
+    if (ticketName) {
+      const storageKey = `ticket_popup_${ticketName}`;
+      const storedPopupMessages = localStorage.getItem(storageKey);
+      
+      if (storedPopupMessages) {
+        virtualFields.value.custom_popup_messages = storedPopupMessages;
+        console.log("[DETAILS TAB] ✅ Popup messages loaded from localStorage:", storedPopupMessages);
+      } else {
+        // Fallback: Try to fetch from Customer Alert if not in localStorage
+        console.log("[DETAILS TAB] ⚠️ No popup messages in localStorage, trying Customer Alert...");
+        await fetchCustomerAlerts(customerName);
+      }
+    }
+
     console.log("[DETAILS TAB] ✅ Virtual fields loaded:", virtualFields.value);
   } catch (error) {
     console.error("[DETAILS TAB] ❌ Error fetching virtual fields:", error);
+  }
+}
+
+// Fallback: Fetch customer alerts if localStorage doesn't have the data
+async function fetchCustomerAlerts(customerName: string) {
+  try {
+    const customerCode = virtualFields.value.custom_customercode;
+    let result: any[] = [];
+    
+    // Try by customer_code first
+    if (customerCode) {
+      result = await call('frappe.client.get_list', {
+        doctype: 'Customer Alert',
+        filters: { customer_code: customerCode },
+        fields: ['name', 'popupmessage', 'modified'],
+        order_by: 'modified desc',
+        limit: 10
+      });
+    }
+    
+    // Fallback to customer_name
+    if (!result || result.length === 0) {
+      result = await call('frappe.client.get_list', {
+        doctype: 'Customer Alert',
+        filters: { customer_name: customerName },
+        fields: ['name', 'popupmessage', 'modified'],
+        order_by: 'modified desc',
+        limit: 10
+      });
+    }
+    
+    if (result && result.length > 0) {
+      virtualFields.value.custom_popup_messages = result
+        .map(a => a.popupmessage)
+        .filter(msg => msg)
+        .join('\n\n') || '';
+      
+      console.log("[DETAILS TAB] ✅ Popup messages fetched from Customer Alert:", virtualFields.value.custom_popup_messages);
+    }
+  } catch (error) {
+    console.error('[DETAILS TAB] ❌ Error fetching customer alerts:', error);
   }
 }
 
@@ -138,11 +197,24 @@ watch(
       await nextTick();
       loadVirtualFields();
     }
-  }
+  },
+  { immediate: true }
+);
+
+// Watch for ticket name changes (when ticket is created/loaded)
+watch(
+  () => ticket?.value?.doc?.name,
+  async (newTicketName, oldTicketName) => {
+    console.log("[DETAILS TAB] 🎫 Ticket name changed:", oldTicketName, "->", newTicketName);
+    if (newTicketName && newTicketName !== oldTicketName) {
+      await nextTick();
+      loadVirtualFields();
+    }
+  },
+  { immediate: true }
 );
 
 const coreFields = computed(() => {
-  // TODO: to confirm whether customizations should apply to core fields as well
   const fieldsMeta = getFields();
   if (!fieldsMeta || fieldsMeta.length === 0) {
     return [];
@@ -156,10 +228,7 @@ const coreFields = computed(() => {
   _coreFields.forEach((section) => {
     section.fields = section.fields.map((f) => {
       f = parseField(f, ticket.value.doc);
-
-      // cant handle required depends on as we directly set the value in DB on change
       f["required"] = f.reqd;
-
       f = getFieldInFormat(f, f);
       f["visible"] = true;
       return f;
@@ -187,11 +256,8 @@ const customFields = computed(() => {
   customFields = customFields.filter((f) => !_coreFields.includes(f.fieldname));
   let _customFields = customFields.map((f) => {
     let fieldMeta = getField(f.fieldname);
-
     fieldMeta = parseField(fieldMeta, ticket.value.doc);
-    // cant handle required depends on as we directly set the value in DB
     fieldMeta["required"] = fieldMeta.reqd || f.required;
-
     return getFieldInFormat(f, fieldMeta);
   });
   return _customFields;
@@ -202,9 +268,16 @@ const isTicketCreated = computed(() => {
 });
 
 function getFieldInFormat(fieldTemplate, fieldMeta) {
-  // Check if this is the product field and ticket is already created
-  const isProductField = fieldTemplate.fieldname === "custom_product";
-  const shouldBeReadonly = isProductField && isTicketCreated.value;
+  // Virtual fields that should always be readonly
+  const virtualReadonlyFields = [
+    "custom_product",
+    "custom_customercode", 
+    "custom_popup_messages",
+    "custom_popupmessage" // Support both naming conventions
+  ];
+  
+  const isVirtualField = virtualReadonlyFields.includes(fieldTemplate.fieldname);
+  const shouldBeReadonly = isVirtualField && isTicketCreated.value;
 
   return {
     label: fieldMeta?.label || fieldTemplate.fieldname,
@@ -224,8 +297,13 @@ function getFieldInFormat(fieldTemplate, fieldMeta) {
   };
 }
 
-// ✅ NEW: Return virtual field value if it's a virtual field, otherwise return normal value
+// Return virtual field value from memory, not from database
 function getFieldValueWithVirtual(fieldname: string) {
+  // Support both naming conventions
+  if (fieldname === "custom_popup_messages" || fieldname === "custom_popupmessage") {
+    console.log("[DETAILS TAB] 📤 Returning popup messages:", virtualFields.value.custom_popup_messages);
+    return virtualFields.value.custom_popup_messages;
+  }
   if (fieldname === "custom_customercode") {
     return virtualFields.value.custom_customercode;
   }
@@ -240,39 +318,35 @@ function handleFieldUpdate(
   value: FieldValue,
   isCoreFieldUpdated = false
 ) {
+  // Prevent updates for virtual fields
+  const virtualFields = [
+    "custom_popup_messages", 
+    "custom_popupmessage",
+    "custom_product", 
+    "custom_customercode"
+  ];
+  
+  if (virtualFields.includes(fieldname)) {
+    console.log(`[DETAILS TAB] ⛔ Skipping update for virtual field: ${fieldname}`);
+    return;
+  }
+
   if (ticket.value.doc[fieldname] === value) return;
+  
   if (isCoreFieldUpdated) {
     const label = getField(fieldname)?.label || fieldname;
     notifyTicketUpdate(label, value as string);
   }
+  
   ticket.value.setValue.submit(
     { [fieldname]: value },
     {
       onSuccess: () => {
-        // TODO: emit the event for notification to listeners
         if (fieldname === "agent_group") {
           assignees.value.reload();
         }
       },
     }
-
-    //show error toast
   );
 }
 </script>
-
-<style scoped>
-:deep(.form-control-core button) {
-  @apply text-base rounded h-7 py-1.5 border border-outline-gray-2 bg-surface-white placeholder-ink-gray-4 hover:border-outline-gray-3 hover:shadow-sm focus:bg-surface-white focus:border-outline-gray-4 focus:shadow-sm focus:ring-0 focus-visible:ring-0 text-ink-gray-8 transition-colors w-full dark:[color-scheme:dark];
-}
-:deep(.form-control-core button > div) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-:deep(.form-control-core div) {
-  width: 100%;
-  display: flex;
-}
-</style>

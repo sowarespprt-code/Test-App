@@ -1,4 +1,5 @@
 import frappe
+import json
 from frappe import _
 from frappe.desk.form.assign_to import set_status
 from frappe.model import no_value_fields
@@ -13,6 +14,77 @@ from helpdesk.utils import (
     parse_call_logs,
 )
 
+def add_assigned_to_full_name(data: list[dict]) -> list[dict]:
+    """Add assigned_to_full_name to HD Ticket rows from _assign / User.full_name."""
+    if not data:
+        return data
+
+    users = set()
+
+    # Collect first assignee per row
+    for row in data:
+        assign_raw = row.get("_assign")
+        if not assign_raw:
+            continue
+
+        if isinstance(assign_raw, str):
+            try:
+                assignees = json.loads(assign_raw)
+            except Exception:
+                assignees = []
+        elif isinstance(assign_raw, (list, tuple)):
+            assignees = list(assign_raw)
+        else:
+            assignees = []
+
+        if assignees:
+            first_user = assignees[0]
+            if isinstance(first_user, str):
+                users.add(first_user)
+
+    # If no assignees, still create the key for frontend
+    if not users:
+        for row in data:
+            row["assigned_to_full_name"] = ""
+        return data
+
+    # Fetch full names in one query
+    fullnames = {}
+    for d in frappe.get_all(
+        "User",
+        filters={"name": ["in", list(users)]},
+        fields=["name", "full_name"],
+    ):
+        fullnames[d.name] = d.full_name or d.name
+
+    # Fallback via frappe.get_fullname
+    for u in users:
+        if u not in fullnames:
+            fullnames[u] = frappe.get_fullname(u)
+
+    # Set assigned_to_full_name per row
+    for row in data:
+        assign_raw = row.get("_assign")
+        full_name = ""
+        if assign_raw:
+            if isinstance(assign_raw, str):
+                try:
+                    assignees = json.loads(assign_raw)
+                except Exception:
+                    assignees = []
+            elif isinstance(assign_raw, (list, tuple)):
+                assignees = list(assign_raw)
+            else:
+                assignees = []
+
+            if assignees:
+                first_user = assignees[0]
+                if isinstance(first_user, str):
+                    full_name = fullnames.get(first_user, first_user)
+
+        row["assigned_to_full_name"] = full_name
+
+    return data
 
 @frappe.whitelist()
 def get_list_data(
@@ -122,6 +194,10 @@ def get_list_data(
     if doctype == "TP Call Log":
         data = parse_call_logs(data)
 
+    # NEW: add full name for HD Ticket
+    if doctype == "HD Ticket":
+        data = add_assigned_to_full_name(data)
+
     fields = frappe.get_meta(doctype).fields
     fields = [field for field in fields if field.fieldtype not in no_value_fields]
     fields = [
@@ -148,6 +224,16 @@ def get_list_data(
         {"label": "Assigned To", "type": "Text", "value": "_assign"},
         {"label": "Owner", "type": "Link", "value": "owner", "options": "User"},
     ]
+
+    # NEW: expose logical field for full name in HD Ticket
+    if doctype == "HD Ticket":
+        std_fields.append(
+            {
+                "label": "Assigned To",
+                "type": "Data",
+                "value": "assigned_to_full_name",
+            }
+        )
 
     for field in std_fields:
         if field.get("value") not in rows:

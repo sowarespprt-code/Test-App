@@ -25,11 +25,10 @@
       @customerSelected="handleCustomerSelected"
     />
 
-    <!-- Customer Remarks Popup -->
-    <CustomerRemarksPopup
-      v-model="showRemarksPopup"
-      :remarks="templateFields.custom_remarks || ''"
-    />
+    <!-- Customer Alerts Popup -->
+    <CustomerAlertsPopup 
+      v-model:show="showAlertsPopup" :alerts="customerAlerts" 
+      :loading="alertsLoading" />
 
     <!-- Duplicate Ticket Warning Popup -->
     <div
@@ -456,7 +455,7 @@
           </div>
 
           <!-- Phone -->
-          <div style="width: 30%; min-width: 200px;">
+          <div style="width: 25%; min-width: 180px;">
             <template v-for="field in visibleFields" :key="'phone_' + field.fieldname">
               <template v-if="field.fieldname === 'custom_phone_number' || field.fieldname.toLowerCase().includes('phone')">
                 <UniInput
@@ -468,8 +467,8 @@
             </template>
           </div>
 
-          <!-- Contact -->
-          <div style="width: 30%; min-width: 200px;">
+          <!-- Contact - Made wider -->
+          <div style="width: 45%; min-width: 250px;">
             <template v-for="field in visibleFields" :key="'contact_' + field.fieldname">
               <template v-if="field.fieldname === 'custom_contact_person' || field.fieldname.toLowerCase().includes('contact') || field.label?.toLowerCase().includes('contact')">
                 <UniInput
@@ -481,12 +480,11 @@
             </template>
           </div>
         </div>
-
-        <!-- Row 3: AMC End Date + AMC Status -->
-        <div class="flex flex-col sm:flex-row gap-4 mb-2">
+        <!-- Row 3: AMC End Date + AMC Status + Priority + Remarks -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
 
           <!-- AMC End Date -->
-          <div class="flex flex-col" style="width: 180px;">
+          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
             <label class="block text-sm text-gray-700 mb-1">AMC End Date</label>
             <div
               class="px-3 py-2 border rounded text-sm"
@@ -505,7 +503,7 @@
           </div>
 
           <!-- AMC Status -->
-          <div class="flex flex-col" style="width: 150px;">
+          <div class="flex flex-col" style="width: 150px; min-width: 120px;">
             <label class="block text-sm text-gray-700 mb-1">AMC Status</label>
             <div class="px-3 py-2 rounded text-sm font-medium" :class="amcStatusClass">
               <span v-if="licenseLoading" class="flex items-center gap-2">
@@ -519,15 +517,39 @@
               <span v-else>{{ amcStatusText }}</span>
             </div>
           </div>
+
+          <!-- Priority -->
+          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
+            <template v-for="field in visibleFields" :key="'priority_' + field.fieldname">
+              <UniInput
+                v-if="field.fieldname === 'priority' || field.label === 'Priority'"
+                :field="field"
+                :value="templateFields[field.fieldname]"
+                @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
+                @input="(e) => safeSetField(field.fieldname, e)"
+              />
+            </template>
+          </div>
+
+          <!-- Remarks -->
+          <div class="flex flex-col flex-1" style="min-width: 200px;">
+            <label class="block text-sm text-gray-700 mb-1">Remarks</label>
+            <div
+              class="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-900 cursor-not-allowed"
+              style="min-height: 42px; max-height: 80px; overflow-y: auto;">
+              {{ templateFields.custom_remarks || 'No remarks available' }}
+            </div>
+          </div>
         </div>
 
-        <!-- Row 4: Remarks -->
-        <div class="flex flex-col mb-3" style="width: 100%; max-width: 300px;">
-          <label class="block text-sm text-gray-700 mb-1">Remarks</label>
-          <div
-            class="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-900 cursor-not-allowed"
-            style="min-height: 42px; max-height: 80px; overflow-y: auto;">
-            {{ templateFields.custom_remarks || 'No remarks available' }}
+        <!-- Pop up Messages - Read-only text box -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Pop up Messages</label>
+          <div 
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 cursor-not-allowed" 
+            style="min-height: 100px; max-height: 150px; overflow-y: auto; white-space: pre-wrap;"
+          >
+            {{ popupMessagesText || 'No popup messages available' }}
           </div>
         </div>
 
@@ -536,9 +558,12 @@
           <template v-for="field in visibleFields" :key="'other_' + field.fieldname">
             <UniInput
               v-if="
-                !['custom_customercode', 'custom_customer_name', 'custom_product', 'custom_contact_person', 'custom_phone_number', 'custom_remarks', 'custom_popup_messages'].includes(field.fieldname) &&
+                !['custom_customercode', 'custom_customer_name', 'custom_product', 'custom_contact_person', 'custom_phone_number', 'custom_remarks', 'custom_popupmessage', 'priority'].includes(field.fieldname) &&
                 !field.fieldname.toLowerCase().includes('contact') &&
-                !field.fieldname.toLowerCase().includes('phone')
+                !field.fieldname.toLowerCase().includes('phone') &&
+                !field.fieldname.toLowerCase().includes('priority') &&
+                field.label?.toLowerCase() !== 'priority' &&
+                field.label?.toLowerCase() !== 'remarks'
               "
               :field="field"
               :value="templateFields[field.fieldname]"
@@ -630,7 +655,7 @@
 import { LayoutHeader, UniInput } from "@/components";
 import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
 import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
-import CustomerRemarksPopup from "@/components/CustomerRemarksPopup.vue";
+import CustomerAlertsPopup from "@/components/CustomerAlertsPopup.vue";
 import {
   handleLinkFieldUpdate,
   handleSelectFieldUpdate,
@@ -685,11 +710,16 @@ const licenseError = ref("");
 const licenseData = ref<any | null>(null);
 const lastValidatedCustomerCode = ref("");
 const MIN_CODE_LENGTH = 1;
+const MINCODELENGTH = 1; 
 const invalidCodeError = ref("");
 const customerCode = ref("");
 
 const showCustomerSearchPopup = ref(false);
-const showRemarksPopup = ref(false);
+const showAlertsPopup = ref(false);
+const customerAlerts = ref<any[]>([]);
+const alertsLoading = ref(false);
+const popupMessagesText = ref('');
+
 
 const showDuplicateWarning = ref(false);
 const duplicateTickets = ref<any[]>([]);
@@ -707,85 +737,80 @@ const isManuallySelectingCustomer = ref(false);
 async function handleCustomerCodeEnter(event: any) {
   const enteredCode = event.target.value?.trim();
   const previousCode = lastValidatedCustomerCode.value?.trim();
-  invalidCodeError.value = "";
-
+  invalidCodeError.value = '';
+  
   if (!enteredCode) {
     isUpdatingInternally.value = true;
-    safeSetField("custom_customer_name", "");
-    safeSetField("custom_product", "");
-    safeSetField("custom_remarks", "");
-
+    safeSetField('custom_customer_name', '');
+    safeSetField('custom_product', '');
+    safeSetField('custom_remarks', '');
+    popupMessagesText.value = '';
     licenseData.value = null;
     showLicensePopup.value = false;
-    showRemarksPopup.value = false;
-    lastValidatedCustomerCode.value = "";
+    showAlertsPopup.value = false;
+    lastValidatedCustomerCode.value = '';
     isUpdatingInternally.value = false;
     return;
   }
-
-  if (enteredCode.length < MIN_CODE_LENGTH) {
-    $dialog({
-      title: "Invalid Customer Code",
-      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
+  
+  if (enteredCode.length < MINCODELENGTH) {
+    dialog({
+      title: 'Invalid Customer Code',
+      message: `Customer Code must be at least ${MINCODELENGTH} characters.`,
     });
     return;
   }
-
+  
   if (enteredCode === previousCode) {
     const customerName = templateFields.custom_customer_name;
     if (customerName) {
       await fetchCustomerRemarks(customerName);
-      await fetchCustomerPopupMessages(customerName);
-    }
-
-    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
-      showRemarksPopup.value = true;
-      showLicensePopup.value = false;
-    } else {
-      showRemarksPopup.value = false;
-      showLicensePopup.value = true;
+      await fetchCustomerAlerts(customerName);
+      
+      // Only show alerts popup if alerts exist, NO license popup
+      if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
+        showAlertsPopup.value = true;
+      }
     }
     return;
   }
-
-  safeSetField("custom_customercode", enteredCode);
-
+  
+  safeSetField('custom_customer_code', enteredCode);
   const found = await fetchCustomerName(enteredCode);
+  
   if (found) {
     lastValidatedCustomerCode.value = enteredCode;
-    await fetchLicenseDataInBackground(enteredCode);
-
+    await fetchLicenseDataInBackground(enteredCode); // Keep for AMC fields only
+    
     const customerName = templateFields.custom_customer_name;
     if (customerName) {
       await fetchCustomerRemarks(customerName);
-      await fetchCustomerPopupMessages(customerName);
-    }
-
-    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
-      showRemarksPopup.value = true;
-      showLicensePopup.value = false;
-    } else {
-      showRemarksPopup.value = false;
-      showLicensePopup.value = true;
+      await fetchCustomerAlerts(customerName);
+      
+      // Only show alerts popup if alerts exist, NO license popup
+      if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
+        showAlertsPopup.value = true;
+      }
     }
   } else {
-    $dialog({
-      title: "Invalid Customer Code",
-      message: "No customer found for this code. Please check and try again.",
+    dialog({
+      title: 'Invalid Customer Code',
+      message: 'No customer found for this code. Please check and try again.',
     });
-
+    
     isUpdatingInternally.value = true;
-    safeSetField("custom_customer_name", "");
-    safeSetField("custom_product", "");
-    safeSetField("custom_remarks", "");
-    safeSetField("custom_popup_messages", "");
+    safeSetField('custom_customer_name', '');
+    safeSetField('custom_product', '');
+    safeSetField('custom_remarks', '');
+    popupMessagesText.value = '';
     licenseData.value = null;
     showLicensePopup.value = false;
-    showRemarksPopup.value = false;
-    lastValidatedCustomerCode.value = "";
+    showAlertsPopup.value = false;
+    lastValidatedCustomerCode.value = '';
     isUpdatingInternally.value = false;
   }
 }
+
 
 function handleCustomerCodeBlur() {
   // optional blur logic
@@ -993,53 +1018,83 @@ async function viewTicketDetails(ticketId: string) {
 async function fetchCustomerRemarks(customerName: string) {
   if (!customerName || customerName.trim() === "") {
     safeSetField("custom_remarks", "");
-    showRemarksPopup.value = false;
     return;
   }
 
   try {
     const result = await call("frappe.client.get_value", {
       doctype: "HD Customer",
-      filters: { name: customerName },
+      filters: { customer_name: customerName },
       fieldname: ["custom_remarks"],
     });
 
     const remarks = result?.message?.custom_remarks || result?.custom_remarks || "";
     safeSetField("custom_remarks", remarks);
-
-    if (remarks && remarks.trim().length > 0) {
-      showRemarksPopup.value = true;
-    } else {
-      showRemarksPopup.value = false;
-    }
+    
   } catch (e) {
     console.error("Error fetching customer remarks:", e);
     safeSetField("custom_remarks", "");
-    showRemarksPopup.value = false;
   }
 }
 
-async function fetchCustomerPopupMessages(customerName: string) {
-  if (!customerName || customerName.trim() === "") {
-    safeSetField("custom_popup_messages", "");
+
+async function fetchCustomerAlerts(customerName: string) {
+  if (!customerName?.trim()) {
+    customerAlerts.value = [];
+    popupMessagesText.value = '';
+    showAlertsPopup.value = false;
     return;
   }
+  
+  alertsLoading.value = true;
+  
   try {
-    const result = await call("frappe.client.get_list", {
-      doctype: "Customer Alert",
-      filters: { customer: customerName },
-      fields: ["popupmessage"],
-      order_by: "modified desc",
-      limit: 1,
-    });
-    const msg =
-      (result && result.length > 0 && (result[0] as any).popupmessage) || "";
-    safeSetField("custom_popup_messages", msg || "");
+    const customerCode = templateFields.custom_customer_code;
+    let result: any[] = [];
+    
+    // Try by customer_code first
+    if (customerCode) {
+      result = await call('frappe.client.get_list', {
+        doctype: 'Customer Alert',
+        filters: { customer_code: customerCode },
+        fields: ['name', 'popupmessage', 'modified'],
+        order_by: 'modified desc',
+        limit: 10
+      });
+    }
+    
+    // Fallback to customer_name
+    if (!result || result.length === 0) {
+      result = await call('frappe.client.get_list', {
+        doctype: 'Customer Alert',
+        filters: { customer_name: customerName },
+        fields: ['name', 'popupmessage', 'modified'],
+        order_by: 'modified desc',
+        limit: 10
+      });
+    }
+    
+    customerAlerts.value = result || [];
+    
+    popupMessagesText.value = customerAlerts.value
+      .map(a => a.popupmessage)
+      .filter(msg => msg)
+      .join('\n\n') || '';
+    
+    if (customerAlerts.value.length > 0) {
+      showAlertsPopup.value = true;
+    }
   } catch (e) {
-    console.error("Error fetching customer popup messages:", e);
-    safeSetField("custom_popup_messages", "");
+    console.error('Error fetching customer alerts:', e);
+    customerAlerts.value = [];
+    popupMessagesText.value = '';
+  } finally {
+    alertsLoading.value = false;
   }
 }
+
+
+
 
 function closeTicketDetails() {
   showTicketDetailsPopup.value = false;
@@ -1060,34 +1115,34 @@ function openCustomerSearchPopup() {
 async function handleCustomerSelected(customer: any) {
   isManuallySelectingCustomer.value = true;
   isUpdatingInternally.value = true;
-
+  
   try {
-    safeSetField("custom_customer_name", customer.customer_name);
-    safeSetField("custom_customercode", customer.custom_customercode || "");
-    safeSetField("custom_product", customer.custom_productname || "");
-    lastValidatedCustomerCode.value = customer.custom_customercode || "";
+    safeSetField('custom_customer_name', customer.customer_name);
+    safeSetField('custom_customercode', customer.custom_customercode);
+    safeSetField('custom_product', customer.custom_productname);
+    lastValidatedCustomerCode.value = customer.custom_customercode;
+    
     await nextTick();
-
-    await fetchCustomerRemarks(customer.customer_name);
-    await fetchCustomerPopupMessages(customer.customer_name);
-
-    if (templateFields.custom_remarks && templateFields.custom_remarks.trim().length > 0) {
-      showRemarksPopup.value = true;
-      showLicensePopup.value = false;
-    } else {
-      showRemarksPopup.value = false;
-      if (customer.custom_customercode) {
-        await fetchLicenseDataInBackground(customer.custom_customercode);
-        showLicensePopup.value = true;
-      } else {
-        showLicensePopup.value = false;
-      }
+    
+    // Fetch license data for AMC fields only (no popup)
+    if (customer.custom_customercode) {
+      await fetchLicenseDataInBackground(customer.custom_customercode);
     }
+    
+    await fetchCustomerRemarks(customer.customer_name);
+    await fetchCustomerAlerts(customer.customer_name);
+    
+    // Only show alerts popup if alerts exist, NO license popup
+    if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
+      showAlertsPopup.value = true;
+    }
+    
   } finally {
     isUpdatingInternally.value = false;
     isManuallySelectingCustomer.value = false;
   }
 }
+
 
 async function openLicensePopup() {
   await nextTick();
@@ -1143,6 +1198,7 @@ watch(
       safeSetField("custom_product", "");
       safeSetField("custom_remarks", "");
       safeSetField("custom_popup_messages", "");
+      popupMessagesText.value = '';
       lastValidatedCustomerCode.value = "";
       licenseData.value = null;
       licenseError.value = "";
@@ -1175,8 +1231,8 @@ function setupTemplateFields(fields: Field[]) {
     templateFields[field.fieldname] = "";
   });
   // ensure our custom display-only field exists in the reactive object
-  if (!("custom_popup_messages" in templateFields)) {
-    templateFields.custom_popup_messages = "";
+  if (!("custom_popupmessage" in templateFields)) {
+    templateFields.custom_popupmessage = "";
   }
 }
 
@@ -1241,7 +1297,7 @@ async function fetchCustomerCode(customerName: string) {
   try {
     const result = await call("frappe.client.get_value", {
       doctype: "HD Customer",
-      filters: { name: customerName },
+      filters: { customer_name: customerName },
       fieldname: ["custom_customercode"],
     });
     const code = result?.message?.custom_customercode || result?.custom_customercode;
@@ -1267,7 +1323,7 @@ async function fetchProductName(customerName: string) {
   try {
     const result = await call("frappe.client.get_value", {
       doctype: "HD Customer",
-      filters: { name: customerName },
+      filters: { customer_name: customerName },
       fieldname: ["custom_productname"],
     });
     const product = result?.message?.custom_productname || result?.custom_productname;
@@ -1281,16 +1337,25 @@ async function fetchProductName(customerName: string) {
 
 async function handleOnFieldChange(payload: any, fieldname: string, fieldtype: string) {
   if (isUpdatingInternally.value) return;
+  
   const newValue = extractValue(payload);
   safeSetField(fieldname, newValue);
+  
   if (fieldname === "custom_customer_name" && newValue) {
     isManuallySelectingCustomer.value = true;
     await fetchCustomerCode(newValue);
     await fetchProductName(newValue);
     await fetchCustomerRemarks(newValue);
-    await fetchCustomerPopupMessages(newValue);
+    await fetchCustomerAlerts(newValue);
+    
+    // Only show alerts popup if alerts exist, NO license popup
+    if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
+      showAlertsPopup.value = true;
+    }
+    
     isManuallySelectingCustomer.value = false;
   }
+  
   const fieldFns = customOnChange.value?.[fieldname];
   if (fieldFns) {
     fieldFns.forEach((fn: Function) => {
@@ -1302,6 +1367,7 @@ async function handleOnFieldChange(payload: any, fieldname: string, fieldtype: s
     });
   }
 }
+
 
 async function checkForDuplicates() {
   if (!templateFields.custom_customer_name || !subject.value || subject.value.length < 3) {
@@ -1342,24 +1408,29 @@ const ticket = createResource({
     },
     attachments: attachments.value,
   }),
-  validate: (params: any) => {
-    const fields = visibleFields.value?.filter((f: any) => f.required) || [];
-    for (const field of [...fields, "subject", "description"] as any[]) {
-      if (isEmpty(params.doc[field.fieldname || field])) {
+  validate(params: any) {
+    const fields = visibleFields.value?.filter((f: any) => f.required);
+    for (const field of [...fields, { fieldname: "subject" }, { fieldname: "description" }] as any) {
+      if (isEmpty(params.doc[field.fieldname])) {
         return `${field.label || field} is required`;
       }
     }
   },
-  onSuccess: (data: any) => {
+  onSuccess(data: any) {
+    // ✅ ADD THESE 4 LINES HERE - Store popup messages in localStorage
+    if (popupMessagesText.value) {
+      localStorage.setItem(`ticket_popup_${data.name}`, popupMessagesText.value);
+    }
+    
+    // Keep existing code below
     router.push({
       name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
       params: { ticketId: data.name },
     });
     if (isManager) {
-      updateOnboardingStep("create_first_ticket", true, false, () =>
-        localStorage.setItem("firstTicket", data.name)
-      );
+      updateOnboardingStep("create_first_ticket", true, false);
     }
+    localStorage.setItem("firstTicket", data.name);
     if (isCustomerPortal.value) {
       capture("new_ticket_submitted", {
         data: { user: userID, ticketID: data.name, subject: subject.value },

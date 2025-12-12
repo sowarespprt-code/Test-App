@@ -43,7 +43,7 @@ def install_overrides():
         "TicketHeader.vue" : "desk/src/components/ticket-agent/TicketHeader.vue",
         "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
         "CustomerSearchPopup.vue":"desk/src/components/CustomerSearchPopup.vue",
-        "CustomerRemarksPopup.vue" : "desk/src/components/CustomerRemarksPopup.vue",
+        "CustomerAlertsPopup.vue" : "desk/src/components/CustomerAlertsPopup.vue",
         "ListRows.vue" : "desk/src/components/ListRows.vue",
         "ListViewBuilder.vue" : "desk/src/components/ListViewBuilder.vue",
         "Tickets.vue" : "desk/src/pages/ticket/Tickets.vue",

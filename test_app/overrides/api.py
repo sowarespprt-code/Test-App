@@ -796,5 +796,21 @@ def get_ticket_activities(ticket: str):
 
 @frappe.whitelist()
 def get_ticket_assignees(ticket: str):
-    assignees = frappe.db.get_value("HD Ticket", ticket, "_assign") or "[]"
+    _assign = frappe.db.get_value("HD Ticket", ticket, "_assign") or "[]"
+    user_ids = frappe.parse_json(_assign) or []
+
+    assignees = []
+    for user_id in user_ids:
+        info = get_user_info_for_avatar(user_id) or {}
+        # info = {"name": "<Full Name>", "email": "<user@example.com>", "image": "..."}
+        assignees.append(
+            {
+                "id": user_id,               # keep email as the identifier
+                "full_name": info.get("name") or user_id.split("@")[0],
+                "email": info.get("email") or user_id,
+                "image": info.get("image"),
+            }
+        )
+
     return assignees
+

@@ -42,6 +42,9 @@ def get_data(filters):
         conditions += f" AND t.priority = '{filters.get('priority')}'"
     if filters.get("custom_customer_name"):
         conditions += f" AND t.custom_customer_name = '{filters.get('custom_customer_name')}'"
+    if filters.get("assigned_to"):
+        conditions += f" AND a.allocated_to = '{filters.get('assigned_to')}'"
+
 
     return frappe.db.sql(f"""
         SELECT
@@ -51,7 +54,7 @@ def get_data(filters):
             t.custom_customer_name,
             t.status,
             t.priority,
-            GROUP_CONCAT(DISTINCT a.owner SEPARATOR ', ') AS assigned_to,
+            GROUP_CONCAT(DISTINCT a.allocated_to SEPARATOR ', ') AS assigned_to,
             COALESCE(GROUP_CONCAT(DISTINCT c.content SEPARATOR ' || '), '') AS latest_comment
         FROM `tabHD Ticket` t
         LEFT JOIN `tabToDo` a 

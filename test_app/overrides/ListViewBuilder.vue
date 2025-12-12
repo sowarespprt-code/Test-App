@@ -203,6 +203,8 @@ const router = useRouter();
 const { isManager } = useAuthStore();
 const { $dialog } = globalStore();
 const { getStatus } = useTicketStatusStore();
+const userNameCache = new Map();
+
 
 const listSelections = ref(new Set());
 const defaultOptions = reactive({
@@ -446,6 +448,47 @@ const quickFilters = createResource({
   },
 });
 
+async function getUserFullName(email) {
+  if (!email) return null;
+  
+  if (userNameCache.has(email)) {
+    return userNameCache.get(email);
+  }
+  
+  try {
+    const result = await call("frappe.client.get_value", {
+      doctype: "User",
+      filters: { name: email },
+      fieldname: ["full_name", "first_name", "last_name"],
+    });
+    
+    let fullName = null;
+    
+    if (result?.message?.full_name) {
+      fullName = result.message.full_name;
+    } else if (result?.full_name) {
+      fullName = result.full_name;
+    } else if (result?.message?.first_name || result?.message?.last_name) {
+      const first = result.message.first_name || "";
+      const last = result.message.last_name || "";
+      fullName = `${first} ${last}`.trim();
+    } else if (result?.first_name || result?.last_name) {
+      const first = result.first_name || "";
+      const last = result.last_name || "";
+      fullName = `${first} ${last}`.trim();
+    }
+    
+    const nameToCache = fullName || email;
+    userNameCache.set(email, nameToCache);
+    return nameToCache;
+  } catch (error) {
+    console.error("Error fetching user name for", email, ":", error);
+    userNameCache.set(email, email);
+    return email;
+  }
+}
+
+
 function listCell(column: any, row: any, item: any, idx: number) {
   const columnConfig = options.value.columnConfig;
   if (columnConfig && columnConfig[column.key]?.custom) {
@@ -463,54 +506,88 @@ function listCell(column: any, row: any, item: any, idx: number) {
       textContent: formatTimeShort(item),
     });
   }
+  // MultipleAvatar section - Updated to show blank when empty and real names when assigned
   if (column.type === "MultipleAvatar") {
-    // DEBUG: Log the data structure to understand what we're receiving
-    console.log("MultipleAvatar column:", column.key, "item:", item);
-    
-    // Handle different data structures for assignees
-    if (!item) {
+    // Handle empty/null case
+    if (!item || item === "") {
       return h("span", {
-        class: "truncate flex-1 text-sm text-gray-500",
-        textContent: "-",
+        class: "truncate flex-1 text-sm text-gray-700",
+        textContent: "",
       });
     }
     
-    // If item is an array, map through it
-    if (Array.isArray(item)) {
-      const names = item.map(avatar => avatar.full_name || avatar.name).join(", ");
-      return h("span", {
-        class: "truncate flex-1 text-sm",
-        textContent: names,
-        title: names,
-      });
-    }
-    
-    // If item is a string (single assignee name)
+    // Parse JSON string if needed
+    let parsedItem = item;
     if (typeof item === "string") {
+      const trimmed = item.trim();
+      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+        try {
+          parsedItem = JSON.parse(trimmed);
+        } catch (e) {
+          parsedItem = item;
+        }
+      }
+    }
+    
+    // Extract emails
+    let emails = [];
+    if (Array.isArray(parsedItem)) {
+      if (parsedItem.length === 0) {
+        return h("span", {
+          class: "truncate flex-1 text-sm text-gray-700",
+          textContent: "",
+        });
+      }
+      emails = parsedItem.filter(email => email && typeof email === "string" && email.trim());
+    } else if (typeof parsedItem === "string" && parsedItem.trim()) {
+      emails = [parsedItem.trim()];
+    } else if (typeof parsedItem === "object" && parsedItem !== null) {
+      const email = parsedItem.full_name || parsedItem.name || parsedItem.user || parsedItem.email;
+      if (email) emails = [email];
+    }
+    
+    if (emails.length === 0) {
       return h("span", {
-        class: "truncate flex-1 text-sm",
-        textContent: item,
-        title: item,
+        class: "truncate flex-1 text-sm text-gray-700",
+        textContent: "",
       });
     }
     
-    // If item is an object (single assignee)
-    if (typeof item === "object") {
-      const name = item.full_name || item.name || "";
-      return h("span", {
-        class: "truncate flex-1 text-sm",
-        textContent: name,
-        title: name,
-      });
-    }
+    // Get current display names (cached or email)
+    const getDisplayNames = () => {
+      return emails.map(email => userNameCache.get(email) || email).filter(Boolean).join(", ");
+    };
     
-    // Fallback - use MultipleAvatar component as before
-    return h(MultipleAvatar, {
-      avatars: item,
-      hideName: false,
-      class: "flex items-center truncate flex-1 flex-row-reverse justify-end",
+    const initialDisplay = getDisplayNames();
+    
+    // Create VNode with proper lifecycle hooks
+    const vnode = h("span", {
+      class: "truncate flex-1 text-sm text-gray-700",
+      textContent: initialDisplay,
+      ref: (el) => {
+        if (el) {
+          // Check for uncached emails
+          const uncachedEmails = emails.filter(email => !userNameCache.has(email));
+          
+          if (uncachedEmails.length > 0) {
+            // Fetch names and update DOM directly
+            Promise.all(uncachedEmails.map(email => getUserFullName(email)))
+              .then(() => {
+                const updatedDisplay = getDisplayNames();
+                el.textContent = updatedDisplay;
+                el.title = updatedDisplay;
+              })
+              .catch(error => {
+                console.error("Error updating assignee names:", error);
+              });
+          }
+        }
+      }
     });
+    
+    return vnode;
   }
+  
   if (column.type === "Rating") {
     return h(StarRating, {
       rating: item || 0,

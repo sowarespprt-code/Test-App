@@ -49,6 +49,12 @@ frappe.query_reports["Custom Ticket Report"] = {
             label: "Status",
             fieldtype: "Select",
             options: "\nNot Assigned\nIn Progress\nOther\nClosed"
+        },
+        {
+            fieldname: "assigned_to",
+            label: "Assigned To",
+            fieldtype: "Link",
+            options: "User"
         }
     ],
     
@@ -58,6 +64,7 @@ frappe.query_reports["Custom Ticket Report"] = {
         report.set_filter_value("custom_customer_name", "");
         report.set_filter_value("priority", "");
         report.set_filter_value("status", "");
+        report.set_filter_value("assigned_to", "");
         
         // Clear the datatable on load
         if (report.datatable) {
@@ -100,6 +107,11 @@ frappe.query_reports["Custom Ticket Report"] = {
                 
                 // Disable status field auto-refresh
                 report.page.fields_dict.status.$input.off('change');
+
+                if (report.page.fields_dict.assigned_to) {
+                    report.page.fields_dict.assigned_to.$input.off('change awesomplete-selectcomplete');
+                    report.page.fields_dict.assigned_to.df.onchange = null;
+                }
                 
                 // ✨ CRITICAL: Completely disable onchange handlers
                 report.page.fields_dict.from_date.df.onchange = null;
@@ -146,6 +158,16 @@ frappe.query_reports["Custom Ticket Report"] = {
                     status_filter.df.onchange = null;
                     status_filter.$input.off('change');
                 }
+
+                // Disable assigned_to filter
+                const assigned_to_filter = report.get_filter('assigned_to');
+                if (assigned_to_filter) {
+                    assigned_to_filter.df.onchange = null;
+                    assigned_to_filter.$input.off('awesomplete-selectcomplete');
+                    assigned_to_filter.$input.off('focusout');
+                    assigned_to_filter.$input.off('change');
+                }
+
             }, 2200);
 
             // Make sure filters are displayed inline first

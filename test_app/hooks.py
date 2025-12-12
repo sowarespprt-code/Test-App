@@ -142,13 +142,16 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
+doc_events = {
 # 	"*": {
 # 		"on_update": "method",
 # 		"on_cancel": "method",
 # 		"on_trash": "method"
 # 	}
-# }
+    "HD Ticket": {  # or "Ticket" depending on your site
+        "before_save": "test_app.helpdesk_hooks.auto_assign_on_status_change"
+    }
+}
 
 
 
