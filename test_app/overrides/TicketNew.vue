@@ -775,7 +775,7 @@ async function handleCustomerCodeEnter(event: any) {
     return;
   }
   
-  safeSetField('custom_customer_code', enteredCode);
+  safeSetField('custom_customercode', enteredCode);
   const found = await fetchCustomerName(enteredCode);
   
   if (found) {
@@ -1142,7 +1142,7 @@ async function fetchCustomerAlerts(customerName: string) {
   alertsLoading.value = true;
   
   try {
-    const customerCode = templateFields.custom_customer_code;
+    const customerCode = templateFields.custom_customercode || "";
     let result: any[] = [];
     
     // Try by customer_code first
@@ -1171,12 +1171,16 @@ async function fetchCustomerAlerts(customerName: string) {
     
     popupMessagesText.value = customerAlerts.value
       .map(a => a.popupmessage)
-      .filter(msg => msg)
+      .filter(msg => msg && msg.trim())  // ✅ Filters out null, undefined, AND empty strings
       .join('\n\n') || '';
-    
-    if (customerAlerts.value.length > 0) {
+
+    // ✅ Only show popup if there are actual popup messages
+    if (popupMessagesText.value.trim()) {
       showAlertsPopup.value = true;
+    } else {
+      showAlertsPopup.value = false;
     }
+    
   } catch (e) {
     console.error('Error fetching customer alerts:', e);
     customerAlerts.value = [];
