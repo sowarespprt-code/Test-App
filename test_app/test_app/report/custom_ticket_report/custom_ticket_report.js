@@ -356,65 +356,185 @@ frappe.query_reports["Custom Ticket Report"] = {
 };
 
 
-// Add mobile responsive styles
+// ⭐ UPDATED: Add mobile responsive styles - COMPLETE REWRITE FOR MOBILE
 function add_mobile_styles() {
     if (!$('#custom-report-mobile-styles').length) {
         $('head').append(`
             <style id="custom-report-mobile-styles">
-                /* Mobile responsive styles for Custom Ticket Report */
+                /* ===== MOBILE RESPONSIVE STYLES FOR CUSTOM TICKET REPORT ===== */
+                
                 @media (max-width: 768px) {
+                    /* ⭐ UPDATED: Force horizontal scroll and prevent text wrapping */
+                    .report-wrapper {
+                        overflow-x: auto !important;
+                        -webkit-overflow-scrolling: touch !important;
+                        width: 100% !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Make table scrollable horizontally */
+                    .report-wrapper .datatable {
+                        font-size: 12px !important;
+                        width: max-content !important;
+                        min-width: 100% !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Prevent text wrapping in cells */
+                    .report-wrapper .datatable .dt-cell__content {
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        padding: 8px !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Enable horizontal scroll */
+                    .report-wrapper .datatable .dt-scrollable {
+                        overflow-x: auto !important;
+                        overflow-y: auto !important;
+                        width: 100% !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Fixed column widths for proper alignment */
+                    .report-wrapper .datatable .dt-cell,
+                    .report-wrapper .datatable .dt-cell--header {
+                        min-width: 100px !important;
+                        max-width: none !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Specific column widths for better mobile layout */
+                    /* Ticket ID column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="0"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="0"] {
+                        min-width: 120px !important;
+                        width: 120px !important;
+                    }
+                    
+                    /* Created Date column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="1"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="1"] {
+                        min-width: 150px !important;
+                        width: 150px !important;
+                    }
+                    
+                    /* Subject column - wider for content */
+                    .report-wrapper .datatable .dt-cell[data-col-index="2"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="2"] {
+                        min-width: 200px !important;
+                        width: 200px !important;
+                    }
+                    
+                    /* Customer column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="3"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="3"] {
+                        min-width: 150px !important;
+                        width: 150px !important;
+                    }
+                    
+                    /* Status column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="4"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="4"] {
+                        min-width: 120px !important;
+                        width: 120px !important;
+                    }
+                    
+                    /* Priority column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="5"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="5"] {
+                        min-width: 100px !important;
+                        width: 100px !important;
+                    }
+                    
+                    /* Assigned To column */
+                    .report-wrapper .datatable .dt-cell[data-col-index="6"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="6"] {
+                        min-width: 150px !important;
+                        width: 150px !important;
+                    }
+                    
+                    /* Latest Comment column - widest */
+                    .report-wrapper .datatable .dt-cell[data-col-index="7"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="7"] {
+                        min-width: 250px !important;
+                        width: 250px !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Header alignment */
+                    .report-wrapper .datatable .dt-cell--header {
+                        font-weight: 600 !important;
+                        background: #f8f9fa !important;
+                        border-bottom: 2px solid #dee2e6 !important;
+                        text-align: left !important;
+                        vertical-align: middle !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Body cells alignment */
+                    .report-wrapper .datatable .dt-cell {
+                        vertical-align: middle !important;
+                        text-align: left !important;
+                        border-bottom: 1px solid #e9ecef !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Filter fields responsive - stack vertically */
+                    .page-form .frappe-control {
+                        width: 100% !important;
+                        margin-bottom: 10px !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Stack filters vertically on mobile */
+                    .page-form .form-section {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        gap: 0 !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Search Customer button full width on mobile */
+                    #customer-search-btn-wrapper {
+                        width: 100% !important;
+                        margin-left: 0 !important;
+                        margin-top: 10px !important;
+                    }
+                    
+                    #customer-search-btn {
+                        width: 100% !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Show Report button responsive */
+                    #show-report-btn {
+                        font-size: 12px !important;
+                        padding: 5px 10px !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Ensure table body aligns with headers */
+                    .report-wrapper .datatable .dt-scrollable .dt-body {
+                        width: 100% !important;
+                    }
+                    
+                    /* ⭐ UPDATED: Row hover effect for better UX */
+                    .report-wrapper .datatable .dt-row:hover {
+                        background-color: #f8f9fa !important;
+                    }
+                }
+                
+                /* ⭐ UPDATED: Extra small devices (phones in portrait, less than 576px) */
+                @media (max-width: 576px) {
                     .report-wrapper .datatable {
                         font-size: 11px !important;
                     }
                     
                     .report-wrapper .datatable .dt-cell__content {
-                        white-space: normal !important;
-                        word-wrap: break-word !important;
+                        padding: 6px !important;
                     }
                     
-                    .report-wrapper .datatable .dt-scrollable {
-                        overflow-x: auto !important;
-                    }
-                    
-                    /* Make all columns visible on mobile */
-                    .report-wrapper .datatable .dt-cell,
-                    .report-wrapper .datatable .dt-header {
-                        min-width: 80px !important;
-                    }
-                    
-                    /* Adjust specific columns for mobile */
+                    /* Reduce column widths slightly for very small screens */
                     .report-wrapper .datatable .dt-cell[data-col-index="0"],
-                    .report-wrapper .datatable .dt-header[data-col-index="0"] {
-                        min-width: 50px !important;
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="0"] {
+                        min-width: 100px !important;
+                        width: 100px !important;
                     }
                     
-                    .report-wrapper .datatable .dt-cell[data-col-index="3"],
-                    .report-wrapper .datatable .dt-header[data-col-index="3"] {
-                        min-width: 150px !important;
-                    }
-                    
-                    /* Filter fields responsive */
-                    .page-form .frappe-control {
-                        width: 100% !important;
-                    }
-                    
-                    /* Stack filters vertically on mobile */
-                    .page-form .form-section {
-                        display: flex;
-                        flex-direction: column;
-                    }
-                }
-                
-                /* Ensure horizontal scroll on mobile for table */
-                @media (max-width: 768px) {
-                    .report-wrapper {
-                        overflow-x: auto !important;
-                        -webkit-overflow-scrolling: touch !important;
-                    }
-                    
-                    .dt-scrollable {
-                        width: 100% !important;
-                        overflow-x: auto !important;
+                    .report-wrapper .datatable .dt-cell[data-col-index="1"],
+                    .report-wrapper .datatable .dt-cell--header[data-col-index="1"] {
+                        min-width: 140px !important;
+                        width: 140px !important;
                     }
                 }
             </style>

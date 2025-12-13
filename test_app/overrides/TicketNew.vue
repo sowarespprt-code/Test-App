@@ -811,46 +811,122 @@ async function handleCustomerCodeEnter(event: any) {
   }
 }
 
+async function fetchAmcFromCustomer(customerName: string) {
+  if (!customerName) return null;
+  
+  try {
+    const result = await call("frappe.client.get_value", {
+      doctype: "HD Customer",
+      filters: { customer_name: customerName },
+      fieldname: ["custom_dateofamclastpaid"],
+    });
+    
+    const amcDate = result?.message?.custom_dateofamclastpaid || result?.custom_dateofamclastpaid;
+    return amcDate || null;
+  } catch (error) {
+    console.error("Error fetching AMC date from HD Customer:", error);
+    return null;
+  }
+}
+
 
 function handleCustomerCodeBlur() {
   // optional blur logic
 }
 
+// ✅ REPLACE your existing fetchLicenseDataInBackground function with this
 async function fetchLicenseDataInBackground(code: string) {
   if (!code || code.length < MIN_CODE_LENGTH) {
     licenseData.value = null;
     return;
   }
+  
   licenseLoading.value = true;
+  
   try {
+    // Try to fetch from API first
     const result = await call("helpdesk.api.license.get_customer_license_details", {
       customer_code: code,
     });
+    
     licenseData.value = result || null;
+    
+    // ✅ If API doesn't have AMC End Date, fetch from HD Customer
+    if (!licenseData.value?.AMCEndDate || licenseData.value.AMCEndDate === "null") {
+      console.log("⚠️ No AMC End Date from API, fetching from HD Customer...");
+      
+      const customerName = templateFields.custom_customer_name;
+      if (customerName) {
+        const customerAmcDate = await fetchAmcFromCustomer(customerName);
+        
+        if (customerAmcDate) {
+          console.log("✅ Found AMC date from HD Customer:", customerAmcDate);
+          
+          // Create a license data object with the customer's AMC date
+          licenseData.value = {
+            ...licenseData.value,
+            AMCEndDate: customerAmcDate,
+            source: "HD Customer" // Mark the source for reference
+          };
+        }
+      }
+    } else {
+      console.log("✅ Using AMC End Date from API");
+      if (licenseData.value) {
+        licenseData.value.source = "API";
+      }
+    }
   } catch (e) {
     console.error("Error fetching license data:", e);
-    licenseData.value = null;
+    
+    // ✅ On API error, try HD Customer as fallback
+    console.log("⚠️ API error, trying HD Customer fallback...");
+    const customerName = templateFields.custom_customer_name;
+    
+    if (customerName) {
+      const customerAmcDate = await fetchAmcFromCustomer(customerName);
+      
+      if (customerAmcDate) {
+        console.log("✅ Using AMC date from HD Customer fallback");
+        licenseData.value = {
+          AMCEndDate: customerAmcDate,
+          source: "HD Customer"
+        };
+      } else {
+        licenseData.value = null;
+      }
+    } else {
+      licenseData.value = null;
+    }
   } finally {
     licenseLoading.value = false;
   }
 }
 
+// ✅ REPLACE your existing formattedAmcEndDate computed with this
 const formattedAmcEndDate = computed(() => {
   if (licenseLoading.value) return "Loading...";
+  
   if (!licenseData.value?.AMCEndDate) return "N/A";
+  
   try {
     const raw = String(licenseData.value.AMCEndDate).trim();
+    
     if (!raw || raw === "null" || raw === "undefined") return "N/A";
 
+    // Handle DD/MM/YYYY format
     if (raw.includes("/")) {
       const datePart = raw.split(" ")[0];
       const parts = datePart.split("/");
+      
       if (parts.length === 3) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
+        
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
           const d = new Date(year, month - 1, day);
+          
           if (!isNaN(d.getTime())) {
             return d.toLocaleDateString("en-US", {
               year: "numeric",
@@ -862,8 +938,10 @@ const formattedAmcEndDate = computed(() => {
       }
     }
 
+    // Handle YYYY-MM-DD format
     if (raw.includes("-")) {
       const d = new Date(raw);
+      
       if (!isNaN(d.getTime())) {
         return d.toLocaleDateString("en-US", {
           year: "numeric",
@@ -873,7 +951,9 @@ const formattedAmcEndDate = computed(() => {
       }
     }
 
+    // Try to parse as generic date
     const d = new Date(raw);
+    
     if (!isNaN(d.getTime())) {
       return d.toLocaleDateString("en-US", {
         year: "numeric",
@@ -889,32 +969,41 @@ const formattedAmcEndDate = computed(() => {
   }
 });
 
+// ✅ REPLACE your existing amcStatusText computed with this
 const amcStatusText = computed(() => {
   if (licenseLoading.value) return "Loading...";
+  
   if (!licenseData.value?.AMCEndDate) return "Unknown";
+  
   try {
     const raw = String(licenseData.value.AMCEndDate).trim();
+    
     if (!raw || raw === "null" || raw === "undefined") return "Unknown";
 
     let endDate: Date | undefined;
 
+    // Handle DD/MM/YYYY format
     if (raw.includes("/")) {
       const datePart = raw.split(" ")[0];
       const parts = datePart.split("/");
+      
       if (parts.length === 3) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
+        
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
           endDate = new Date(year, month - 1, day);
         }
       }
     } else {
+      // Handle YYYY-MM-DD or other formats
       endDate = new Date(raw);
     }
 
     if (!endDate || isNaN(endDate.getTime())) return "Unknown";
 
+    // Compare with today
     const today = new Date();
     endDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
@@ -926,13 +1015,17 @@ const amcStatusText = computed(() => {
   }
 });
 
+// ✅ Keep your existing amcStatusClass computed (no changes needed)
 const amcStatusClass = computed(() => {
   if (licenseLoading.value) {
     return "bg-gray-100 text-gray-600 border border-gray-300";
   }
+  
   const status = amcStatusText.value;
+  
   if (status === "Expired") return "bg-red-100 text-red-800 border border-red-300";
   if (status === "Active") return "bg-green-100 text-green-800 border border-green-300";
+  
   return "bg-gray-100 text-gray-800 border border-gray-300";
 });
 

@@ -85,7 +85,7 @@ import { useTicketStatusStore } from "@/stores/ticketStatus";
 import { View } from "@/types";
 import { getIcon, isCustomerPortal } from "@/utils";
 import { Badge, FeatherIcon, toast, Tooltip, usePageMeta } from "frappe-ui";
-import { computed, h, onMounted, onBeforeUnmount, reactive, ref } from "vue";
+import { computed, h, onMounted, onBeforeUnmount, reactive, ref, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 const router = useRouter();
@@ -122,6 +122,21 @@ const selectBannerActions = [
     },
   },
 ];
+
+// ⭐ NEW: Reactive today's date that updates automatically
+const todayDate = ref(dayjs().format('YYYY-MM-DD'));
+
+// ⭐ NEW: Function to update today's date at midnight
+const updateTodayDate = () => {
+  todayDate.value = dayjs().format('YYYY-MM-DD');
+};
+
+// ⭐ NEW: Calculate milliseconds until next midnight
+const getMillisecondsUntilMidnight = () => {
+  const now = dayjs();
+  const midnight = now.add(1, 'day').startOf('day');
+  return midnight.diff(now);
+};
 
 // Debounce and reload management
 let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -216,9 +231,22 @@ const getRowClass = (row: any) => {
   return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
 };
 
-// List view options (same as new file, no behavioral change except rowClass)
+// ⭐ FIXED: Simple filter function (not computed) - filters are static objects
+const getTodayFilter = () => {
+  return {
+    creation: ['=', todayDate.value]
+  };
+};
+
+// ⭐ FIXED: Options as regular object with reactive properties
 const options = {
   doctype: "HD Ticket",
+  get filters() {
+    // Use getter to make it reactive
+    return {
+      creation: ['=', todayDate.value]
+    };
+  },
   columnConfig: {
     status: {
       custom: ({ item }) => {
@@ -253,7 +281,9 @@ const options = {
     },
   },
   rowClass: getRowClass,
-  isCustomerPortal: isCustomerPortal.value,
+  get isCustomerPortal() {
+    return isCustomerPortal.value;
+  },
   selectable: true,
   showSelectBanner: true,
   selectBannerActions,
@@ -261,9 +291,11 @@ const options = {
     title: "No Tickets Found",
     icon: h(TicketIcon, { class: "h-10 w-10" }),
   },
-  rowRoute: {
-    name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
-    prop: "ticketId",
+  get rowRoute() {
+    return {
+      name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
+      prop: "ticketId",
+    };
   },
   hideColumnSetting: false,
 };
@@ -326,7 +358,7 @@ function handleResolutionByField(row: any, item: string) {
   }
 }
 
-// Export functionality (your new version kept)
+// Export functionality
 async function handleExport({
   export_type,
   export_all,
@@ -371,7 +403,7 @@ const slaStatusColorMap = {
   Paused: "blue",
 };
 
-// ===== OLD VIEW / ADD COLUMN LOGIC (UNCHANGED) =====
+// View logic
 let viewDialog = reactive({
   show: false,
   view: {
@@ -397,9 +429,8 @@ const dropdownOptions = computed(() => {
         },
       ],
     },
-  ];  //
+  ];
 
-  // Saved Views
   if (getCurrentUserViews.value?.length !== 0) {
     items.push({
       group: "Saved Views",
@@ -622,7 +653,6 @@ function handleView(viewInfo, action) {
     };
   }
 
-  // createView
   createView(view, (d) => {
     currentView.value = {
       label: d.label || "List",
@@ -666,6 +696,42 @@ function handleRowClick(row) {
   });
 }
 
+// ⭐ NEW: Interval for midnight date update
+let midnightInterval: ReturnType<typeof setTimeout> | null = null;
+
+// ⭐ NEW: Function to schedule next midnight update
+const scheduleMidnightUpdate = () => {
+  if (midnightInterval) {
+    clearTimeout(midnightInterval);
+  }
+  
+  const msUntilMidnight = getMillisecondsUntilMidnight();
+  
+  midnightInterval = setTimeout(() => {
+    console.log("🌅 Midnight reached - updating to new day's tickets");
+    updateTodayDate();
+    
+    // Reload the list with new date filter
+    if (listViewRef.value?.reload) {
+      listViewRef.value.reload();
+      updateMessage.value = "📅 Date changed - showing today's tickets";
+      showUpdateBanner.value = true;
+      
+      if (bannerTimeout) {
+        clearTimeout(bannerTimeout);
+      }
+      bannerTimeout = setTimeout(() => {
+        showUpdateBanner.value = false;
+      }, 5000);
+    }
+    
+    // Schedule the next midnight update
+    scheduleMidnightUpdate();
+  }, msUntilMidnight);
+  
+  console.log(`⏰ Next date update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
+};
+
 // Cleanup intervals
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -679,6 +745,11 @@ onMounted(() => {
   }
   
   console.log("✅ Setting up real-time ticket updates...");
+  console.log("📅 Default filter applied: Today's tickets only");
+  console.log(`📅 Current date: ${todayDate.value}`);
+  
+  // ⭐ NEW: Schedule automatic midnight update
+  scheduleMidnightUpdate();
   
   // Socket event listeners
   $socket.on("helpdesk:new-ticket", (data) => {
@@ -729,6 +800,7 @@ onBeforeUnmount(() => {
   // Clear timeouts
   if (reloadTimeout) clearTimeout(reloadTimeout);
   if (bannerTimeout) clearTimeout(bannerTimeout);
+  if (midnightInterval) clearTimeout(midnightInterval);
   
   // Clear polling interval
   if (pollInterval) clearInterval(pollInterval);
@@ -752,6 +824,22 @@ usePageMeta(() => {
 </script>
 
 <style scoped>
+/* Slide down animation for update banner */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
 /* Fix z-index issue for column dropdowns */
 :deep(.column-settings-dropdown),
 :deep(.frappe-dropdown-menu),

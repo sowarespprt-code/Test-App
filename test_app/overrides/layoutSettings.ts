@@ -47,9 +47,7 @@ export const agentPortalSidebarOptions = [
   {
     label: "Show summary",          // NEW
     icon: LucidePanelLeft,          // NEW icon
-    to: "ShowSummary",
-    external: true,
-    href: "/app/query-report/Custom Ticket Report",              // MUST match route name below
+    to: "ShowSummary",            
   },
   {
     label: "Call Logs",

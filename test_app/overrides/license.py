@@ -15,6 +15,10 @@ def get_customer_license_details(customer_code):
         # Validate input
         if not customer_code:
             frappe.throw(_("Customer code is required"))
+
+        api_customer_code = customer_code.split('_')[0] if '_' in customer_code else customer_code
+        
+        frappe.logger().info(f"Original customer code: {customer_code}, API customer code: {api_customer_code}")
         
         # API Configuration
         api_url = "http://licmanager.soware.in/api/LicCustomer/uspGetCustomerDetails"
@@ -24,7 +28,7 @@ def get_customer_license_details(customer_code):
             # POST request with customer code
             response = requests.post(
                 api_url,
-                json={"CustomerCode": customer_code},  # Try with capital C
+                json={"CustomerCode": api_customer_code},  # Try with capital C
                 headers={
                     "Content-Type": "application/json",
                 },
@@ -46,11 +50,11 @@ def get_customer_license_details(customer_code):
                 result = api_data.get("Result", {})
                 
                 if not result:
-                    frappe.throw(_("No data found for customer code: {0}").format(customer_code))
+                    frappe.throw(_("No data found for customer code: {0}").format(api_customer_code))
                 
                 # Clean up the data (remove leading/trailing spaces)
                 cleaned_data = {
-                    "CustomerCode": str(result.get("CustomerCode", customer_code)).strip(),
+                    "CustomerCode": str(result.get("CustomerCode", api_customer_code)).strip(),
                     "CustomerName": str(result.get("CustomerName", "")).strip(),
                     "OwnerName": str(result.get("OwnerName", "")).strip(),
                     "Address1": str(result.get("Address1", "")).strip(),
@@ -113,11 +117,14 @@ def test_license_api(customer_code="CU065641980"):
     });
     """
     try:
+        api_customer_code = customer_code.split('_')[0] if '_' in customer_code else customer_code
+
+
         api_url = "http://licmanager.soware.in/api/LicCustomer/uspGetCustomerDetails"
         
         response = requests.post(
             api_url,
-            json={"CustomerCode": customer_code},
+            json={"CustomerCode": api_customer_code},
             headers={"Content-Type": "application/json"},
             timeout=10
         )
@@ -131,5 +138,7 @@ def test_license_api(customer_code="CU065641980"):
     except Exception as e:
         return {
             "success": False,
+            "original_code": customer_code,
+            "api_code_used": api_customer_code if 'api_customer_code' in locals() else None,
             "error": str(e)
         }
