@@ -480,67 +480,69 @@
             </template>
           </div>
         </div>
-        <!-- Row 3: AMC End Date + AMC Status + Priority + Remarks -->
+        <!-- Row: AMC End Date + AMC Status + Priority + Remarks (above Pop up Messages) -->
         <div class="flex flex-col sm:flex-row gap-4 mb-4">
-
-          <!-- AMC End Date -->
+          <!-- AMC End Date (from template fields, read-only) -->
           <div class="flex flex-col" style="width: 180px; min-width: 150px;">
-            <label class="block text-sm text-gray-700 mb-1">AMC End Date</label>
-            <div
-              class="px-3 py-2 border rounded text-sm"
-              :class="licenseLoading ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900'"
+            <template
+              v-for="field in visibleFields"
+              :key="'amc_end_' + field.fieldname"
             >
-              <span v-if="licenseLoading" class="flex items-center gap-2">
-                <svg class="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading...
-              </span>
-              <span v-else>{{ formattedAmcEndDate }}</span>
-            </div>
+              <UniInput
+                v-if="field.fieldname === 'custom_amc_end_date'"
+                :field="field"
+                :value="templateFields[field.fieldname]"
+                :readonly="true"
+                :disabled="true"
+              />
+            </template>
           </div>
 
-          <!-- AMC Status -->
-          <div class="flex flex-col" style="width: 150px; min-width: 120px;">
-            <label class="block text-sm text-gray-700 mb-1">AMC Status</label>
-            <div class="px-3 py-2 rounded text-sm font-medium" :class="amcStatusClass">
-              <span v-if="licenseLoading" class="flex items-center gap-2">
-                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading...
-              </span>
-              <span v-else>{{ amcStatusText }}</span>
-            </div>
-          </div>
-
-          <!-- Priority -->
+          <!-- AMC Status (from template fields, read-only) -->
           <div class="flex flex-col" style="width: 180px; min-width: 150px;">
-            <template v-for="field in visibleFields" :key="'priority_' + field.fieldname">
+            <template
+              v-for="field in visibleFields"
+              :key="'amc_status_' + field.fieldname"
+            >
+              <UniInput
+                v-if="field.fieldname === 'custom_amc_status'"
+                :field="field"
+                :value="templateFields[field.fieldname]"
+                :readonly="true"
+                :disabled="true"
+              />
+            </template>
+          </div>
+
+          <!-- Priority (same logic as before) -->
+          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
+            <template
+              v-for="field in visibleFields"
+              :key="'priority_' + field.fieldname"
+            >
               <UniInput
                 v-if="field.fieldname === 'priority' || field.label === 'Priority'"
                 :field="field"
                 :value="templateFields[field.fieldname]"
-                @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
+                @change="(value) =>
+                  handleOnFieldChange(value, field.fieldname, field.fieldtype)"
                 @input="(e) => safeSetField(field.fieldname, e)"
               />
             </template>
           </div>
 
-          <!-- Remarks -->
+          <!-- Remarks (read-only text container as you had) -->
           <div class="flex flex-col flex-1" style="min-width: 200px;">
             <label class="block text-sm text-gray-700 mb-1">Remarks</label>
             <div
               class="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-900 cursor-not-allowed"
-              style="min-height: 42px; max-height: 80px; overflow-y: auto;">
+              style="min-height: 42px; max-height: 80px; overflow-y: auto;"
+            >
               {{ templateFields.custom_remarks || 'No remarks available' }}
             </div>
           </div>
         </div>
+
 
         <!-- Pop up Messages - Read-only text box -->
         <div class="mb-6">
@@ -558,7 +560,18 @@
           <template v-for="field in visibleFields" :key="'other_' + field.fieldname">
             <UniInput
               v-if="
-                !['custom_customercode', 'custom_customer_name', 'custom_product', 'custom_contact_person', 'custom_phone_number', 'custom_remarks', 'custom_popupmessage', 'priority'].includes(field.fieldname) &&
+                ![
+                  'custom_customercode',
+                  'custom_customer_name',
+                  'custom_product',
+                  'custom_contact_person',
+                  'custom_phone_number',
+                  'custom_remarks',
+                  'custom_popupmessage',
+                  'priority',
+                  'custom_amc_end_date',
+                  'custom_amc_status'
+                ].includes(field.fieldname) &&
                 !field.fieldname.toLowerCase().includes('contact') &&
                 !field.fieldname.toLowerCase().includes('phone') &&
                 !field.fieldname.toLowerCase().includes('priority') &&
@@ -1078,11 +1091,53 @@ function closeDuplicateWarning() {
   pendingSubmission.value = false;
 }
 
-function proceedWithSubmission() {
+async function proceedWithSubmission() {
   closeDuplicateWarning();
   pendingSubmission.value = true;
-  ticket.submit();
+
+  try {
+    // 1️⃣ Create / submit the ticket
+    await ticket.submit();
+    // At this point ticket.doc should be the saved HD Ticket
+
+    const ticketName =
+      (ticket as any).doc?.name ||
+      (ticket as any).name ||
+      null;
+
+    console.log("[NEW TICKET] After submit, ticket name:", ticketName);
+
+    if (ticketName) {
+      const amcEndRaw = licenseData.value?.AMCEndDate || null;
+      const amcStatus = amcStatusText.value || "Unknown";
+
+      await call("frappe.client.set_value", {
+        doctype: "HD Ticket",
+        name: ticketName,
+        fieldname: {
+          custom_amc_end_date: amcEndRaw,
+          custom_amc_status: amcStatus,
+        },
+      });
+
+      console.log("[NEW TICKET] AMC saved to HD Ticket:", {
+        ticketName,
+        custom_amc_end_date: amcEndRaw,
+        custom_amc_status: amcStatus,
+      });
+    } else {
+      console.error("[NEW TICKET] ticketName is missing after submit()");
+    }
+
+    pendingSubmission.value = false;
+    // your existing navigation / toast here
+  } catch (err: any) {
+    console.error("[NEW TICKET] submit or set_value error:", err);
+    pendingSubmission.value = false;
+  }
 }
+
+
 
 async function viewTicketDetails(ticketId: string) {
   selectedTicketId.value = ticketId;
@@ -1304,6 +1359,16 @@ watch(
     }
   }
 );
+
+watch(
+  () => licenseData.value?.AMCEndDate,
+  (newVal) => {
+    if (!newVal) return;
+    templateFields.custom_amc_end_date = String(newVal);
+    templateFields.custom_amc_status = amcStatusText.value;
+  }
+);
+
 
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",

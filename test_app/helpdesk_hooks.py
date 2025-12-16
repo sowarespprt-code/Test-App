@@ -13,6 +13,31 @@ def auto_assign_on_status_change(doc, method):
     if not old:
         return
 
+    # 🔴 FORCE CLEAR ASSIGNEES when status goes BACK to Not Assigned
+    if old.status != NOT_ASSIGNED_STATUS and doc.status == NOT_ASSIGNED_STATUS:
+
+        # 1️⃣ Cancel existing ToDo assignments properly
+        todos = frappe.get_all(
+            "ToDo",
+            filters={
+                "reference_type": doc.doctype,
+                "reference_name": doc.name,
+                "status": ["!=", "Cancelled"],
+            },
+            pluck="name",
+        )
+
+        for todo in todos:
+            frappe.db.set_value("ToDo", todo, "status", "Cancelled")
+
+        # 2️⃣ Clear assignment cache (_assign)
+        doc._assign = None
+        frappe.db.set_value(doc.doctype, doc.name, "_assign", None)
+
+        # 3️⃣ Ensure no reassignment happens in same save
+        frappe.db.commit()
+        return
+
     # status changed from Not Assigned to something else
     if old.status == NOT_ASSIGNED_STATUS and doc.status != NOT_ASSIGNED_STATUS:
         # skip Administrator
