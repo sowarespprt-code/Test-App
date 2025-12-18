@@ -16,7 +16,7 @@
                 placeholder="Tesla Inc."
               />
             </div>
-            
+
             <!-- Customer Code (Mandatory, Unique) -->
             <div class="space-y-1">
               <Input
@@ -26,7 +26,7 @@
                 placeholder="CUST001"
               />
             </div>
-            
+
             <!-- Product Name (Mandatory) -->
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Product *</label>
@@ -38,7 +38,7 @@
                 @search="handleProductSearch"
               />
             </div>
-            
+
             <!-- Domain -->
             <div class="space-y-1">
               <Input
@@ -48,7 +48,7 @@
                 placeholder="eg: tesla.com, mycompany.com"
               />
             </div>
-            
+
             <!-- Address 1 (Text type) -->
             <div class="space-y-1 col-span-2">
               <Input
@@ -58,7 +58,7 @@
                 placeholder="Address Line 1"
               />
             </div>
-            
+
             <!-- Address 2 (Small Text type) -->
             <div class="space-y-1 col-span-2">
               <Input
@@ -68,7 +68,7 @@
                 placeholder="Address Line 2"
               />
             </div>
-            
+
             <!-- Place -->
             <div class="space-y-1">
               <Input
@@ -78,7 +78,7 @@
                 placeholder="Place"
               />
             </div>
-            
+
             <!-- District -->
             <div class="space-y-1">
               <Input
@@ -88,7 +88,17 @@
                 placeholder="District"
               />
             </div>
-            
+
+            <!-- Pincode -->
+            <div class="space-y-1">
+              <Input
+                v-model="state.custom_pincode"
+                label="Pincode"
+                type="text"
+                placeholder="Pincode"
+              />
+            </div>
+
             <!-- State -->
             <div class="space-y-1">
               <Input
@@ -98,7 +108,7 @@
                 placeholder="State"
               />
             </div>
-            
+
             <!-- Country -->
             <div class="space-y-1">
               <Input
@@ -108,7 +118,7 @@
                 placeholder="Country"
               />
             </div>
-            
+
             <!-- Contact Person -->
             <div class="space-y-1">
               <Input
@@ -118,7 +128,7 @@
                 placeholder="Contact Person Name"
               />
             </div>
-            
+
             <!-- Phone 1 -->
             <div class="space-y-1">
               <Input
@@ -128,7 +138,7 @@
                 placeholder="Phone Number"
               />
             </div>
-            
+
             <!-- Phone 2 -->
             <div class="space-y-1">
               <Input
@@ -138,7 +148,7 @@
                 placeholder="Alternate Phone"
               />
             </div>
-            
+
             <!-- GST No -->
             <div class="space-y-1">
               <Input
@@ -148,7 +158,7 @@
                 placeholder="GST Number"
               />
             </div>
-            
+
             <!-- Email -->
             <div class="space-y-1">
               <Input
@@ -158,7 +168,7 @@
                 placeholder="email@example.com"
               />
             </div>
-            
+
             <!-- No of License -->
             <div class="space-y-1">
               <Input
@@ -168,7 +178,7 @@
                 placeholder="Number of Licenses"
               />
             </div>
-            
+
             <!-- Date of AMC Last Paid -->
             <div class="space-y-1">
               <Input
@@ -179,7 +189,7 @@
               />
             </div>
 
-            <!-- Remarks (new field) -->
+            <!-- Remarks -->
             <div class="space-y-1 col-span-2">
               <Input
                 v-model="state.custom_remarks"
@@ -188,8 +198,20 @@
                 placeholder="Enter remarks"
               />
             </div>
+
+            <!-- Status (Enabled / Disabled, mandatory) -->
+            <div class="space-y-1">
+              <label class="text-sm font-medium text-gray-700">Status *</label>
+              <select
+                v-model="state.custom_status"
+                class="border rounded px-2 py-1 text-sm w-full"
+              >
+                <option value="Enabled">Enabled</option>
+                <option value="Disabled">Disabled</option>
+              </select>
+            </div>
           </div>
-          
+
           <div class="float-right flex space-x-2">
             <Button
               label="Cancel"
@@ -212,7 +234,7 @@
 
 <script setup lang="ts">
 import { Dialog, Input, Autocomplete, createResource, toast } from "frappe-ui";
-import { reactive, ref } from "vue";
+import { reactive } from "vue";
 
 const emit = defineEmits(["customerCreated"]);
 const model = defineModel<boolean>();
@@ -226,6 +248,7 @@ const state = reactive({
   custom_address2: "",
   custom_place: "",
   custom_district: "",
+  custom_pincode: "",
   custom_state: "",
   custom_country: "",
   custom_contactperson: "",
@@ -235,10 +258,11 @@ const state = reactive({
   custom_email: "",
   custom_nooflicense: "",
   custom_dateofamclastpaid: "",
-  custom_remarks: "",      // <-- new field in state
+  custom_remarks: "",
+  custom_status: "Enabled", // default
 });
 
-// Create a resource for fetching products with proper error handling
+// product list
 const productOptions = createResource({
   url: "frappe.client.get_list",
   params: {
@@ -249,9 +273,7 @@ const productOptions = createResource({
   },
   auto: true,
   transform: (data: any[]) => {
-    if (!data || !Array.isArray(data)) {
-      return [];
-    }
+    if (!data || !Array.isArray(data)) return [];
     return data.map((item) => ({
       label: item.product || item.name,
       value: item.name,
@@ -263,12 +285,10 @@ const productOptions = createResource({
   },
 });
 
-// Handle product search with debouncing
+// search in products
 let searchTimeout: any = null;
-function handleProductSearch(query) {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
+function handleProductSearch(query: string) {
+  if (searchTimeout) clearTimeout(searchTimeout);
 
   searchTimeout = setTimeout(() => {
     const params: any = {
@@ -287,6 +307,7 @@ function handleProductSearch(query) {
   }, 300);
 }
 
+// insert customer
 const customerResource = createResource({
   url: "frappe.client.insert",
   method: "POST",
@@ -299,6 +320,7 @@ const customerResource = createResource({
     state.custom_address2 = "";
     state.custom_place = "";
     state.custom_district = "";
+    state.custom_pincode = "";
     state.custom_state = "";
     state.custom_country = "";
     state.custom_contactperson = "";
@@ -308,7 +330,8 @@ const customerResource = createResource({
     state.custom_email = "";
     state.custom_nooflicense = "";
     state.custom_dateofamclastpaid = "";
-    state.custom_remarks = "";   // reset new field
+    state.custom_remarks = "";
+    state.custom_status = "Enabled";
 
     productOptions.data = [];
 
@@ -334,8 +357,11 @@ function addCustomer() {
     toast.error("Product name is required");
     return;
   }
+  if (!state.custom_status) {
+    toast.error("Status is required");
+    return;
+  }
 
-  // Extract the value from the Autocomplete object
   const productValue =
     typeof state.custom_productname === "object"
       ? state.custom_productname.value
@@ -352,6 +378,7 @@ function addCustomer() {
       custom_address2: state.custom_address2,
       custom_place: state.custom_place,
       custom_district: state.custom_district,
+      custom_pincode: state.custom_pincode,
       custom_state: state.custom_state,
       custom_country: state.custom_country,
       custom_contactperson: state.custom_contactperson,
@@ -361,7 +388,8 @@ function addCustomer() {
       custom_email: state.custom_email,
       custom_nooflicense: state.custom_nooflicense,
       custom_dateofamclastpaid: state.custom_dateofamclastpaid,
-      custom_remarks: state.custom_remarks,   // <-- send to HD Customer
+      custom_remarks: state.custom_remarks,
+      custom_status: state.custom_status,
     },
   });
 }

@@ -27,6 +27,7 @@
             @click="updateImage(null)"
           />
         </div>
+
         <form class="w-full flex flex-col gap-4" @submit.prevent="update">
           <Input
             v-model="formData.customer_name"
@@ -54,7 +55,10 @@
 
               <!-- Show previous product if it doesn't exist in Product doctype -->
               <option
-                v-if="formData.custom_productname && !products.find(p => p.name === formData.custom_productname)"
+                v-if="
+                  formData.custom_productname &&
+                  !products.find(p => p.name === formData.custom_productname)
+                "
                 :value="formData.custom_productname"
               >
                 {{ formData.custom_productname }}
@@ -75,6 +79,10 @@
           <Input v-model="formData.custom_address2" label="Address Line 2" />
           <Input v-model="formData.custom_place" label="Place" />
           <Input v-model="formData.custom_district" label="District" />
+
+          <!-- New Pincode field below District -->
+          <Input v-model="formData.custom_pincode" label="Pincode" />
+
           <Input v-model="formData.custom_state" label="State" />
           <Input v-model="formData.custom_country" label="Country" />
           <Input v-model="formData.custom_contactperson" label="Contact Person" />
@@ -90,13 +98,26 @@
           />
           <Input v-model="formData.domain" label="Domain" placeholder="example.com" />
 
-          <!-- New Remarks field -->
+          <!-- Remarks -->
           <Input
             v-model="formData.custom_remarks"
             label="Remarks"
             type="text"
             placeholder="Enter remarks"
           />
+
+          <!-- Status (Enabled / Disabled, mandatory, default Enabled) -->
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Status *</label>
+            <select
+              v-model="formData.custom_status"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            >
+              <option value="Enabled">Enabled</option>
+              <option value="Disabled">Disabled</option>
+            </select>
+          </div>
         </form>
       </div>
     </template>
@@ -148,6 +169,7 @@ const formData = ref({
   custom_address2: "",
   custom_place: "",
   custom_district: "",
+  custom_pincode: "",             // new pincode field
   custom_state: "",
   custom_country: "",
   custom_contactperson: "",
@@ -158,12 +180,13 @@ const formData = ref({
   custom_nooflicense: "",
   custom_dateofamclastpaid: "",
   domain: "",
-  custom_remarks: "", // <-- new field
+  custom_remarks: "",
+  custom_status: "Enabled",   // new status field, default Enabled
 });
 
 const products = ref([]);
 
-const convertToYYYYMMDD = (dateStr) => {
+const convertToYYYYMMDD = (dateStr: string) => {
   if (!dateStr) return "";
   if (dateStr.includes(" ")) dateStr = dateStr.split(" ")[0];
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -174,10 +197,9 @@ const convertToYYYYMMDD = (dateStr) => {
   return dateStr;
 };
 
-const updateFormData = (doc) => {
+const updateFormData = (doc: any) => {
   if (!doc) return;
 
-  // Match product case-insensitively
   const matchedProduct = products.value.find(
     p => p.product.toLowerCase() === (doc.custom_productname || "").toLowerCase()
   );
@@ -190,6 +212,7 @@ const updateFormData = (doc) => {
     custom_address2: doc.custom_address2 || "",
     custom_place: doc.custom_place || "",
     custom_district: doc.custom_district || "",
+    custom_pincode: doc.custom_pincode || "",
     custom_state: doc.custom_state || "",
     custom_country: doc.custom_country || "",
     custom_contactperson: doc.custom_contactperson || "",
@@ -200,7 +223,8 @@ const updateFormData = (doc) => {
     custom_nooflicense: doc.custom_nooflicense || "",
     custom_dateofamclastpaid: convertToYYYYMMDD(doc.custom_dateofamclastpaid || ""),
     domain: doc.domain || "",
-    custom_remarks: doc.custom_remarks || "", // <-- keep in sync with doctype
+    custom_remarks: doc.custom_remarks || "",
+    custom_status: doc.custom_status || "Enabled",
   };
 };
 
@@ -218,7 +242,6 @@ const fetchProducts = async () => {
   }
 };
 
-// Watch for customer document changes
 watch(
   () => customer.doc,
   (newDoc) => {
@@ -227,7 +250,6 @@ watch(
   { immediate: true }
 );
 
-// Fetch products on mount
 onMounted(() => {
   fetchProducts();
 });
@@ -246,23 +268,31 @@ const options = computed(() => ({
 
 async function update() {
   try {
+    // enforce mandatory Status
+    if (!formData.value.custom_status) {
+      toast.error("Status is required");
+      return;
+    }
+
     const doc = customer.doc;
     Object.keys(formData.value).forEach((key) => {
-      doc[key] = formData.value[key];
+      doc[key] = (formData.value as any)[key];
     });
+
     await call("frappe.client.save", { doc });
     await customer.reload();
     toast.success("Customer updated successfully");
     emit("customer-updated");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating customer:", error);
     toast.error(error.message || "Failed to update customer");
   }
 }
 
-function updateImage(file) {
+function updateImage(file: any) {
   customer.setValue.submit({
     image: file?.file_url || null,
   });
 }
 </script>
+
