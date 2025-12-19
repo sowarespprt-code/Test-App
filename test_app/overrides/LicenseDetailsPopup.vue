@@ -1,10 +1,16 @@
 <template>
   <div
     v-if="modelValue"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-    @click.self="closePopup"
+    data-license-popup
+    tabindex="-1"
+    class="fixed inset-0 z-[99999] flex items-center justify-center"
+    style="background-color: rgba(0, 0, 0, 0.5);"
+    @mousedown.self="closePopup"
   >
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div 
+      class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
+      @mousedown.stop
+    >
       <!-- Popup Header -->
       <div class="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
         <h2 class="text-lg font-semibold text-gray-800">Customer License Details</h2>
@@ -205,8 +211,9 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick  } from 'vue';
 import { call, Button } from 'frappe-ui';
 
 interface LicenseData {
@@ -257,6 +264,18 @@ watch(
   },
   { immediate: true }
 );
+
+watch(() => props.modelValue, async (isOpen) => {
+  if (isOpen) {
+    await nextTick();
+    setTimeout(() => {
+      const popup = document.querySelector('[data-license-popup]') as HTMLElement;
+      if (popup) {
+        popup.focus();
+      }
+    }, 50);
+  }
+});
 
 async function fetchDetails() {
   if (!props.customerCode) {

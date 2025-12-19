@@ -92,6 +92,11 @@ const routes = [
     component: () => import("@/pages/CustomerAlertList.vue"),
   },
   {
+    path: "/customer-alerts/new",
+    name: "CustomerAlertNew",
+    component: () => import("@/pages/CustomerAlertNew.vue"),
+  },
+  {
     path: "/agents",
     name: "AgentList",
     redirect: "/tickets",

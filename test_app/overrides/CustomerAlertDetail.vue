@@ -33,18 +33,41 @@
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Customer Alert Details</h2>
           
           <div class="space-y-4">
-            <!-- Customer Code Field (NEW) -->
+            <!-- Customer Code Field with License Button -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Customer Code <span class="text-red-500">*</span>
               </label>
-              <input
-                v-model="alert.data.customer_code"
-                type="text"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter customer code"
-                readonly
-              />
+              <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
+                <input
+                  v-model="alert.data.customer_code"
+                  type="text"
+                  class="w-full sm:flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter customer code"
+                  readonly
+                />
+                <!-- License Button -->
+                <button
+                  class="inline-flex items-center justify-center gap-1.5 
+                        px-3 py-1.5 text-xs 
+                        bg-green-500 hover:bg-green-600 text-white font-medium 
+                        rounded-lg transition-colors duration-200 shadow-sm 
+                        whitespace-nowrap self-end sm:self-auto
+                        max-w-[120px]"
+                  type="button"
+                  @click="openLicensePopup"
+                  title="View License Details"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
+                  <span>License</span>
+                </button>
+              </div>
             </div>
 
             <!-- Customer Name Field -->
@@ -64,7 +87,7 @@
             <!-- Popup Message Field -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Popup Message <span class="text-red-500">*</span>
+                Popup Message
               </label>
               <textarea
                 v-model="alert.data.popupmessage"
@@ -85,6 +108,13 @@
         </div>
       </div>
     </div>
+
+    <!-- License Details Popup -->
+    <LicenseDetailsPopup
+      v-if="showLicensePopup"
+      v-model="showLicensePopup"
+      :customer-code="alert.data?.customer_code || ''"
+    />
   </div>
 </template>
 
@@ -94,6 +124,7 @@ import { useRouter, useRoute } from "vue-router";
 import { createResource, call } from "frappe-ui";
 import { Button, LoadingIndicator } from "frappe-ui";
 import LucideArrowLeft from "~icons/lucide/arrow-left";
+import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -103,6 +134,7 @@ const saving = ref(false);
 const deleting = ref(false);
 const saveError = ref("");
 const saveSuccess = ref(false);
+const showLicensePopup = ref(false);
 
 // Load Customer Alert data with customer_code and popupmessage
 const alert = createResource({
@@ -118,6 +150,17 @@ onMounted(async () => {
   // No teams needed for Customer Alert
 });
 
+function openLicensePopup() {
+  if (!alert.data?.customer_code) {
+    saveError.value = "Customer code is required to view license details";
+    setTimeout(() => {
+      saveError.value = "";
+    }, 3000);
+    return;
+  }
+  showLicensePopup.value = true;
+}
+
 async function saveAlert() {
   if (!alert.data?.customer_code || !alert.data.customer_code.trim()) {
     saveError.value = "Customer code is required";
@@ -125,10 +168,6 @@ async function saveAlert() {
   }
   if (!alert.data?.customer_name || !alert.data.customer_name.trim()) {
     saveError.value = "Customer name is required";
-    return;
-  }
-  if (!alert.data?.popupmessage || !alert.data.popupmessage.trim()) {
-    saveError.value = "Popup message is required";
     return;
   }
 
@@ -143,7 +182,7 @@ async function saveAlert() {
       fieldname: {
         customer_code: alert.data.customer_code,
         customer_name: alert.data.customer_name,
-        popupmessage: alert.data.popupmessage,
+        popupmessage: alert.data.popupmessage || "",
       },
     });
 

@@ -42,6 +42,8 @@
               type="text"
               placeholder="Search by customer name, code, address, phone..."
               class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              autofocus
+              tabindex="0"
             />
             <svg
               class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -190,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { Button, call } from "frappe-ui";
 
 interface Customer {
@@ -250,13 +252,38 @@ const isFetchingDetails = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Watch for when popup opens and focus the input
-watch(() => props.modelValue, (newValue) => {
-  if (newValue) {
-    // Use nextTick to ensure DOM is updated before focusing
-    nextTick(() => {
+onMounted(() => {
+  // Force focus when component mounts
+  if (props.modelValue) {
+    setTimeout(() => {
       searchInputRef.value?.focus();
-    });
+    }, 150);
+  }
+});
+
+// Watch for when popup opens and focus the input
+watch(() => props.modelValue, async (newValue) => {
+  if (newValue) {
+    // Multiple attempts to ensure focus works in all contexts
+    await nextTick();
+    
+    // First attempt
+    searchInputRef.value?.focus();
+    
+    // Second attempt after animation delay
+    setTimeout(() => {
+      searchInputRef.value?.focus();
+    }, 100);
+    
+    // Third attempt for stubborn cases (nested modals, stacking contexts)
+    setTimeout(() => {
+      searchInputRef.value?.focus();
+    }, 300);
+  } else {
+    // Clear search when closing
+    searchQuery.value = "";
+    searchResults.value = [];
+    selectedCustomer.value = null;
   }
 });
 
@@ -281,7 +308,7 @@ function handleSearch() {
   if (query.length >= 1) {
     searchDebounceTimer = setTimeout(() => {
       searchCustomers(query);
-    }, 2000); // Reduced from 2000ms
+    }, 1000); // Reduced from 2000ms
   } else {
     searchResults.value = [];
   }
