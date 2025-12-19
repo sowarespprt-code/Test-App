@@ -55,7 +55,13 @@ frappe.query_reports["Custom Ticket Report"] = {
             label: "Assigned To",
             fieldtype: "Link",
             options: "User"
-        }
+        },
+        {
+            fieldname: "agent_group",
+            label: "Team",
+            fieldtype: "Link",
+            options: "HD Team"
+        },
     ],
     
     onload: function(report) {
@@ -65,6 +71,7 @@ frappe.query_reports["Custom Ticket Report"] = {
         report.set_filter_value("priority", "");
         report.set_filter_value("status", "");
         report.set_filter_value("assigned_to", "");
+        report.set_filter_value("agent_group", "");
         
         // Clear the datatable on load
         if (report.datatable) {
@@ -111,6 +118,11 @@ frappe.query_reports["Custom Ticket Report"] = {
                 if (report.page.fields_dict.assigned_to) {
                     report.page.fields_dict.assigned_to.$input.off('change awesomplete-selectcomplete');
                     report.page.fields_dict.assigned_to.df.onchange = null;
+                }
+
+                if (report.page.fields_dict.agent_group) {
+                    report.page.fields_dict.agent_group.$input.off('change awesomplete-selectcomplete');
+                    report.page.fields_dict.agent_group.df.onchange = null;
                 }
                 
                 // ✨ CRITICAL: Completely disable onchange handlers
@@ -166,6 +178,14 @@ frappe.query_reports["Custom Ticket Report"] = {
                     assigned_to_filter.$input.off('awesomplete-selectcomplete');
                     assigned_to_filter.$input.off('focusout');
                     assigned_to_filter.$input.off('change');
+                }
+
+                const team_filter = report.get_filter('agent_group');
+                if (team_filter) {
+                    team_filter.df.onchange = null;
+                    team_filter.$input.off('awesomplete-selectcomplete');
+                    team_filter.$input.off('focusout');
+                    team_filter.$input.off('change');
                 }
 
             }, 2200);
@@ -301,6 +321,61 @@ frappe.query_reports["Custom Ticket Report"] = {
                 // Add click handler to refresh report
                 $('#show-report-btn').on('click', function() {
                     report.refresh();
+                });
+            }
+         // Add Helpdesk button next to Show Report
+            if (!$('#helpdesk-btn').length) {
+                const helpdesk_btn = $(`
+                    <button class="btn btn-default btn-sm" 
+                            id="helpdesk-btn"
+                            style="background: #000; 
+                                color: #fff; 
+                                border: 1px solid #000;
+                                border-radius: var(--border-radius);
+                                font-weight: 500;
+                                margin-left: 8px;
+                                padding: 6px 14px;
+                                transition: all 0.2s;
+                                cursor: pointer;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;">
+                        <svg style="width: 14px; height: 14px;" 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Helpdesk
+                    </button>
+                `);
+                
+                // Insert after the Show Report button
+                $('#show-report-btn').after(helpdesk_btn);
+                
+                // Add hover effect
+                $('#helpdesk-btn').hover(
+                    function() {
+                        $(this).css({
+                            'background': '#333',
+                            'box-shadow': '0 1px 3px rgba(0,0,0,0.12)'
+                        });
+                    },
+                    function() {
+                        $(this).css({
+                            'background': '#000',
+                            'box-shadow': 'none'
+                        });
+                    }
+                );
+                
+                // Add click handler to navigate to helpdesk tickets
+                $('#helpdesk-btn').on('click', function() {
+                    window.location.href = '/helpdesk/tickets';
                 });
             }
         }, 800);

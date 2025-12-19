@@ -17,6 +17,8 @@ def get_columns():
         {"label": "Created Date", "fieldname": "creation", "fieldtype": "Datetime", "width": 170},
         {"label": "Subject", "fieldname": "subject", "fieldtype": "Data", "width": 200},
         {"label": "Customer", "fieldname": "custom_customer_name", "fieldtype": "Link", "options": "HD Customer", "width": 150},
+        {"label": "Phone Number", "fieldname": "custom_phone_number", "fieldtype": "Data", "width": 150},
+        {"label": "Team", "fieldname": "agent_group", "fieldtype": "Link", "options": "HD Team", "width": 120},
         {"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 120},
         {"label": "Priority", "fieldname": "priority", "fieldtype": "Data", "width": 120},
         {"label": "Assigned To", "fieldname": "assigned_to", "fieldtype": "Data", "width": 150},
@@ -44,6 +46,8 @@ def get_data(filters):
         conditions += f" AND t.custom_customer_name = '{filters.get('custom_customer_name')}'"
     if filters.get("assigned_to"):
         conditions += f" AND a.allocated_to = '{filters.get('assigned_to')}'"
+    if filters.get("agent_group"):
+        conditions += f" AND t.agent_group = {frappe.db.escape(filters.get('agent_group'))}"
 
 
     return frappe.db.sql(f"""
@@ -52,21 +56,24 @@ def get_data(filters):
             t.creation,
             t.subject,
             t.custom_customer_name,
+            t.custom_phone_number,
+            t.agent_group,
             t.status,
             t.priority,
-            GROUP_CONCAT(DISTINCT a.allocated_to SEPARATOR ', ') AS assigned_to,
+            GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS assigned_to,
             COALESCE(GROUP_CONCAT(DISTINCT c.content SEPARATOR ' || '), '') AS latest_comment
         FROM `tabHD Ticket` t
         LEFT JOIN `tabToDo` a 
             ON a.reference_type = 'HD Ticket' 
             AND a.reference_name = t.name
+        LEFT JOIN `tabUser` u
+            ON u.name = a.allocated_to
         LEFT JOIN `tabHD Ticket Comment` c
             ON c.reference_ticket = t.name
         WHERE {conditions}
         GROUP BY t.name
         ORDER BY t.creation DESC
     """, as_dict=True)
-
 
 
 

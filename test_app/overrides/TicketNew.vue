@@ -482,37 +482,31 @@
         </div>
         <!-- Row: AMC End Date + AMC Status + Priority + Remarks (above Pop up Messages) -->
         <div class="flex flex-col sm:flex-row gap-4 mb-4">
-          <!-- AMC End Date (from template fields, read-only) -->
+          <!-- AMC End Date - Read-only -->
           <div class="flex flex-col" style="width: 180px; min-width: 150px;">
-            <template
-              v-for="field in visibleFields"
-              :key="'amc_end_' + field.fieldname"
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              AMC End Date
+            </label>
+            <div
+              class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 cursor-not-allowed"
             >
-              <UniInput
-                v-if="field.fieldname === 'custom_amc_end_date'"
-                :field="field"
-                :value="templateFields[field.fieldname]"
-                :readonly="true"
-                :disabled="true"
-              />
-            </template>
+              {{ formattedAmcEndDate }}
+            </div>
           </div>
 
-          <!-- AMC Status (from template fields, read-only) -->
+          <!-- AMC Status - Read-only -->
           <div class="flex flex-col" style="width: 180px; min-width: 150px;">
-            <template
-              v-for="field in visibleFields"
-              :key="'amc_status_' + field.fieldname"
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              AMC Status
+            </label>
+            <div
+              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-not-allowed"
+              :class="amcStatusClass"
             >
-              <UniInput
-                v-if="field.fieldname === 'custom_amc_status'"
-                :field="field"
-                :value="templateFields[field.fieldname]"
-                :readonly="true"
-                :disabled="true"
-              />
-            </template>
+              {{ amcStatusText }}
+            </div>
           </div>
+
 
           <!-- Priority (same logic as before) -->
           <div class="flex flex-col" style="width: 180px; min-width: 150px;">
@@ -1117,6 +1111,11 @@ async function proceedWithSubmission() {
         fieldname: {
           custom_amc_end_date: amcEndRaw,
           custom_amc_status: amcStatus,
+
+          __read_only: {
+            custom_amc_end_date: 1,
+            custom_amc_status: 1,
+          },
         },
       });
 

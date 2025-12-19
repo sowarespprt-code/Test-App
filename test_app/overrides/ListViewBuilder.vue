@@ -217,7 +217,7 @@ const defaultOptions = reactive({
     name: route.query.view,
   },
   groupByActions: [],
-  default_page_length: 20,
+  default_page_length: 100,
   isCustomerPortal: false,
   hideColumnSetting: true,
   rowRoute: {
@@ -602,6 +602,14 @@ function listCell(column: any, row: any, item: any, idx: number) {
 
 function handleFieldClick(e: MouseEvent, column, row, item) {
   const noFilterFields = ["Data", "Datetime", "Rating", "Int", "Float"];
+  
+   // Always open the row; never apply filters on cell click
+  if (options.value.rowRoute?.name !== "") {
+    return;
+  }
+  emit("rowClick", row.name);
+
+  
   if (noFilterFields.includes(column.type)) {
     if (options.value.rowRoute?.name !== "") {
       return;

@@ -112,16 +112,6 @@ const showExportModal = ref(false);
 const { getStatus } = useTicketStatusStore();
 
 const listSelections = ref(new Set());
-const selectBannerActions = [
-  {
-    label: "Export",
-    icon: "download",
-    onClick: (selections: Set<string>) => {
-      listSelections.value = new Set(selections);
-      showExportModal.value = true;
-    },
-  },
-];
 
 // ⭐ NEW: Reactive today's date that updates automatically
 const todayDate = ref(dayjs().format('YYYY-MM-DD'));
@@ -182,6 +172,96 @@ const playNotificationSound = () => {
   } catch (error) {}
 };
 
+// ⭐ FIXED: Safe list access helper
+const getListSafely = () => {
+  return listViewRef.value?.list;
+};
+
+// ⭐ FIXED: Null-safe date filter check
+const hasDateFilter = () => {
+  const list = getListSafely();
+  if (!list || !list.params) return false;
+  
+  const filters = list.params.filters || {};
+  return filters.hasOwnProperty('creation') || filters.hasOwnProperty('opening_date');
+};
+
+// ⭐ FIXED: Null-safe date field detection
+const getDateFilterField = () => {
+  const list = getListSafely();
+  if (!list || !list.params) return null;
+  
+  const filters = list.params.filters || {};
+  if (filters.hasOwnProperty('creation')) return 'creation';
+  if (filters.hasOwnProperty('opening_date')) return 'opening_date';
+  return null;
+};
+
+// ⭐ FIXED: Null-safe date filter update
+const updateDateFilterToToday = () => {
+  const list = getListSafely();
+  if (!list || !list.params) return false;
+  
+  const dateField = getDateFilterField();
+  if (!dateField) return false;
+  
+  const today = dayjs().format('YYYY-MM-DD');
+  
+  // Ensure filters object exists
+  if (!list.params.filters) {
+    list.params.filters = {};
+  }
+  
+  list.params.filters[dateField] = ['=', today];
+  
+  console.log(`📅 Updated ${dateField} filter to: ${today}`);
+  return true;
+};
+
+// ⭐ FIXED: Null-safe config save
+const saveDateFilterConfig = () => {
+  const dateField = getDateFilterField();
+  if (dateField) {
+    localStorage.setItem('tickets_auto_date_filter', JSON.stringify({
+      enabled: true,
+      field: dateField
+    }));
+    console.log(`💾 Saved auto-update for field: ${dateField}`);
+  } else {
+    localStorage.removeItem('tickets_auto_date_filter');
+    console.log(`🗑️ Removed auto-update (no date filter found)`);
+  }
+};
+
+// ⭐ FIXED: Null-safe filter loading
+const loadAndApplyDateFilter = () => {
+  const saved = localStorage.getItem('tickets_auto_date_filter');
+  if (!saved) return;
+  
+  try {
+    const { enabled, field } = JSON.parse(saved);
+    if (enabled && field) {
+      const today = dayjs().format('YYYY-MM-DD');
+      const list = getListSafely();
+      if (list && list.params) {
+        if (!list.params.filters) list.params.filters = {};
+        list.params.filters[field] = ['=', today];
+        console.log(`📅 Applied saved filter: ${field} = ${today}`);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading date filter:', e);
+  }
+};
+
+
+// ⭐ Watch for filter changes in the list
+watch(() => listViewRef.value?.list?.params?.filters, (newFilters) => {
+  if (newFilters) {
+    saveDateFilterConfig();
+  }
+}, { deep: true });
+
 // Row class for SLA coloring
 const getRowClass = (row: any) => {
   const status = getStatus(row.status);
@@ -231,22 +311,31 @@ const getRowClass = (row: any) => {
   return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
 };
 
-// ⭐ FIXED: Simple filter function (not computed) - filters are static objects
-const getTodayFilter = () => {
-  return {
-    creation: ['=', todayDate.value]
-  };
+const selectBannerActions = (selections: Set<string>) => {
+  return [
+    {
+      label: "Export Selected",
+      icon: "download",
+      onClick: () => {
+        showExportModal.value = true;
+      },
+    },
+    {
+      label: "Clear Selection",
+      icon: "x",
+      onClick: () => {
+        reset();
+      },
+    },
+  ];
 };
 
 // ⭐ FIXED: Options as regular object with reactive properties
 const options = {
   doctype: "HD Ticket",
-  get filters() {
-    // Use getter to make it reactive
-    return {
-      creation: ['=', todayDate.value]
-    };
-  },
+  filters: {},
+  pageLength: 100,  
+
   columnConfig: {
     status: {
       custom: ({ item }) => {
@@ -700,6 +789,7 @@ function handleRowClick(row) {
 let midnightInterval: ReturnType<typeof setTimeout> | null = null;
 
 // ⭐ NEW: Function to schedule next midnight update
+// ⭐ NEW: Function to schedule next midnight update
 const scheduleMidnightUpdate = () => {
   if (midnightInterval) {
     clearTimeout(midnightInterval);
@@ -708,30 +798,38 @@ const scheduleMidnightUpdate = () => {
   const msUntilMidnight = getMillisecondsUntilMidnight();
   
   midnightInterval = setTimeout(() => {
-    console.log("🌅 Midnight reached - updating to new day's tickets");
+    console.log("🌅 Midnight reached - checking date filter");
     updateTodayDate();
     
-    // Reload the list with new date filter
-    if (listViewRef.value?.reload) {
-      listViewRef.value.reload();
-      updateMessage.value = "📅 Date changed - showing today's tickets";
-      showUpdateBanner.value = true;
-      
-      if (bannerTimeout) {
-        clearTimeout(bannerTimeout);
+    // Auto-update date filter at midnight if enabled
+    const saved = localStorage.getItem('tickets_auto_date_filter');
+    if (saved) {
+      try {
+        const { enabled } = JSON.parse(saved);
+        if (enabled && updateDateFilterToToday()) {
+          if (listViewRef.value?.reload) {
+            listViewRef.value.reload();
+            const newDate = dayjs().format('MMM DD, YYYY');
+            updateMessage.value = `🌅 New day! Showing tickets from ${newDate}`;
+            showUpdateBanner.value = true;
+            
+            if (bannerTimeout) clearTimeout(bannerTimeout);
+            bannerTimeout = setTimeout(() => {
+              showUpdateBanner.value = false;
+            }, 5000);
+          }
+        }
+      } catch (e) {
+        console.error('Error updating date filter at midnight:', e);
       }
-      bannerTimeout = setTimeout(() => {
-        showUpdateBanner.value = false;
-      }, 5000);
     }
     
     // Schedule the next midnight update
     scheduleMidnightUpdate();
   }, msUntilMidnight);
   
-  console.log(`⏰ Next date update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
+  console.log(`⏰ Next midnight update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
 };
-
 // Cleanup intervals
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -744,11 +842,36 @@ onMounted(() => {
     };
   }
   
-  console.log("✅ Setting up real-time ticket updates...");
-  console.log("📅 Default filter applied: Today's tickets only");
-  console.log(`📅 Current date: ${todayDate.value}`);
+  // ⭐ FIXED: Wait for ListViewBuilder to fully initialize
+  let initAttempts = 0;
+  const initDateFilter = () => {
+    initAttempts++;
+    
+    // Retry up to 5 times, every 300ms (max 1.5s)
+    if (initAttempts <= 5 && (!listViewRef.value?.list || !listViewRef.value.list.params)) {
+      setTimeout(initDateFilter, 300);
+      return;
+    }
+    
+    // Now safe to access list
+    if (listViewRef.value?.list) {
+      loadAndApplyDateFilter();
+      
+      // Check if date filter exists and save config
+      if (hasDateFilter()) {
+        saveDateFilterConfig();
+      }
+    }
+  };
   
-  // ⭐ NEW: Schedule automatic midnight update
+  // ⭐ Load saved date filter and apply it
+  nextTick(() => {
+    initDateFilter();
+  });
+  
+  console.log("✅ Setting up real-time ticket updates...");
+  
+  // ⭐ Schedule automatic midnight update
   scheduleMidnightUpdate();
   
   // Socket event listeners

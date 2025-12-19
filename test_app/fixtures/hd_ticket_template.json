@@ -84,9 +84,29 @@
     "placeholder": null,
     "required": 0,
     "url_method": null
+   },
+   {
+    "fieldname": "custom_amc_end_date",
+    "hide_from_customer": 0,
+    "parent": "Default",
+    "parentfield": "fields",
+    "parenttype": "HD Ticket Template",
+    "placeholder": null,
+    "required": 0,
+    "url_method": null
+   },
+   {
+    "fieldname": "custom_amc_status",
+    "hide_from_customer": 0,
+    "parent": "Default",
+    "parentfield": "fields",
+    "parenttype": "HD Ticket Template",
+    "placeholder": null,
+    "required": 0,
+    "url_method": null
    }
   ],
-  "modified": "2025-12-11 15:35:26.087201",
+  "modified": "2025-12-15 14:54:10.277863",
   "name": "Default",
   "template_name": "Default"
  }

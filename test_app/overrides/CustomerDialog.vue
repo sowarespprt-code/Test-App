@@ -145,6 +145,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["customer-updated"]);
 
+
 const customer = createDocumentResource({
   doctype: "HD Customer",
   name: props.name,
@@ -258,6 +259,10 @@ const options = computed(() => ({
   title: customer.doc?.name || "Customer",
   actions: [
     {
+      label: "Cancel",
+      variant: "outline",
+    },
+    {
       label: "Save",
       theme: "gray",
       variant: "solid",
@@ -265,6 +270,7 @@ const options = computed(() => ({
     },
   ],
 }));
+
 
 async function update() {
   try {
