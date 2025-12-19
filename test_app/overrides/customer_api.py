@@ -11,19 +11,25 @@ from frappe import _
 @frappe.whitelist()
 def search_hd_customers(search_term):
     """
-    Search HD Customers - ALL words must match (AND logic) like your example query.
+    Search HD Customers.
+    - All words in search_term must match (AND logic).
+    - Only customers with status = 'Enabled' are returned.
     """
     try:
         if not search_term or len(search_term.strip()) < 1:
             return []
 
         # Clean and split search term into words
-        search_words = [word.strip() for word in search_term.split() if len(word.strip()) > 0]
+        search_words = [
+            word.strip()
+            for word in search_term.split()
+            if len(word.strip()) > 0
+        ]
         if not search_words:
             return []
 
-        # Build the concatenated search field exactly like your query
-        concat_field = f"""
+        # Build the concatenated search field
+        concat_field = """
             CONCAT(
                 custom_customercode, ' ',
                 customer_name, ' ',
@@ -35,76 +41,95 @@ def search_hd_customers(search_term):
             )
         """
 
-        # Create AND conditions for each word
+        # One LIKE condition per word, combined with AND
         conditions = [f"({concat_field} LIKE %s)" for _ in search_words]
         where_clause = " AND ".join(conditions)
 
         query = f"""
-            SELECT 
-                name, customer_name, custom_sl_no, custom_customercode, 
-                custom_productname, custom_address1, custom_address2, 
-                custom_place, custom_district, custom_phone001, custom_phone002
+            SELECT
+                name,
+                customer_name,
+                custom_sl_no,
+                custom_customercode,
+                custom_productname,
+                custom_address1,
+                custom_address2,
+                custom_place,
+                custom_district,
+                custom_phone001,
+                custom_phone002
             FROM `tabHD Customer`
-            WHERE {where_clause}
+            WHERE custom_status = 'Enabled'
+              AND {where_clause}
             ORDER BY modified DESC
             LIMIT 20
         """
 
-        # Parameters: each word repeated once (for AND logic)
         params = [f"%{word}%" for word in search_words]
 
         customers = frappe.db.sql(query, params, as_dict=True)
         return customers
 
     except Exception as e:
-        frappe.log_error(f"Error in search_hd_customers: {str(e)}", "Customer Search Error")
+        frappe.log_error(
+            f"Error in search_hd_customers: {str(e)}",
+            "Customer Search Error",
+        )
         return []
 
 
 @frappe.whitelist()
 def get_hd_customer_details(customer_name):
     """
-    Fetch complete details of a specific HD Customer
-    
-    API Endpoint: /api/method/helpdesk.api.customer_api.get_hd_customer_details
+    Fetch complete details of a specific HD Customer.
+
+    Only returns data if:
+    - customer exists
+    - user has read permission
+    - customer.status == 'Enabled'
     """
     try:
         if not customer_name:
             frappe.throw(_("Customer name is required"))
-        
-        # Check if customer exists and user has permission
+
         if not frappe.has_permission("HD Customer", "read", customer_name):
             frappe.throw(_("Insufficient permissions to access this customer"))
-        
-        # Get the complete customer document
+
         customer = frappe.get_doc("HD Customer", customer_name)
-        
-        # Return all relevant fields as dictionary
+
+        # Enforce only Enabled customers
+        if getattr(customer, "status", None) != "Enabled":
+            frappe.throw(_("Customer is disabled and cannot be selected"))
+
         return {
             "name": customer.name,
             "customer_name": customer.customer_name,
-            "custom_sl_no": customer.custom_sl_no if hasattr(customer, 'custom_sl_no') else None,
-            "custom_customercode": customer.custom_customercode if hasattr(customer, 'custom_customercode') else None,
-            "custom_address1": customer.custom_address1 if hasattr(customer, 'custom_address1') else None,
-            "custom_address2": customer.custom_address2 if hasattr(customer, 'custom_address2') else None,
-            "custom_place": customer.custom_place if hasattr(customer, 'custom_place') else None,
-            "custom_district": customer.custom_district if hasattr(customer, 'custom_district') else None,
-            "custom_state": customer.custom_state if hasattr(customer, 'custom_state') else None,
-            "custom_country": customer.custom_country if hasattr(customer, 'custom_country') else None,
-            "custom_contactperson": customer.custom_contactperson if hasattr(customer, 'custom_contactperson') else None,
-            "custom_phone001": customer.custom_phone001 if hasattr(customer, 'custom_phone001') else None,
-            "custom_phone002": customer.custom_phone002 if hasattr(customer, 'custom_phone002') else None,
-            "custom_gstno": customer.custom_gstno if hasattr(customer, 'custom_gstno') else None,
-            "custom_email": customer.custom_email if hasattr(customer, 'custom_email') else None,
-            "custom_productname": customer.custom_productname if hasattr(customer, 'custom_productname') else None,
-            "custom_nooflicense": customer.custom_nooflicense if hasattr(customer, 'custom_nooflicense') else None,
-            "custom_dateofamclastpaid": customer.custom_dateofamclastpaid if hasattr(customer, 'custom_dateofamclastpaid') else None,
+            "custom_sl_no": getattr(customer, "custom_sl_no", None),
+            "custom_customercode": getattr(customer, "custom_customercode", None),
+            "custom_address1": getattr(customer, "custom_address1", None),
+            "custom_address2": getattr(customer, "custom_address2", None),
+            "custom_place": getattr(customer, "custom_place", None),
+            "custom_district": getattr(customer, "custom_district", None),
+            "custom_state": getattr(customer, "custom_state", None),
+            "custom_country": getattr(customer, "custom_country", None),
+            "custom_contactperson": getattr(customer, "custom_contactperson", None),
+            "custom_phone001": getattr(customer, "custom_phone001", None),
+            "custom_phone002": getattr(customer, "custom_phone002", None),
+            "custom_gstno": getattr(customer, "custom_gstno", None),
+            "custom_email": getattr(customer, "custom_email", None),
+            "custom_productname": getattr(customer, "custom_productname", None),
+            "custom_nooflicense": getattr(customer, "custom_nooflicense", None),
+            "custom_dateofamclastpaid": getattr(customer, "custom_dateofamclastpaid", None
+            ),
         }
-        
+
     except frappe.DoesNotExistError:
         frappe.throw(_("Customer not found"))
     except frappe.PermissionError:
         frappe.throw(_("You don't have permission to access this customer"))
     except Exception as e:
-        frappe.log_error(f"Error in get_hd_customer_details: {str(e)}", "Customer Details Error")
+        frappe.log_error(
+            f"Error in get_hd_customer_details: {str(e)}",
+            "Customer Details Error",
+        )
         frappe.throw(_("Error fetching customer details. Please try again."))
