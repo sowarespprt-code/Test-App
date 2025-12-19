@@ -98,7 +98,7 @@ def get_hd_customer_details(customer_name):
         customer = frappe.get_doc("HD Customer", customer_name)
 
         # Enforce only Enabled customers
-        if getattr(customer, "status", None) != "Enabled":
+        if getattr(customer, "custom_status", None) != "Enabled":
             frappe.throw(_("Customer is disabled and cannot be selected"))
 
         return {

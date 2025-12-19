@@ -250,15 +250,37 @@ const defaultOptions = reactive({
 
 function handleBulkDelete(hide: Function, selections: Set<string>) {
   capture("bulk_delete" + props.options.doctype);
+  
+  // Convert selections to array of strings (document names)
+  const docNames = Array.from(selections).map(item => String(item));
+  
+  console.log("Deleting documents:", docNames);
+  
+  if (docNames.length === 0) {
+    toast.error("No documents selected");
+    hide();
+    return;
+  }
+  
+  // Call Frappe's delete API
   call("frappe.desk.reportview.delete_items", {
-    items: JSON.stringify(Array.from(selections)),
+    items: JSON.stringify(docNames),
     doctype: props.options.doctype,
-  }).then(() => {
-    toast.success("Item(s) deleted successfully");
+  })
+  .then(() => {
+    toast.success(`${docNames.length} document(s) deleted successfully`);
     hide();
     reset();
+  })
+  .catch((error) => {
+    console.error("Delete error:", error);
+    const errorMsg = error?.message || error?.exc || "Failed to delete documents";
+    toast.error(errorMsg);
+    hide();
   });
 }
+
+
 
 function reset() {
   exposeFunctions.reload();
@@ -327,29 +349,46 @@ const exposeFunctions = {
 function selectBannerOptions(selections: Set<string>, unselectAll = () => {}) {
   exposeFunctions["unselectAll"] = unselectAll;
 
-  // Get the user-provided actions
-  const userActions = options.value.selectBannerActions.map((action) => ({
-    ...action,
-    onClick: () => action.onClick?.(selections),
-  }));
-
-  // Get the default actions
-  // overwrite the default actions if user provided actions with same label
-  const defaultActions = defaultOptions.selectBannerActions
-    .filter(
-      (action) =>
-        !userActions.some(
-          (defaultAction) => defaultAction.label === action.label
-        )
-    )
+  // Safety check - ensure selectBannerActions exists and is an array
+  const userProvidedActions = Array.isArray(options.value.selectBannerActions) 
+    ? options.value.selectBannerActions 
+    : [];
+  
+  const userActions = userProvidedActions
+    .filter((action) => {
+      // Check condition if exists
+      if (typeof action.condition === 'function') {
+        return action.condition();
+      }
+      return true;
+    })
     .map((action) => ({
       ...action,
       onClick: () => action.onClick?.(selections),
     }));
 
-  // Return combined actions
+  const defaultActions = defaultOptions.selectBannerActions
+    .filter((action) => {
+      // Skip if user already provided this action
+      const isDuplicate = userActions.some(
+        (userAction) => userAction.label === action.label
+      );
+      if (isDuplicate) return false;
+      
+      // Check condition
+      if (typeof action.condition === 'function') {
+        return action.condition();
+      }
+      return true;
+    })
+    .map((action) => ({
+      ...action,
+      onClick: () => action.onClick?.(selections),
+    }));
+
   return [...userActions, ...defaultActions];
 }
+
 
 const rows = computed(() => {
   if (!list.data?.data) return [];

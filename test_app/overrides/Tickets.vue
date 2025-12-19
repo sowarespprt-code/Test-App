@@ -311,24 +311,22 @@ const getRowClass = (row: any) => {
   return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
 };
 
-const selectBannerActions = (selections: Set<string>) => {
-  return [
-    {
-      label: "Export Selected",
-      icon: "download",
-      onClick: () => {
-        showExportModal.value = true;
-      },
+const selectBannerActions = [
+  {
+    label: "Export Selected",
+    icon: "download",
+    onClick: (selections) => {
+      showExportModal.value = true;
     },
-    {
-      label: "Clear Selection",
-      icon: "x",
-      onClick: () => {
-        reset();
-      },
+  },
+  {
+    label: "Clear Selection",
+    icon: "x",
+    onClick: (selections) => {
+      reset();
     },
-  ];
-};
+  },
+];
 
 // ⭐ FIXED: Options as regular object with reactive properties
 const options = {
