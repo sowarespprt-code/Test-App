@@ -235,6 +235,12 @@ const saveDateFilterConfig = () => {
 
 // ⭐ FIXED: Null-safe filter loading
 const loadAndApplyDateFilter = () => {
+
+  if (route.query.filters) {
+    console.log('✅ URL has live filters, skipping localStorage date filter');
+    return;
+  }
+
   const saved = localStorage.getItem('tickets_auto_date_filter');
   if (!saved) return;
   
@@ -845,22 +851,26 @@ onMounted(() => {
   const initDateFilter = () => {
     initAttempts++;
     
-    // Retry up to 5 times, every 300ms (max 1.5s)
     if (initAttempts <= 5 && (!listViewRef.value?.list || !listViewRef.value.list.params)) {
       setTimeout(initDateFilter, 300);
       return;
     }
     
-    // Now safe to access list
     if (listViewRef.value?.list) {
-      loadAndApplyDateFilter();
+      // ✅ ONLY apply date filter if NO filters already exist (from URL)
+      const existingFilters = listViewRef.value.list.params?.filters;
+      if (!existingFilters || Object.keys(existingFilters).length === 0) {
+        loadAndApplyDateFilter();
+      } else {
+        console.log('✅ Skipping date filter - live filters exist:', existingFilters);
+      }
       
-      // Check if date filter exists and save config
       if (hasDateFilter()) {
         saveDateFilterConfig();
       }
     }
   };
+
   
   // ⭐ Load saved date filter and apply it
   nextTick(() => {

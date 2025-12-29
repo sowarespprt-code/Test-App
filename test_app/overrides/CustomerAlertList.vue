@@ -120,7 +120,7 @@ async function fetchAlerts() {
       doctype: "Customer Alert",
       fields: ["name", "customer_code", "customer_name", "popupmessage", "creation"],
       order_by: "creation desc",
-      limit_page_length: 999,
+      limit_page_length: 0,
     });
     alerts.value = data || [];
   } catch (err) {

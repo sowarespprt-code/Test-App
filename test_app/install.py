@@ -29,7 +29,7 @@ def install_overrides():
     # File mappings
     files = {
         "layoutSettings.ts": "desk/src/components/layouts/layoutSettings.ts",
-        "useTicket.ts" : "desk/src/composables/useTicket.ts",
+        # "useTicket.ts" : "desk/src/composables/useTicket.ts",
         "ProductList.vue": "desk/src/pages/ProductList.vue",
         "ProductDetail.vue": "desk/src/pages/ProductDetail.vue",
         "CustomerAlertList.vue" : "desk/src/pages/CustomerAlertList.vue",
@@ -40,7 +40,12 @@ def install_overrides():
         "TicketNew.vue":"desk/src/pages/ticket/TicketNew.vue",
         "license.py":"helpdesk/api/license.py",
         # "TicketAgentFields.vue":"desk/src/components/ticket/TicketAgentFields.vue",
-        "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
+        # "TicketAgent.vue":"desk/src/pages/ticket/TicketAgent.vue",
+        "TicketActivityPanel.vue" : "desk/src/components/ticket-agent/TicketActivityPanel.vue",
+        "TicketAgentActivities.vue" : "desk/src/components/ticket/TicketAgentActivities.vue",
+        "ActivityHeader.vue" : "desk/src/components/ticket/ActivityHeader.vue",
+        "TicketCommentModal.vue" : "desk/src/components/ticket/TicketCommentModal.vue",
+        "MobileTicketAgent.vue" : "desk/src/pages/ticket/MobileTicketAgent.vue",
         "TicketDetailsTab.vue":"desk/src/components/ticket-agent/TicketDetailsTab.vue",
         "TicketHeader.vue" : "desk/src/components/ticket-agent/TicketHeader.vue",
         "LicenseDetailsPopup.vue":"desk/src/components/LicenseDetailsPopup.vue",
