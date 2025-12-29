@@ -23,6 +23,7 @@ def get_columns():
         {"label": "Priority", "fieldname": "priority", "fieldtype": "Data", "width": 120},
         {"label": "Assigned To", "fieldname": "assigned_to", "fieldtype": "Data", "width": 150},
         {"label": "Latest Comment", "fieldname": "latest_comment", "fieldtype": "Data", "width": 300},
+        {"label": "Time Worked", "fieldname": "custom_time_worked", "fieldtype": "Data", "width": 120},
 
     ]
 
@@ -61,6 +62,7 @@ def get_data(filters):
             t.status,
             t.priority,
             GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS assigned_to,
+            t.custom_time_worked,
             COALESCE(GROUP_CONCAT(DISTINCT c.content SEPARATOR ' || '), '') AS latest_comment
         FROM `tabHD Ticket` t
         LEFT JOIN `tabToDo` a 

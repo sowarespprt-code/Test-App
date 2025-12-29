@@ -1,5 +1,24 @@
 [
  {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2025-12-29 13:37:58.450805",
+  "module": null,
+  "name": "Auto fetch time",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "HD Ticket",
+  "script": "if doc.custom_start_time and doc.custom_end_time:\n    # Convert to datetime if they're strings\n    start = doc.custom_start_time\n    end = doc.custom_end_time\n    \n    # Use frappe.utils to parse if needed\n    if isinstance(start, str):\n        start = frappe.utils.get_datetime(start)\n    if isinstance(end, str):\n        end = frappe.utils.get_datetime(end)\n    \n    # Calculate difference\n    diff = end - start\n    total_seconds = int(diff.total_seconds())\n    \n    if total_seconds < 0:\n        total_seconds = 0\n    \n    # Use Frappe's built-in formatter\n    doc.custom_time_worked = frappe.utils.format_duration(total_seconds)\nelse:\n    doc.custom_time_worked = \"\"\n",
+  "script_type": "DocType Event"
+ },
+ {
   "allow_guest": 1,
   "api_method": "helpdesk.api.customer_signup",
   "cron_format": null,

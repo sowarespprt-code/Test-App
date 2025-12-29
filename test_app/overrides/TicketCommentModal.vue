@@ -71,11 +71,37 @@ watch(
     if (val) {
       comment.value = '';
       showError.value = false;
+      document.body.classList.add('modal-open-hide-actions');
+      
+      // ✅ CLEAN DEBUG - no invalid selectors
+      console.log('✅ Modal opened - body class added: true');
+      console.log('✅ Total buttons:', document.querySelectorAll('button').length);
+      
+      // ✅ Find buttons by TEXT content (JavaScript, not CSS)
+      const buttonsWithClose = Array.from(document.querySelectorAll('button')).filter(btn => 
+        btn.textContent?.toLowerCase().includes('close') || 
+        btn.textContent?.toLowerCase().includes('new')
+      );
+      console.log('✅ Buttons with "Close/New":', buttonsWithClose.length);
+      
+    } else {
+      document.body.classList.remove('modal-open-hide-actions');
+      console.log('❌ Modal closed - class removed');
     }
   }
 );
 
-watch(show, (val) => emit('update:modelValue', val));
+
+
+
+// ✅ MODIFY THIS WATCHER - add the if (!val) cleanup:
+watch(show, (val) => {
+  emit('update:modelValue', val);
+  // ✅ ADD THESE LINES:
+  if (!val) {
+    document.body.classList.remove('modal-open-hide-actions');
+  }
+});
 
 const closeModal = () => {
   show.value = false;
@@ -116,4 +142,34 @@ const handleSubmit = async () => {
   }
 };
 </script>
+
+<style>
+body.modal-open-hide-actions {
+  /* Debug tint */
+  background: rgba(255, 0, 0, 0.05) !important;
+}
+
+/* ✅ EXACT MATCH for your Close Ticket button */
+body.modal-open-hide-actions button.px-3.py-1\\.5.text-sm.font-medium.rounded-lg.bg-red-500,
+body.modal-open-hide-actions button.px-3.py-1\\.5.text-sm.font-medium.rounded-lg.bg-red-600,
+body.modal-open-hide-actions button:has(span:text("Close Ticket")),
+body.modal-open-hide-actions button:has(span:text("Start Ticket")) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* ✅ Hide New buttons (Frappe Button component) */
+body.modal-open-hide-actions button[class*="inline-flex"][class*="items-center"][class*="gap-1"] {
+  display: none !important;
+}
+
+/* ✅ Hide parent container */
+body.modal-open-hide-actions div[class*="flex items-center gap-2"] {
+  display: none !important;
+}
+</style>
+
+
+
 
