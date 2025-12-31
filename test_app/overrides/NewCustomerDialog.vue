@@ -312,6 +312,7 @@ const customerResource = createResource({
   url: "frappe.client.insert",
   method: "POST",
   onSuccess: () => {
+    // Reset form fields
     state.customer_name = "";
     state.domain = "";
     state.custom_customercode = "";
@@ -333,7 +334,9 @@ const customerResource = createResource({
     state.custom_remarks = "";
     state.custom_status = "Enabled";
 
-    productOptions.data = [];
+    // DON'T clear productOptions.data - keep the product list
+    // Instead, just reload the products to ensure fresh data
+    productOptions.reload();
 
     toast.success("Customer created");
     emit("customerCreated");
