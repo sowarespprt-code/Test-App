@@ -7,7 +7,7 @@
     style="background-color: rgba(0, 0, 0, 0.5);"
     @mousedown.self="closePopup"
   >
-    <div 
+    <div
       class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
       @mousedown.stop
     >
@@ -149,10 +149,42 @@
 
           <div class="border-t border-gray-200 my-2"></div>
 
-          <!-- Nature of Business -->
-          <div>
-            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nature of Business (GST)</span>
-            <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.NatureOfBusiness || 'Not available' }}</p>
+          <!-- Nature of Business and License Key -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nature of Business (GST)</span>
+              <p class="mt-0.5 text-sm text-gray-900">{{ licenseData.NatureOfBusiness || 'Not available' }}</p>
+            </div>
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">License Key</span>
+              <div class="mt-0.5 flex items-center gap-2">
+                <p class="text-sm text-gray-900 font-mono font-medium flex-1 break-all">
+                  {{ licenseData.LicKey || 'Not available' }}
+                </p>
+                <button
+                  v-if="licenseData.LicKey"
+                  @click.stop.prevent="copyLicenseKey"
+                  type="button"
+                  class="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition flex items-center gap-1 cursor-pointer"
+                  title="Copy License Key"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="border-t border-gray-200 my-2"></div>
@@ -228,6 +260,7 @@ interface LicenseData {
   EmailID: string;
   NatureOfBusiness: string;
   LicenseType: string;
+  LicKey: string;
   SubscriptionExpDate: string;
   SubscriptionRemarks: string;
   AMCStartDate: string;
@@ -309,6 +342,100 @@ async function fetchDetails() {
 
 function closePopup() {
   emit('update:modelValue', false);
+}
+
+function copyLicenseKey(event?: Event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  console.log('Copy function called');
+  console.log('License Data:', licenseData.value);
+
+  if (!licenseData.value?.LicKey) {
+    console.error('No license key available');
+    showToast('No license key to copy', 'warning');
+    return;
+  }
+
+  const textToCopy = licenseData.value.LicKey;
+  console.log('Copying text:', textToCopy);
+
+  // Try fallback method first (more reliable)
+  fallbackCopy(textToCopy);
+}
+
+function fallbackCopy(text: string) {
+  try {
+    console.log('Using fallback copy method');
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    textArea.setAttribute('readonly', '');
+    document.body.appendChild(textArea);
+   
+    // For iOS
+    if (navigator.userAgent.match(/ipad|iphone/i)) {
+      const range = document.createRange();
+      range.selectNodeContents(textArea);
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      textArea.setSelectionRange(0, 999999);
+    } else {
+      textArea.select();
+    }
+   
+    const successful = document.execCommand('copy');
+    console.log('Copy command successful:', successful);
+    document.body.removeChild(textArea);
+   
+    if (successful) {
+      showToast('License key copied!', 'success');
+    } else {
+      // Try modern API as fallback
+      tryModernClipboard(text);
+    }
+  } catch (err) {
+    console.error('Fallback copy failed:', err);
+    tryModernClipboard(text);
+  }
+}
+
+function tryModernClipboard(text: string) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    console.log('Trying modern clipboard API');
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        console.log('Modern clipboard API successful');
+        showToast('License key copied!', 'success');
+      })
+      .catch((err) => {
+        console.error('Modern clipboard API failed:', err);
+        showToast('Failed to copy. Please copy manually.', 'error');
+      });
+  } else {
+    console.error('No clipboard method available');
+    showToast('Copy not supported in this browser', 'error');
+  }
+}
+
+function showToast(message: string, type: 'success' | 'error' | 'warning' = 'success') {
+  // Using Frappe's toast notification if available
+  if (typeof window !== 'undefined' && (window as any).frappe?.show_alert) {
+    (window as any).frappe.show_alert({
+      message: message,
+      indicator: type === 'success' ? 'green' : type === 'error' ? 'red' : 'orange'
+    }, 3);
+  } else {
+    // Fallback to alert
+    alert(message);
+  }
 }
 
 function formatDate(dateString: string) {

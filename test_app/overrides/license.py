@@ -28,7 +28,7 @@ def get_customer_license_details(customer_code):
             # POST request with customer code
             response = requests.post(
                 api_url,
-                json={"CustomerCode": api_customer_code},  # Try with capital C
+                json={"CustomerCode": api_customer_code},
                 headers={
                     "Content-Type": "application/json",
                 },
@@ -65,6 +65,7 @@ def get_customer_license_details(customer_code):
                     "EmailID": str(result.get("EmailID", "")).strip(),
                     "NatureOfBusiness": str(result.get("NatureOfBusiness", "")).strip(),
                     "LicenseType": str(result.get("LicenseType", "")).strip(),
+                    "LicKey": str(result.get("LicKey", "")).strip(),  # Added LicKey field
                     "SubscriptionExpDate": str(result.get("SubscriptionExpDate", "")).strip(),
                     "SubscriptionRemarks": str(result.get("SubscriptionRemarks", "")).strip(),
                     "AMCStartDate": str(result.get("AMCStartDate", "")).strip(),
@@ -119,7 +120,6 @@ def test_license_api(customer_code="CU065641980"):
     try:
         api_customer_code = customer_code.split('_')[0] if '_' in customer_code else customer_code
 
-
         api_url = "http://licmanager.soware.in/api/LicCustomer/uspGetCustomerDetails"
         
         response = requests.post(
@@ -129,12 +129,23 @@ def test_license_api(customer_code="CU065641980"):
             timeout=10
         )
         
-        return {
+        result = {
             "success": True,
             "status_code": response.status_code,
             "response_text": response.text,
             "response_json": response.json() if response.status_code == 200 else None
         }
+        
+        # Log LicKey if present
+        if response.status_code == 200:
+            json_data = response.json()
+            if json_data.get("Result"):
+                lic_key = json_data["Result"].get("LicKey")
+                frappe.logger().info(f"LicKey found: {lic_key}")
+                result["lic_key"] = lic_key
+        
+        return result
+        
     except Exception as e:
         return {
             "success": False,
@@ -142,3 +153,4 @@ def test_license_api(customer_code="CU065641980"):
             "api_code_used": api_customer_code if 'api_customer_code' in locals() else None,
             "error": str(e)
         }
+
