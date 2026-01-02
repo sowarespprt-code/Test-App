@@ -55,6 +55,7 @@ def install_overrides():
         "ListViewBuilder.vue" : "desk/src/components/ListViewBuilder.vue",
         "Tickets.vue" : "desk/src/pages/ticket/Tickets.vue",
         # "Sidebar.vue" : "desk/src/components/layouts/Sidebar.vue",
+        "Customers.vue" : "desk/src/pages/desk/customer/Customers.vue",
         
         # "api.py":"helpdesk/helpdesk/doctype/hd_ticket/api.py",
         # "TicketCustomerSidebar.vue":"desk/src/components/ticket/TicketCustomerSidebar.vue",
@@ -63,7 +64,7 @@ def install_overrides():
         "customer_api.py":"helpdesk/api/customer_api.py",
         "index.ts": "desk/src/router/index.ts",
         "doc.py" : "helpdesk/api/doc.py",
-        "App.vue" : "desk/src/App.vue"
+        # "App.vue" : "desk/src/App.vue"
     }
     
     success = True

@@ -179,6 +179,12 @@ def get_list_data(
     if doctype == "HD Ticket" and "custom_remarks" not in rows:
         rows.append("custom_remarks")
 
+    if doctype == "HD Customer":
+        if "customer_name" not in rows:
+            rows.append("customer_name")
+        if "image" not in rows:
+            rows.append("image")
+
     rows.append("name") if "name" not in rows else rows
     data = (
         frappe.get_list(

@@ -454,7 +454,7 @@
             </template>
           </div>
 
-          <!-- Phone -->
+          <!-- Phone - Clean (No special marking) -->
           <div style="width: 25%; min-width: 180px;">
             <template v-for="field in visibleFields" :key="'phone_' + field.fieldname">
               <template v-if="field.fieldname === 'custom_phone_number' || field.fieldname.toLowerCase().includes('phone')">
@@ -466,6 +466,7 @@
               </template>
             </template>
           </div>
+
 
           <!-- Contact - Made wider -->
           <div style="width: 45%; min-width: 250px;">
@@ -1571,9 +1572,18 @@ const ticket = createResource({
   }),
   validate(params: any) {
     const fields = visibleFields.value?.filter((f: any) => f.required);
-    for (const field of [...fields, { fieldname: "subject" }, { fieldname: "description" }] as any) {
-      if (isEmpty(params.doc[field.fieldname])) {
-        return `${field.label || field} is required`;
+
+    // Add phone field explicitly to required list
+    const extraRequiredFields = [
+      { fieldname: "subject", label: "Subject" },
+      { fieldname: "description", label: "Description" },
+      { fieldname: "custom_phone_number", label: "Phone Number" }, // ✅ mandatory phone
+    ];
+
+    for (const field of [...fields, ...extraRequiredFields] as any) {
+      const value = params.doc[field.fieldname];
+      if (isEmpty(value)) {
+        return `${field.label || field.fieldname} is required`;
       }
     }
   },
@@ -1631,3 +1641,4 @@ onMounted(() => {
   capture("new_ticket_page", { data: { user: userID } });
 });
 </script>
+

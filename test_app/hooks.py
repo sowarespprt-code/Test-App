@@ -150,7 +150,11 @@ doc_events = {
 # 	}
     "HD Ticket": {  # or "Ticket" depending on your site
         "before_save": "test_app.helpdesk_hooks.auto_assign_on_status_change"
-    }
+    },
+
+    # "HD Ticket": {
+    #     "before_save": "test_app.ticket_location.capture_agent_location"
+    # }
 }
 
 
