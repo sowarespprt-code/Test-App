@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { Dialog, Button, call } from 'frappe-ui';
+import { useRouter } from 'vue-router'; 
 
 const props = defineProps({
   modelValue: {
@@ -63,6 +64,8 @@ const show = ref(props.modelValue);
 const comment = ref('');
 const showError = ref(false);
 const isSubmitting = ref(false);
+
+const router = useRouter();
 
 watch(
   () => props.modelValue,
@@ -134,6 +137,7 @@ const handleSubmit = async () => {
     emit('success', comment.value.trim());
 
     closeModal();
+    await router.push('/tickets');
   } catch (e: any) {
     console.error('Failed to add comment:', e);
     alert('Failed to add comment: ' + (e.message || 'Unknown error'));
