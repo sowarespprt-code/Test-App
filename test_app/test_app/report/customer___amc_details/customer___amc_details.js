@@ -425,7 +425,7 @@ frappe.query_reports["Customer - AMC Details"] = {
                                 font-weight: 500;
                                 border-radius: 4px;
                                 background: #000000ff !important;
-                                border: 1px solid #000000ff !important;
+                                border: 1px solid #ffffffff !important;
                                 color: #fff !important;
                                 cursor: pointer !important;">
                         Show Report
@@ -442,6 +442,50 @@ frappe.query_reports["Customer - AMC Details"] = {
                 $('#show-report-btn-amc').hover(
                     function() { $(this).css({'background': '#333'}); },
                     function() { $(this).css({'background': '#000000ff'}); }
+                );
+            }
+        }, 300);
+
+        // ⭐ BACK TO HELPDESK BUTTON
+        setTimeout(function() {
+            if (!$('#back-to-helpdesk-btn').length) {
+                const back_btn = $(`
+                    <button class="btn btn-default btn-sm" 
+                            id="back-to-helpdesk-btn"
+                            style="margin-right: 8px; 
+                                padding: 6px 12px;
+                                font-size: 13px;
+                                font-weight: 500;
+                                border-radius: 4px;
+                                background: #080808ff !important;
+                                border: 1px solid #ffffffff !important;
+                                color: #fafafaff !important;
+                                cursor: pointer !important;
+                                display: flex !important;
+                                align-items: center !important;
+                                gap: 6px !important;">
+                        <svg style="width: 14px; height: 14px;" 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            stroke-width="2.5">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        <span>Helpdesk</span>
+                    </button>
+                `);
+                
+                $('.page-head-content .standard-actions').prepend(back_btn);
+                
+                $('#back-to-helpdesk-btn').on('click', function(e) {
+                    e.preventDefault();
+                    window.location.href = '/helpdesk/tickets';
+                });
+                
+                $('#back-to-helpdesk-btn').hover(
+                    function() { $(this).css({'background': '#333', 'border-color': '#333'}); },
+                    function() { $(this).css({'background': '#000000ff', 'border-color': '#000000ff'}); }
                 );
             }
         }, 300);

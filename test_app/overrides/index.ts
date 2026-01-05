@@ -226,6 +226,23 @@ const routes = [
       auth: true,
     },
   },
+  {
+    path: "/customer-amc-details",
+    name: "CustomerAMCDetails",
+    component: {
+      setup() {
+        if (typeof window !== "undefined") {
+          window.location.href =
+            "/app/query-report/Customer - AMC Details?amc_status=All";
+        }
+        return () => null;
+      },
+    },
+    meta: {
+      auth: true,
+    },
+  },
+
 ];
 
 const handleMobileView = (componentName) => {

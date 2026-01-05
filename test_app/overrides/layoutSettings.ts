@@ -7,6 +7,8 @@ import LucideBox from "~icons/lucide/box";
 import PhoneIcon from "~icons/lucide/phone";
 import LucideBell from "~icons/lucide/bell";
 import LucidePanelLeft from "~icons/lucide/layout-panel-left";
+import LucideFileText from "~icons/lucide/file-text";
+
 
 export const agentPortalSidebarOptions = [
   {
@@ -48,6 +50,11 @@ export const agentPortalSidebarOptions = [
     label: "Show summary",          // NEW
     icon: LucidePanelLeft,          // NEW icon
     to: "ShowSummary",            
+  },
+  {
+    label: "Customer AMC Details",
+    icon: LucideFileText,
+    to: "CustomerAMCDetails",
   },
   {
     label: "Call Logs",
