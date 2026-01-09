@@ -148,13 +148,20 @@ doc_events = {
 # 		"on_cancel": "method",
 # 		"on_trash": "method"
 # 	}
-    "HD Ticket": {  # or "Ticket" depending on your site
-        "before_save": "test_app.helpdesk_hooks.auto_assign_on_status_change"
-    },
+    # "HD Ticket": {  # or "Ticket" depending on your site
+    #     "before_save": "test_app.helpdesk_hooks.auto_assign_on_status_change"
+    # },
 
     # "HD Ticket": {
     #     "before_save": "test_app.ticket_location.capture_agent_location"
     # }
+    "HD Ticket": {
+        "on_update": [
+            "test_app.utils.clear_ticket_todo_on_unassign",
+            "test_app.utils.notify_ticket_status_change",
+            "test_app.utils.auto_assign_on_status_change"
+        ]
+    }
 }
 
 

@@ -1,6 +1,7 @@
 <template>
   <div
     class="md:mx-10 md:my-4 flex items-center justify-between text-lg font-medium mx-6 mb-4 !mt-8"
+    v-show="!showAssignmentPopup"
   >
     <!-- LEFT: labels + times + LOCATION -->
     <div class="flex flex-col gap-2">
@@ -37,21 +38,45 @@
         :disabled="isUpdating"
         :class="[
           'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-offset-1',
-          'touch-manipulation',
+          'focus:outline-none focus:ring-2 focus:ring-offset-1 touch-manipulation',
           isUpdating 
             ? 'bg-gray-400 text-white cursor-not-allowed' 
-            : isTicketStarted 
-              ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500' 
+            : buttonState.isClose 
+              ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500'
               : 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500'
         ]"
-        style="pointer-events: auto; -webkit-tap-highlight-color: transparent; user-select: none;"
         @click.stop="handleButtonClick"
       >
-        {{ isUpdating 
-          ? (isTicketStarted ? 'Closing...' : 'Starting...') 
-          : (isTicketStarted ? 'Close Ticket' : 'Start Ticket') }}
+        <span v-if="isUpdating" class="flex items-center gap-2">
+          <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          {{ buttonInfo?.is_close ? 'Closing...' : 'Starting...' }}
+        </span>
+        <span v-else>{{ buttonState.text || buttonInfo?.button_text || 'Start Ticket' }}</span>
       </button>
+
+      <div v-if="isStatusRefreshing" 
+          class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center rounded-lg z-10"
+          style="pointer-events: none;">
+        <div class="bg-white p-3 rounded-full shadow-lg animate-spin">
+          <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" pathLength="1" class="opacity-25"/>
+            <path d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" stroke="currentColor" stroke-width="3" pathLength="1" class="opacity-75"/>
+          </svg>
+        </div>
+      </div>
+
+
+      <!-- ✅ MOBILE-FRIENDLY: Assigned to message -->
+      <div 
+        v-else-if="!showStartClose && buttonInfo.button_text && title === 'Activity'"
+        class="px-3 py-2 sm:px-4 sm:py-2.5 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-lg text-xs sm:text-sm font-semibold text-amber-900 flex items-center justify-center gap-2 shadow-sm"
+      >
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        <span class="truncate">{{ buttonInfo.button_text }}</span>
+      </div>
+
 
       <Button
         v-if="title == 'Emails'"
@@ -157,9 +182,40 @@
     </div>
   </div>
 
+  <!-- ✅ ADD THIS NEW DIALOG (at very end) -->
+  <Dialog
+    v-model="showAssignmentPopup"
+    :options="{
+      title: 'Ticket Already Assigned',
+      size: 'md',
+    }"
+  >
+    <template #body-content>
+      <div class="space-y-4 py-4">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
+            <svg class="w-7 h-7 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-lg font-semibold text-gray-900 mb-3">
+              {{ assignmentAlert.message }}
+            </p>
+            <p class="text-sm text-gray-600 leading-relaxed">
+              This ticket is currently being handled by <span class="font-semibold text-gray-800">{{ assignmentAlert.assignee }}</span>. 
+            </p>
+          </div>
+        </div>
+      </div>
+    </template>
 
-
-
+    <template #actions>
+      <Button variant="solid" @click="closeAssignmentPopup">
+        OK, Got It
+      </Button>
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -212,7 +268,6 @@ const { isCallingEnabled } = storeToRefs(useTelephonyStore());
 const ticketId = inject<string>("ticketId");
 
 const isTicketStarted = ref(false);
-const startedStatuses = ["In Progress", "Replied", "Resolved"];
 const isUpdating = ref(false);
 
 const fetchedStartTime = ref("");
@@ -224,54 +279,107 @@ const mapContainer = ref(null);
 const mapInstance = ref(null);
 const savedLatitude = ref(null);
 const savedLongitude = ref(null);
+const fetchedAssignedTo = ref("");
+const isAdminRole = ref(false);
+const isAssignee = ref(false);
+const currentUser = inject('user'); 
+const buttonInfo = ref({});
+const showStartClose = ref(true);
+const buttonState = ref({ show: true, text: 'Start Ticket', isClose: false });
+const isStatusRefreshing = ref(false);
+
+const assignmentAlert = ref({ show_alert: 0, message: '', assignee: '' });
+const showAssignmentPopup = ref(false); 
 
 
 const locationText = computed(() => {
   return fetchedLocationText.value || '';
 });
 
-// Update fetchTicketTimes:
+const closeAssignmentPopup = () => {
+  showAssignmentPopup.value = false;
+};
+
 const fetchTicketTimes = async () => {
   if (!props.ticketName) return;
-  
+
   try {
-    const result = await call("frappe.client.get_value", {
-      doctype: "HD Ticket",
-      filters: { name: props.ticketName },
-      fieldname: ["custom_start_time", "custom_end_time", "custom_location_text", "custom_location"]
+    // 1. ✅ Check alert FIRST
+    const alertRes = await call("test_app.api1.get_ticket_assignment_alert", {
+      ticket_name: props.ticketName
     });
     
-    if (result) {
-      fetchedStartTime.value = result.custom_start_time || "";
-      fetchedEndTime.value = result.custom_end_time || "";
-      fetchedLocationText.value = result.custom_location_text || "";
+    console.log("🔔 ALERT RESPONSE:", alertRes);
+    
+    // ✅ FIX: alertRes IS the object, not alertRes.message
+    if (alertRes?.show_alert === 1) {
+      assignmentAlert.value = {
+        show_alert: alertRes.show_alert,
+        message: alertRes.message,
+        assignee: alertRes.assignee
+      };
       
-      // Parse GeoJSON to extract lat/lng
-      if (result.custom_location) {
-        try {
-          const geojson = JSON.parse(result.custom_location);
-          if (geojson.features && geojson.features[0]?.geometry?.coordinates) {
-            const coords = geojson.features[0].geometry.coordinates;
-            savedLongitude.value = coords[0];  // GeoJSON: [lng, lat]
-            savedLatitude.value = coords[1];
-            console.log('📍 Parsed from GeoJSON:', savedLatitude.value, savedLongitude.value);
-          }
-        } catch (e) {
-          console.warn('GeoJSON parse failed:', e);
+      // Show popup immediately
+      await nextTick();
+      showAssignmentPopup.value = true;
+      console.log("✅ POPUP TRIGGERED:", showAssignmentPopup.value);
+    }
+  } catch (alertError) {
+    console.warn("⚠️ Assignment alert fetch failed:", alertError);
+  }
+  
+  try {
+    // Backend API
+    const btnResponse = await call("test_app.api1.get_ticket_button_visibility", {
+      ticket_name: props.ticketName
+    });
+    
+    console.log("Backend response:", btnResponse);
+    
+    buttonState.value = {
+      show: !!btnResponse.show_button,
+      text: btnResponse.button_text || 'Start Ticket',
+      isClose: !!btnResponse.is_close  // 0 → false (green), 1 → true (red)
+    };
+    buttonInfo.value = btnResponse;
+    showStartClose.value = buttonState.value.show;
+
+    // Existing fields
+    const ticketDoc = await call("frappe.client.get", {
+      doctype: "HD Ticket",
+      name: props.ticketName
+    });
+    
+    fetchedStartTime.value = ticketDoc.custom_start_time || "";
+    fetchedEndTime.value = ticketDoc.custom_end_time || "";
+    fetchedLocationText.value = ticketDoc.custom_location_text || "";
+    
+    // GeoJSON (your existing code)
+    if (ticketDoc.custom_location) {
+      try {
+        const geojson = JSON.parse(ticketDoc.custom_location);
+        if (geojson.features?.[0]?.geometry?.coordinates) {
+          const coords = geojson.features[0].geometry.coordinates;
+          savedLongitude.value = coords[0];
+          savedLatitude.value = coords[1];
         }
+      } catch (e) {
+        console.warn('GeoJSON parse failed:', e);
       }
     }
-  } catch (e) {
-    console.error("Failed to fetch ticket data:", e);
+  } catch (e) {  // ✅ OUTER CATCH - UPDATE THIS ONE
+    console.error("fetchTicketTimes failed:", e);
+    // Fallback: safe "Start Ticket" state
+    buttonState.value = { show: true, text: 'Start Ticket', isClose: false };
+    showStartClose.value = true;
   }
 };
 
 
-
 onMounted(async () => {
-  syncButtonWithStatus();
   await fetchTicketTimes();
 });
+
 
 watch(
   () => props.ticketName,
@@ -279,13 +387,6 @@ watch(
     if (newName) {
       await fetchTicketTimes();
     }
-  }
-);
-
-watch(
-  () => props.ticketStatus,
-  () => {
-    syncButtonWithStatus();
   }
 );
 
@@ -304,16 +405,38 @@ watch(showLocationModal, async (isOpen) => {
   }
 });
 
+watch(() => props.ticketStatus, async (newStatus, oldStatus) => {
+  if (newStatus && newStatus !== oldStatus && props.ticketName) {
+    console.log(`🔄 Auto-refresh: ${oldStatus || '?'} → ${newStatus}`);
+    isStatusRefreshing.value = true;
+    
+    // 300ms delay + refresh
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await fetchTicketTimes();
+    
+    // Brief success
+    setTimeout(() => {
+      isStatusRefreshing.value = false;
+    }, 500);
+  }
+}, { immediate: true, flush: 'post' });
+
+watch([() => props.ticketStatus, () => props.ticketName], async () => {
+  if (props.ticketName) await fetchTicketTimes();
+}, { immediate: true });
+
+
 
 const handleButtonClick = async () => {
   if (isUpdating.value) return;
-  
-  if (isTicketStarted.value) {
+  if (buttonState.value.isClose) {
     showCloseModal.value = true;
   } else {
     await handleStartTicket();
   }
 };
+
+
 
 const defaultActions = computed(() => {
   let actions = [
@@ -351,11 +474,6 @@ const callActions = computed(() => [
   },
 ]);
 
-const syncButtonWithStatus = () => {
-  const status = props.ticketStatus;
-  isTicketStarted.value = startedStatuses.includes(status);
-};
-
 const startTimeDisplay = computed(() => fetchedStartTime.value || props.customStartTime || '');
 const endTimeDisplay = computed(() => fetchedEndTime.value || props.customEndTime || '');
 
@@ -392,11 +510,7 @@ const formatTime = (timeStr: string) => {
   });
 };
 
-const showStartClose = computed(() => {
-  const status = props.ticketStatus;
-  const hiddenStatuses = ["Closed", "Resolved", ""];
-  return !hiddenStatuses.includes(status);
-});
+
 
 const captureCurrentLocation = () => {
   return new Promise((resolve, reject) => {
@@ -481,19 +595,10 @@ const handleStartTicket = async () => {
 
   try {
     const currentTime = nowFrappeFormat();
-
-    await call("frappe.client.set_value", {
-      doctype: "HD Ticket",
-      name: props.ticketName,
-      fieldname: "status",
-      value: "In Progress",
-    });
-
-    await call("frappe.client.set_value", {
-      doctype: "HD Ticket",
-      name: props.ticketName,
-      fieldname: "custom_start_time",
-      value: currentTime,
+    
+    // ✅ ONE CALL does ToDo + status + time
+    await call("test_app.api1.start_ticket", {
+      ticket_name: props.ticketName
     });
 
     const location = await captureCurrentLocation();
@@ -518,7 +623,7 @@ const handleStartTicket = async () => {
 
     setTimeout(() => {
       window.location.reload();
-    }, 2000);
+    }, 100);
   } catch (e) {
     console.error("❌ Ticket start failed:", e);
     alert("Failed to start ticket");

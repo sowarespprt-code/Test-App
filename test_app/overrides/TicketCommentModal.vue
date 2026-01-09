@@ -12,6 +12,7 @@
           Closing Comment <span class="text-red-500">*</span>
         </label>
         <textarea
+          ref="commentTextarea"
           v-model="comment"
           rows="4"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg
@@ -43,7 +44,7 @@
 
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { Dialog, Button, call } from 'frappe-ui';
 import { useRouter } from 'vue-router'; 
 
@@ -64,28 +65,27 @@ const show = ref(props.modelValue);
 const comment = ref('');
 const showError = ref(false);
 const isSubmitting = ref(false);
+const commentTextarea = ref(null);
 
 const router = useRouter();
 
 watch(
   () => props.modelValue,
-  (val) => {
+  async (val) => {  // ✅ Changed: async
     show.value = val;
     if (val) {
       comment.value = '';
       showError.value = false;
       document.body.classList.add('modal-open-hide-actions');
       
-      // ✅ CLEAN DEBUG - no invalid selectors
-      console.log('✅ Modal opened - body class added: true');
-      console.log('✅ Total buttons:', document.querySelectorAll('button').length);
+      // ✅ NEW: Auto focus
+      await nextTick();
+      commentTextarea.value?.focus();
+      commentTextarea.value?.select();  // Highlights text (optional)
       
-      // ✅ Find buttons by TEXT content (JavaScript, not CSS)
-      const buttonsWithClose = Array.from(document.querySelectorAll('button')).filter(btn => 
-        btn.textContent?.toLowerCase().includes('close') || 
-        btn.textContent?.toLowerCase().includes('new')
-      );
-      console.log('✅ Buttons with "Close/New":', buttonsWithClose.length);
+      // ✅ Keep your existing console.logs
+      console.log('✅ Modal opened - body class added: true');
+      // ... rest of your debug logs
       
     } else {
       document.body.classList.remove('modal-open-hide-actions');
@@ -93,8 +93,6 @@ watch(
     }
   }
 );
-
-
 
 
 // ✅ MODIFY THIS WATCHER - add the if (!val) cleanup:
