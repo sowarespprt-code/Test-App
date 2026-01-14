@@ -298,38 +298,23 @@ const locationText = computed(() => {
 
 const closeAssignmentPopup = () => {
   showAssignmentPopup.value = false;
+  // ✅ Auto-refresh page when "OK, Got It" clicked
+  setTimeout(() => {
+    fetchTicketTimes();
+    window.location.reload();
+  }, 300);
 };
+
+
+
 
 const fetchTicketTimes = async () => {
   if (!props.ticketName) return;
 
   try {
-    // 1. ✅ Check alert FIRST
-    const alertRes = await call("test_app.api1.get_ticket_assignment_alert", {
-      ticket_name: props.ticketName
-    });
+    // ✅ NO AUTO-ALERT CHECK → No popup on page load
     
-    console.log("🔔 ALERT RESPONSE:", alertRes);
-    
-    // ✅ FIX: alertRes IS the object, not alertRes.message
-    if (alertRes?.show_alert === 1) {
-      assignmentAlert.value = {
-        show_alert: alertRes.show_alert,
-        message: alertRes.message,
-        assignee: alertRes.assignee
-      };
-      
-      // Show popup immediately
-      await nextTick();
-      showAssignmentPopup.value = true;
-      console.log("✅ POPUP TRIGGERED:", showAssignmentPopup.value);
-    }
-  } catch (alertError) {
-    console.warn("⚠️ Assignment alert fetch failed:", alertError);
-  }
-  
-  try {
-    // Backend API
+    // Backend API (button state only)
     const btnResponse = await call("test_app.api1.get_ticket_button_visibility", {
       ticket_name: props.ticketName
     });
@@ -339,12 +324,12 @@ const fetchTicketTimes = async () => {
     buttonState.value = {
       show: !!btnResponse.show_button,
       text: btnResponse.button_text || 'Start Ticket',
-      isClose: !!btnResponse.is_close  // 0 → false (green), 1 → true (red)
+      isClose: !!btnResponse.is_close
     };
     buttonInfo.value = btnResponse;
     showStartClose.value = buttonState.value.show;
 
-    // Existing fields
+    // Existing fields (unchanged)
     const ticketDoc = await call("frappe.client.get", {
       doctype: "HD Ticket",
       name: props.ticketName
@@ -354,7 +339,7 @@ const fetchTicketTimes = async () => {
     fetchedEndTime.value = ticketDoc.custom_end_time || "";
     fetchedLocationText.value = ticketDoc.custom_location_text || "";
     
-    // GeoJSON (your existing code)
+    // GeoJSON (unchanged)
     if (ticketDoc.custom_location) {
       try {
         const geojson = JSON.parse(ticketDoc.custom_location);
@@ -367,13 +352,14 @@ const fetchTicketTimes = async () => {
         console.warn('GeoJSON parse failed:', e);
       }
     }
-  } catch (e) {  // ✅ OUTER CATCH - UPDATE THIS ONE
+  } catch (e) {
     console.error("fetchTicketTimes failed:", e);
     // Fallback: safe "Start Ticket" state
     buttonState.value = { show: true, text: 'Start Ticket', isClose: false };
     showStartClose.value = true;
   }
 };
+
 
 
 onMounted(async () => {
@@ -594,43 +580,42 @@ const handleStartTicket = async () => {
   isUpdating.value = true;
 
   try {
-    const currentTime = nowFrappeFormat();
-    
-    // ✅ ONE CALL does ToDo + status + time
-    await call("test_app.api1.start_ticket", {
+    const result = await call("test_app.api1.start_ticket", {
       ticket_name: props.ticketName
     });
-
+    
+    // ✅ CHECK if backend returned alert data
+    if (result?.show_alert === 1) {
+      assignmentAlert.value = {
+        show_alert: 1,
+        message: result.message,
+        assignee: result.assignee
+      };
+      showAssignmentPopup.value = true;
+      return; // Don't continue to location/refresh
+    }
+    
+    // ✅ Success: Capture location (existing code)
     const location = await captureCurrentLocation();
     if (location?.latitude && location?.longitude) {
-      console.log(`📍 Saving: ${location.latitude}, ${location.longitude}`);
-      
-      const result = await call("test_app.ticket_location.capture_agent_location", {
+      await call("test_app.ticket_location.capture_agent_location", {
         ticket_name: props.ticketName,
         latitude: location.latitude,
         longitude: location.longitude,
       });
-      
-      // ✅ Show address immediately
-      if (result?.message?.address) {
-        fetchedLocationText.value = result.message.address;
-        console.log("✅ Address:", result.message.address);
-      }
     }
-
-    isTicketStarted.value = true;
+    
     await fetchTicketTimes();
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    setTimeout(() => window.location.reload(), 100);
+    
   } catch (e) {
     console.error("❌ Ticket start failed:", e);
-    alert("Failed to start ticket");
+    // ✅ Don't show generic alert - let get_ticket_assignment_alert handle it
   } finally {
     isUpdating.value = false;
   }
 };
+
 
 
 

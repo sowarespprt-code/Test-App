@@ -75,35 +75,37 @@ def get_ticket_button_visibility(ticket_name):
             "is_close": 0
         }
 
-# ✅ ADD THIS NEW FUNCTION (below existing one)
 @frappe.whitelist()
 def start_ticket(ticket_name):
-    """Create ToDo + set status/time - NO DUPLICATES"""
+    """Atomic ticket start - NO DUPLICATES even with concurrent clicks"""
     current_user = frappe.session.user
     
-    # ✅ CHECK EXISTING ToDo for this user
-    existing_todo = frappe.get_all("ToDo", 
+    # ✅ ATOMIC LOCK: Prevents concurrent access
+    ticket = frappe.get_doc("HD Ticket", ticket_name, for_update=True)
+    
+    # ✅ CHECK ALL Open ToDos (not just current user)
+    existing_todos = frappe.get_all("ToDo", 
         filters={
             "reference_type": "HD Ticket",
             "reference_name": ticket_name,
-            "allocated_to": current_user,
-            "status": "Open"  # Only active ToDos
+            "status": "Open"
         },
-        fields=["name"],
+        fields=["allocated_to"],
         limit=1
     )
     
-    if existing_todo:
-        # ✅ Already assigned - just update status/time (no new ToDo)
-        frappe.client.set_value("HD Ticket", ticket_name, {
-            "status": "In Progress",
-            "custom_start_time": frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
-        })
-        frappe.db.commit()
-        return {"message": "Ticket resumed (already assigned)"}
+    if existing_todos:
+        # ✅ ANY existing assignee blocks (even other users)
+        assignee_email = existing_todos[0].allocated_to
+        assignee_name = frappe.db.get_value("User", assignee_email, "full_name") or assignee_email
+        return {
+            "show_alert": 1,
+            "message": f"You cannot start this ticket because {assignee_name} is assigned",
+            "assignee": assignee_name
+        }
     
-    # ✅ No existing → Create new ToDo + status
-    frappe.client.insert({
+    # ✅ SAFE: No existing ToDo → Create new one + update ticket
+    todo = frappe.get_doc({
         "doctype": "ToDo",
         "reference_type": "HD Ticket",
         "reference_name": ticket_name,
@@ -111,11 +113,11 @@ def start_ticket(ticket_name):
         "description": f"Started working on ticket {ticket_name}",
         "status": "Open"
     })
+    todo.insert()
     
-    frappe.client.set_value("HD Ticket", ticket_name, {
-        "status": "In Progress",
-        "custom_start_time": frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
-    })
+    ticket.status = "In Progress"  # Or "Progressing"
+    ticket.custom_start_time = frappe.utils.now_datetime()
+    ticket.save()
     
     frappe.db.commit()
     return {"message": "Ticket started successfully"}
