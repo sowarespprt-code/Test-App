@@ -209,26 +209,7 @@ def get_list_data(
         # Ensure customer_name field is available for filtering/display
         if "custom_customer_name" not in rows:
             rows.append("custom_customer_name")
-        
-        # Add customer_name to columns for filterable search box (appears next to Subject)
-        customer_name_column = {
-            "label": "Customer Name",
-            "fieldname": "custom_customer_name",
-            "fieldtype": "Data",
-            "key": "custom_customer_name",
-            "width": "200px",
-            "searchable": True,  # Enables %% LIKE filtering (word-by-word)
-            "in_list_view": True
-        }
-        
-        # Insert Customer Name column right after Subject (position 1)
-        if columns and len(columns) > 0 and columns[0].get("key") == "subject":
-            columns.insert(1, customer_name_column)
-        elif not columns or len(columns) == 0:
-            columns.insert(0, customer_name_column)
-        else:
-            columns.insert(0, customer_name_column)
-
+            
     fields = frappe.get_meta(doctype).fields
     fields = [field for field in fields if field.fieldtype not in no_value_fields]
     fields = [
