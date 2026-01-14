@@ -235,13 +235,18 @@ interface Props {
   modelValue: boolean;
 }
 
-interface Emits {
+const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
-  (e: "customerSelected", customer: Customer): void;
-}
+  (e: "customerSelected", customer: {
+    name: string;
+    customer_name: string;
+    custom_productname?: string;
+    custom_customercode?: string;
+  }): void;
+}>();
+
 
 const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
 const showDetailsPopup = ref(false);
 
 const searchQuery = ref("");
@@ -341,24 +346,31 @@ function handleSelectCustomer(customer: CustomerSearchResult) {
   selectedCustomer.value = customer;
 }
 
+
 async function handleDetailsOK() {
   if (!selectedCustomer.value) return;
  
   isFetchingDetails.value = true;
 
   try {
-    // Fetch full customer details first
+    // Fetch full customer details
     const details = await call("helpdesk.api.customer_api.get_hd_customer_details", {
       customer_name: selectedCustomer.value.name,
     });
    
+    console.log("[POPUP] 📦 Customer details from API:", details);
+   
     if (details) {
-      // Emit the customer data
-      emit("customerSelected", {
-        customer_name: details.customer_name,
-        custom_productname: details.custom_productname,
-        custom_customercode: details.custom_customercode
-      });
+      // ✅ Emit with ALL fields populated
+      const customerData = {
+        name: selectedCustomer.value.name, // ID (e.g., "95obcrpmbs")
+        customer_name: details.customer_name || selectedCustomer.value.customer_name, // Display name
+        custom_productname: details.custom_productname || "",
+        custom_customercode: details.custom_customercode || ""
+      };
+      
+      console.log("[POPUP] ✅ Emitting customer data:", customerData);
+      emit("customerSelected", customerData);
      
       // Close popup and reset
       searchQuery.value = "";
@@ -366,10 +378,10 @@ async function handleDetailsOK() {
       selectedCustomer.value = null;
       emit("update:modelValue", false);
     } else {
-      alert("No customer details returned");
+      alert("No customer details returned from server");
     }
   } catch (error) {
-    console.error("Error fetching customer details:", error);
+    console.error("[POPUP] ❌ Error fetching customer details:", error);
     alert("Failed to fetch customer details. Please try again.");
   } finally {
     isFetchingDetails.value = false;

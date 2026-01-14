@@ -149,27 +149,96 @@ function openCustomerSearchPopup() {
   showCustomerSearchPopup.value = true;
 }
 
-// ✅ SIMPLIFIED: Just update customer name field
+
+// ✅ IMPROVED: handleCustomerSelected with better error handling
 async function handleCustomerSelected(customer: any) {
   console.log("[DETAILS TAB] 👤 Customer selected from popup:", customer);
   
-  // ✅ FIXED: Check for customer_name instead of customername
-  if (!customer || !customer.customer_name) {
+  if (!customer || !customer.name) {
     console.log("[DETAILS TAB] ⚠️ Invalid customer data");
     return;
   }
 
-  // ✅ Use customer_name field
-  const customerName = customer.customer_name;
-  console.log("[DETAILS TAB] 📝 Updating custom_customer_name to:", customerName);
+  const customerId = customer.name; // HD Customer ID
+  const customerName = customer.customer_name; // Actual name
+  
+  console.log("[DETAILS TAB] 📝 Customer selection:", {
+    customerId,
+    customerName,
+  });
 
   try {
-    // ✅ Update the field using existing method
-    await handleFieldUpdate("custom_customer_name", customerName, false);
+    // ✅ Reload ticket to get latest version
+    console.log("[DETAILS TAB] 🔄 Reloading ticket...");
+    await ticket.value.reload();
     
-    console.log("[DETAILS TAB] ✅ Customer name updated, watchers will handle the rest");
+    // ✅ SINGLE SAVE: Update both fields at once
+    console.log("[DETAILS TAB] 💾 Saving customer fields...");
+    await ticket.value.setValue.submit({
+      customer: customerId,  // Link field
+      custom_customer_name: customerName  // Display field
+    });
+    
+    console.log("[DETAILS TAB] ✅ Customer fields saved successfully");
+    
+    // ✅ Wait for Frappe to process
+    await nextTick();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // ✅ Reload to get the updated document
+    console.log("[DETAILS TAB] 🔄 Reloading after save...");
+    await ticket.value.reload();
+    
+    // ✅ Now load all customer data
+    console.log("[DETAILS TAB] 📥 Loading customer data...");
+    await reloadAllCustomerData();
+
+    if (assignees?.value) {
+      console.log("[DETAILS TAB] 🔄 Reloading assignees after popup...");
+      await assignees.value.reload();
+      console.log("[DETAILS TAB] ✅ Team options refreshed");
+    }
+    
   } catch (error) {
     console.error("[DETAILS TAB] ❌ Error updating customer:", error);
+    
+    // ✅ Handle timestamp mismatch
+    const errorString = String(error);
+    if (errorString.includes("TimestampMismatchError") || 
+        error.exc_type === "TimestampMismatchError") {
+      console.log("[DETAILS TAB] 🔁 Timestamp mismatch - retrying...");
+      
+      try {
+        // Wait a bit before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reload and try again
+        await ticket.value.reload();
+        
+        await ticket.value.setValue.submit({
+          customer: customerId,
+          custom_customer_name: customerName
+        });
+        
+        await nextTick();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await ticket.value.reload();
+        await reloadAllCustomerData();
+
+        if (assignees?.value) {
+          console.log("[DETAILS TAB] 🔄 Reloading assignees after retry...");
+          await assignees.value.reload();
+        }
+        
+        console.log("[DETAILS TAB] ✅ Retry successful");
+      } catch (retryError) {
+        console.error("[DETAILS TAB] ❌ Retry failed:", retryError);
+        alert("Failed to update customer after retry. Please refresh the page and try again.");
+      }
+    } else {
+      alert("Failed to update customer. Please try again.");
+    }
   }
 }
 
@@ -197,59 +266,121 @@ function handleLicenseLoaded(data: any) {
   licenseData.value = data;
 }
 
+
+// ✅ SIMPLIFIED: loadVirtualFields - no more saves
 async function loadVirtualFields() {
-  const customerName = ticket?.value?.doc?.custom_customer_name;
+  const customerId = ticket?.value?.doc?.customer;
+  const customerNameField = ticket?.value?.doc?.custom_customer_name;
   const ticketName = ticket?.value?.doc?.name;
   
-  if (!customerName) {
-    console.log("[DETAILS TAB] ⚠️ No customer name available");
+  console.log("[DETAILS TAB] 📥 Loading virtual fields with:", {
+    customerId,
+    customerNameField,
+    ticketName
+  });
+  
+  if (!customerId && !customerNameField) {
+    console.log("[DETAILS TAB] ⚠️ No customer information available");
     clearVirtualFields();
     return;
   }
 
-  console.log("[DETAILS TAB] 📥 Fetching virtual fields for:", customerName);
-  lastProcessedCustomer.value = customerName;
+  const lookupValue = customerId || customerNameField;
+  console.log("[DETAILS TAB] 📥 Fetching HD Customer:", lookupValue);
+  lastProcessedCustomer.value = lookupValue;
 
   try {
-    const result = await call("frappe.client.get_list", {
+    // ✅ Try by ID first
+    let result = await call("frappe.client.get_list", {
       doctype: "HD Customer",
-      filters: { name: customerName },
-      fields: ["custom_customercode", "custom_productname", "custom_remarks"],
+      filters: { name: lookupValue },
+      fields: [
+        "name",
+        "customer_name", 
+        "custom_customercode", 
+        "custom_productname", 
+        "custom_remarks"
+      ],
       limit: 1
     });
 
-    console.log("[DETAILS TAB] ✅ HD Customer result:", result);
-    const customer = result && result.length > 0 ? result[0] : {};
+    console.log("[DETAILS TAB] ✅ HD Customer lookup by ID:", result);
     
-    virtualFields.value.custom_customercode = customer.custom_customercode || "";
-    virtualFields.value.custom_product = customer.custom_productname || "";
-    virtualFields.value.custom_remarks = customer.custom_remarks || "";
-
-    ticket.value.doc.custom_customercode = virtualFields.value.custom_customercode;
-    ticket.value.doc.custom_remarks = virtualFields.value.custom_remarks;
-
-    if (virtualFields.value.custom_customercode) {
-      console.log("[DETAILS TAB] 🚀 Triggering AMC for code:", virtualFields.value.custom_customercode);
-      await fetchLicenseDataForTicket();
+    // ✅ Fallback to customer_name if needed
+    if (!result || result.length === 0) {
+      console.log("[DETAILS TAB] 🔍 Trying lookup by customer_name...");
+      
+      result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { customer_name: lookupValue },
+        fields: [
+          "name",
+          "customer_name",
+          "custom_customercode",
+          "custom_productname",
+          "custom_remarks"
+        ],
+        limit: 1
+      });
+      
+      console.log("[DETAILS TAB] ✅ HD Customer lookup by name:", result);
     }
-
-    if (ticketName && !ticket.value.doc.__islocal) {
-      const storageKey = `ticket_popup_${ticketName}`;
-      const storedPopupMessages = localStorage.getItem(storageKey);
-      if (storedPopupMessages) {
-        virtualFields.value.custom_popup_messages = storedPopupMessages;
-      } else {
-        await fetchCustomerAlerts(customerName, virtualFields.value.custom_customercode);
-      }
+    
+    if (result && result.length > 0) {
+      const customer = result[0];
+      await populateCustomerData(customer, ticketName);
     } else {
-      await fetchCustomerAlerts(customerName, virtualFields.value.custom_customercode);
+      console.log("[DETAILS TAB] ❌ Customer not found");
+      clearVirtualFields();
     }
 
-    console.log("[DETAILS TAB] ✅ Virtual fields loaded:", virtualFields.value);
   } catch (error) {
     console.error("[DETAILS TAB] ❌ Virtual fields error:", error);
     clearVirtualFields();
   }
+}
+
+// ✅ FIXED: Remove the save attempt from populateCustomerData
+async function populateCustomerData(customer: any, ticketName: string) {
+  console.log("[DETAILS TAB] 📝 Populating data from customer:", customer);
+  
+  // ✅ Update virtual fields
+  virtualFields.value.custom_customercode = customer.custom_customercode || "";
+  virtualFields.value.custom_product = customer.custom_productname || "";
+  virtualFields.value.custom_remarks = customer.custom_remarks || "";
+
+  // ✅ Update ticket document (in memory only)
+  ticket.value.doc.custom_customercode = virtualFields.value.custom_customercode;
+  ticket.value.doc.custom_remarks = virtualFields.value.custom_remarks;
+  
+  // ✅ Update custom_customer_name in memory (NO SAVE)
+  const currentCustomerName = ticket.value.doc.custom_customer_name;
+  if (!currentCustomerName || currentCustomerName.length < 10 || currentCustomerName === customer.name) {
+    console.log("[DETAILS TAB] 🔧 Updating custom_customer_name in memory to:", customer.customer_name);
+    ticket.value.doc.custom_customer_name = customer.customer_name;
+    // ❌ REMOVED: Don't save here - it causes timestamp mismatch
+  }
+
+  // ✅ Fetch license data if customer code exists
+  if (virtualFields.value.custom_customercode) {
+    console.log("[DETAILS TAB] 🚀 Triggering AMC for code:", virtualFields.value.custom_customercode);
+    await fetchLicenseDataForTicket();
+  }
+
+  // ✅ Load customer alerts
+  if (ticketName && !ticket.value.doc.__islocal) {
+    const storageKey = `ticket_popup_${ticketName}`;
+    const storedPopupMessages = localStorage.getItem(storageKey);
+    if (storedPopupMessages) {
+      virtualFields.value.custom_popup_messages = storedPopupMessages;
+    } else {
+      await fetchCustomerAlerts(customer.name, virtualFields.value.custom_customercode);
+    }
+  } else {
+    await fetchCustomerAlerts(customer.name, virtualFields.value.custom_customercode);
+  }
+
+  console.log("[DETAILS TAB] ✅ Virtual fields loaded:", virtualFields.value);
 }
 
 function clearVirtualFields() {
@@ -527,18 +658,18 @@ onMounted(async () => {
 });
 
 watch(
-  () => ticket?.value?.doc?.custom_customer_name,
-  async (newCustomerName, oldCustomerName) => {
-    console.log("[DETAILS TAB] 👤 Customer changed:", oldCustomerName, "→", newCustomerName);
+  () => ticket?.value?.doc?.customer, // Watch the Link field instead
+  async (newCustomerId, oldCustomerId) => {
+    console.log("[DETAILS TAB] 👤 Customer ID changed:", oldCustomerId, "→", newCustomerId);
     
-    if (!newCustomerName) {
+    if (!newCustomerId) {
       clearVirtualFields();
       lastProcessedCustomer.value = "";
       return;
     }
     
-    if (newCustomerName !== oldCustomerName) {
-      lastProcessedCustomer.value = "";
+    if (newCustomerId !== oldCustomerId && newCustomerId !== lastProcessedCustomer.value) {
+      lastProcessedCustomer.value = newCustomerId;
       await nextTick();
       await reloadAllCustomerData();
     }
@@ -586,6 +717,44 @@ watch(
   }
 );
 
+watch(
+  () => ticket?.value?.doc?.customer,
+  async (newCustomerId) => {
+    if (!newCustomerId || !ticket.value) return;
+
+    console.log("[DETAILS TAB] 👤 Customer changed:", newCustomerId);
+    
+    try {
+      // ✅ Display name only (memory)
+      const result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { name: newCustomerId },
+        fields: ["customer_name"],
+        limit: 1,
+      });
+      if (result?.[0]) {
+        ticket.value.doc.custom_customer_name = result[0].customer_name;
+      }
+      
+      lastProcessedCustomer.value = newCustomerId;
+      await reloadAllCustomerData();
+
+      // ✅ Reload assignees
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (assignees?.value) {
+        await assignees.value.reload();
+        console.log("[DETAILS TAB] ✅ Team refreshed");
+      }
+      
+    } catch (err) {
+      console.error("[DETAILS TAB] Display error:", err);
+    }
+  },
+  { immediate: false }
+);
+
+
+
 const coreFields = computed(() => {
   const fieldsMeta = getFields();
   if (!fieldsMeta || fieldsMeta.length === 0) return [];
@@ -598,15 +767,25 @@ const coreFields = computed(() => {
 
   _coreFields.forEach((section) => {
     section.fields = section.fields.map((f) => {
-      f = parseField(f, ticket.value.doc);
-      f["required"] = f.reqd;
-      f = getFieldInFormat(f, f);
-      f["visible"] = true;
-      return f;
+      let meta = parseField(f, ticket.value.doc);
+      meta["required"] = meta.reqd;
+      let field = getFieldInFormat(meta, meta);
+      field["visible"] = true;
+
+      // ✅ Force customer field to always show display name
+      if (field.fieldname === "customer") {
+        field.value = getCustomerDisplayValue();
+      }
+
+      return field;
     });
   });
+
   return _coreFields;
 });
+
+
+
 
 const customFields = computed(() => {
   const fieldsMeta = getFields();
@@ -656,6 +835,27 @@ function getFieldInFormat(fieldTemplate: any, fieldMeta: any) {
   };
 }
 
+function getCustomerDisplayValue() {
+  // Prefer the explicit display name field
+  const nameFromCustom = ticket.value?.doc?.custom_customer_name;
+  if (nameFromCustom && String(nameFromCustom).trim().length > 0) {
+    return nameFromCustom;
+  }
+
+  // Fallback: use HD Customer document name if it looks like a name
+  const customerId = ticket.value?.doc?.customer;
+  if (!customerId) return "";
+
+  // If ticket.customer already looks like a name (not hash-like), use it
+  if (!/^[a-z0-9]{6,}$/.test(String(customerId))) {
+    return customerId;
+  }
+
+  // Last fallback: whatever is there
+  return customerId;
+}
+
+
 function getFieldValueWithVirtual(fieldname: string) {
   if (fieldname === "custom_popup_messages" || fieldname === "custom_popupmessage") {
     return virtualFields.value.custom_popup_messages;
@@ -679,6 +879,55 @@ function getFieldValueWithVirtual(fieldname: string) {
 }
 
 function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpdated = false) {
+  // ✅ SPECIAL: Handle custom_customer_name Link field changes
+  if (fieldname === "custom_customer_name" && value) {
+    console.log("[DETAILS TAB] 🔄 custom_customer_name selected:", value);
+    
+    // Fetch full customer data using the ID (value)
+    call("frappe.client.get_list", {
+      doctype: "HD Customer",
+      filters: { name: value },  // value = customer ID (e.g., "dfi3gq0")
+      fields: ["name", "customer_name", "custom_productname"],
+      limit: 1
+    }).then(async (result) => {
+      if (result?.[0]) {
+        const customer = result[0];
+        console.log("[DETAILS TAB] ✅ Customer data:", customer);
+        
+        // ✅ Save all three fields for server script
+        await ticket.value.setValue.submit({
+          customer: customer.name,                      // ID for backend
+          custom_customer_name: customer.customer_name, // Display name
+          custom_product: customer.custom_productname   // For server script!
+        });
+        
+        console.log("[DETAILS TAB] 💾 Saved:", {
+          customer: customer.name,
+          display: customer.customer_name,
+          product: customer.custom_productname
+        });
+        
+        // ✅ Wait for server script execution
+        await new Promise(resolve => setTimeout(resolve, 800));
+        await ticket.value.reload();
+        await reloadAllCustomerData();
+        
+        // ✅ Reload team dropdown
+        if (assignees?.value) {
+          await assignees.value.reload();
+          console.log("[DETAILS TAB] ✅ Team updated:", ticket.value.doc.agent_group);
+        }
+      } else {
+        console.error("[DETAILS TAB] ❌ Customer not found:", value);
+      }
+    }).catch(err => {
+      console.error("[DETAILS TAB] ❌ Lookup error:", err);
+    });
+    
+    return; // Exit early - don't process as normal field
+  }
+
+  // Virtual fields check (keep custom_customer_name blocked for normal processing)
   const virtualFieldsList = [
     "custom_popup_messages", "custom_popupmessage", "custom_product", 
     "custom_customercode", "custom_amc_end_date", "custom_amc_status", "custom_remarks"
@@ -689,6 +938,7 @@ function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpda
     return;
   }
 
+  // Rest of your existing code (unchanged)
   if (ticket.value.doc[fieldname] === value) return;
   
   if (isCoreFieldUpdated) {
@@ -707,5 +957,5 @@ function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpda
     }
   );
 }
-</script>
 
+</script>

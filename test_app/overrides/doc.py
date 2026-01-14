@@ -204,6 +204,31 @@ def get_list_data(
     if doctype == "HD Ticket":
         data = add_assigned_to_full_name(data)
 
+    # ===== ADD CUSTOMER FILTER LOGIC HERE =====
+    if doctype == "HD Ticket":
+        # Ensure customer_name field is available for filtering/display
+        if "custom_customer_name" not in rows:
+            rows.append("custom_customer_name")
+        
+        # Add customer_name to columns for filterable search box (appears next to Subject)
+        customer_name_column = {
+            "label": "Customer Name",
+            "fieldname": "custom_customer_name",
+            "fieldtype": "Data",
+            "key": "custom_customer_name",
+            "width": "200px",
+            "searchable": True,  # Enables %% LIKE filtering (word-by-word)
+            "in_list_view": True
+        }
+        
+        # Insert Customer Name column right after Subject (position 1)
+        if columns and len(columns) > 0 and columns[0].get("key") == "subject":
+            columns.insert(1, customer_name_column)
+        elif not columns or len(columns) == 0:
+            columns.insert(0, customer_name_column)
+        else:
+            columns.insert(0, customer_name_column)
+
     fields = frappe.get_meta(doctype).fields
     fields = [field for field in fields if field.fieldtype not in no_value_fields]
     fields = [
@@ -240,6 +265,11 @@ def get_list_data(
                 "value": "assigned_to_full_name",
             }
         )
+        std_fields.append({
+            "label": "Customer Name",
+            "type": "Data", 
+            "value": "custom_customer_name"
+        })
 
     for field in std_fields:
         if field.get("value") not in rows:
@@ -449,6 +479,14 @@ def get_filterable_fields(doctype: str, show_customer_portal_fields=False):
     for field in standard_fields:
         if field.get("fieldname") not in [r.get("fieldname") for r in res]:
             res.append(field)
+
+    if doctype == "HD Ticket" and not show_customer_portal_fields:
+        res.insert(1, {  # Insert after 'name' field
+            "fieldname": "custom_customer_name",
+            "fieldtype": "Data",
+            "label": "Customer Name",
+            "name": "custom_customer_name"
+        })
     return res
 
 
@@ -515,6 +553,14 @@ def get_quick_filters(doctype: str, show_customer_portal_fields=False):
                 "options": options,
             }
         )
+
+    if doctype == "HD Ticket":
+    # Add Customer Name filter after ID and Subject
+        quick_filters.insert(2, {
+            "label": _("Customer Name"),
+            "name": "custom_customer_name",
+            "type": "Data"
+        })
 
     if doctype != "HD Ticket":
         return quick_filters

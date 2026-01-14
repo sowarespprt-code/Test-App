@@ -357,12 +357,12 @@
           <!-- Customer Code -->
           <div style="width: 30%; min-width: 200px;">
             <template v-for="field in visibleFields" :key="'row1_code_' + field.fieldname">
-              <UniInput
+              <UniInput 
                 v-if="field.fieldname === 'custom_customercode'"
-                :field="field"
+                :field="field" 
                 :value="templateFields[field.fieldname]"
                 @input="handleCustomerCodeInput"
-                @keydown.enter.prevent="event => handleCustomerCodeEnter(event)"
+                @keydown.enter.prevent="handleCustomerCodeEnter"
                 @blur="handleCustomerCodeBlur"
               />
             </template>
@@ -374,11 +374,11 @@
               <div v-if="field.fieldname === 'custom_customer_name'" class="relative">
                 <div class="flex gap-2 items-start">
                   <div class="flex-1 min-w-0">
-                    <UniInput
-                      :field="field"
+                    <UniInput 
+                      v-if="field.fieldname === 'custom_customer_name'"
+                      :field="field" 
                       :value="templateFields[field.fieldname]"
                       @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
-                      @input="(e) => safeSetField(field.fieldname, e)"
                     />
                   </div>
 
@@ -742,79 +742,141 @@ const ticketDetailsError = ref("");
 const isUpdatingInternally = ref(false);
 const isManuallySelectingCustomer = ref(false);
 
+const customCustomerNameDisplay = computed(() => {
+  const fieldValue = templateFields.custom_customer_name;
+  if (!fieldValue) return "";
+  
+  // If it's already a display name (long text, not hash), return as-is
+  if (fieldValue && fieldValue.length > 15 && !/^[a-z0-9]{6,10}$/i.test(fieldValue)) {
+    return fieldValue;
+  }
+  
+  // Otherwise, it's an ID - fetch from HD Customer (you may have this cached)
+  // For now, return the field value and it will be updated by the watch
+  return fieldValue;
+});
+
+// ✅ FIXED: Replace your existing handleCustomerCodeEnter function
 async function handleCustomerCodeEnter(event: any) {
   const enteredCode = event.target.value?.trim();
-  const previousCode = lastValidatedCustomerCode.value?.trim();
-  invalidCodeError.value = '';
   
-  if (!enteredCode) {
-    isUpdatingInternally.value = true;
-    safeSetField('custom_customer_name', '');
-    safeSetField('custom_product', '');
-    safeSetField('custom_remarks', '');
-    popupMessagesText.value = '';
-    licenseData.value = null;
-    showLicensePopup.value = false;
-    showAlertsPopup.value = false;
-    lastValidatedCustomerCode.value = '';
+  console.log("[TICKET CREATE] 🔍 Enter pressed for code:", enteredCode);
+  
+  // Clear previous data and flags
+  invalidCodeError.value = '';
+  const previousCode = lastValidatedCustomerCode.value?.trim();
+  
+  if (!enteredCode || isUpdatingInternally.value) {
     isUpdatingInternally.value = false;
     return;
   }
-  
-  if (enteredCode.length < MINCODELENGTH) {
-    dialog({
-      title: 'Invalid Customer Code',
-      message: `Customer Code must be at least ${MINCODELENGTH} characters.`,
-    });
+
+  if (enteredCode.length < MIN_CODE_LENGTH) {
+    dialog.title = "Invalid Customer Code";
+    dialog.message = `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`;
     return;
   }
-  
+
   if (enteredCode === previousCode) {
-    const customerName = templateFields.custom_customer_name;
-    if (customerName) {
-      await fetchCustomerRemarks(customerName);
-      await fetchCustomerAlerts(customerName);
-      
-      // Only show alerts popup if alerts exist, NO license popup
-      if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
-        showAlertsPopup.value = true;
-      }
-    }
-    return;
+    return; // No change
   }
+
+  // Clear all dependent fields
+  isUpdatingInternally.value = true;
+  safeSetField('custom_customer_name', '');
+  safeSetField('custom_product', '');
+  safeSetField('custom_remarks', '');
+  popupMessagesText.value = '';
+  licenseData.value = null;
+  showLicensePopup.value = false;
+  showAlertsPopup.value = false;
   
-  safeSetField('custom_customercode', enteredCode);
-  const found = await fetchCustomerName(enteredCode);
-  
-  if (found) {
-    lastValidatedCustomerCode.value = enteredCode;
-    await fetchLicenseDataInBackground(enteredCode); // Keep for AMC fields only
+  try {
+    console.log("[TICKET CREATE] 🔍 Searching customer by code:", enteredCode);
     
-    const customerName = templateFields.custom_customer_name;
-    if (customerName) {
-      await fetchCustomerRemarks(customerName);
-      await fetchCustomerAlerts(customerName);
-      
-      // Only show alerts popup if alerts exist, NO license popup
-      if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
-        showAlertsPopup.value = true;
-      }
-    }
-  } else {
-    dialog({
-      title: 'Invalid Customer Code',
-      message: 'No customer found for this code. Please check and try again.',
+    // ✅ CRITICAL: Search by EXACT custom_customercode first
+    let result = await call("frappe.client.get_list", {
+      doctype: "HD Customer",
+      filters: { custom_customercode: enteredCode },
+      fields: [
+        "name", 
+        "customer_name", 
+        "custom_customercode", 
+        "custom_productname", 
+        "custom_remarks"
+      ],
+      limit: 1
     });
+
+    console.log("[TICKET CREATE] 📋 Exact code search result:", result);
+
+    // ✅ FALLBACK 1: Try partial match if exact fails
+    if (!result || result.length === 0) {
+      console.log("[TICKET CREATE] 🔍 Trying partial match...");
+      result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { custom_customercode: ["like", `%${enteredCode}%`] },
+        fields: [
+          "name", 
+          "customer_name", 
+          "custom_customercode", 
+          "custom_productname", 
+          "custom_remarks"
+        ],
+        limit: 3
+      });
+    }
+
+    // ✅ FALLBACK 2: Try by customer_name if still no result
+    if (!result || result.length === 0) {
+      console.log("[TICKET CREATE] 🔍 Trying by customer_name...");
+      result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { customer_name: enteredCode },
+        fields: [
+          "name", 
+          "customer_name", 
+          "custom_customercode", 
+          "custom_productname", 
+          "custom_remarks"
+        ],
+        limit: 1
+      });
+    }
+
+    if (result && result.length > 0) {
+      const customer = result[0];
+      console.log("[TICKET CREATE] ✅ Customer found:", customer);
+      
+      // ✅ Populate ALL fields with customer data
+      safeSetField('custom_customer_name', customer.customer_name);  // ✅ DISPLAY NAME
+      safeSetField('custom_customercode', customer.custom_customercode);
+      safeSetField('custom_product', customer.custom_productname);
+      safeSetField('custom_remarks', customer.custom_remarks || '');
+      
+      lastValidatedCustomerCode.value = customer.custom_customercode;
+      
+      // ✅ Background fetch AMC/license data
+      if (customer.custom_customercode) {
+        await fetchLicenseDataInBackground(customer.custom_customercode);
+      }
+      
+      // ✅ Fetch alerts
+      await fetchCustomerAlerts(customer.customer_name, customer.custom_customercode);
+      
+      console.log("[TICKET CREATE] ✅ All fields populated successfully");
+      
+    } else {
+      console.log("[TICKET CREATE] ❌ No customer found for code:", enteredCode);
+      dialog.title = "Customer Not Found";
+      dialog.message = `No customer found for code "${enteredCode}". Please check and try again.`;
+    }
     
-    isUpdatingInternally.value = true;
-    safeSetField('custom_customer_name', '');
-    safeSetField('custom_product', '');
-    safeSetField('custom_remarks', '');
-    popupMessagesText.value = '';
-    licenseData.value = null;
-    showLicensePopup.value = false;
-    showAlertsPopup.value = false;
-    lastValidatedCustomerCode.value = '';
+  } catch (error) {
+    console.error("[TICKET CREATE] ❌ Error searching customer:", error);
+    dialog.title = "Search Error";
+    dialog.message = "Failed to search customer. Please try again.";
+  } finally {
     isUpdatingInternally.value = false;
   }
 }
@@ -1369,6 +1431,162 @@ watch(
   }
 );
 
+watch(
+  () => templateFields.custom_customer_name,
+  async (newVal, oldVal) => {
+    console.log("[LINK FIELD] Watcher fired:", newVal);
+    
+    // âœ… ONLY skip if currently updating (prevent recursion)
+    if (isUpdatingInternally.value) {
+      console.log("[LINK FIELD] â­ï¸ Skipped - internal update in progress");
+      return;
+    }
+    
+    // Skip empty or unchanged
+    if (!newVal || newVal === oldVal) {
+      console.log("[LINK FIELD] â­ï¸ Skipped - no change");
+      return;
+    }
+    
+    console.log("[LINK FIELD] ðŸš€ Processing customer:", newVal);
+    
+    // âœ… Set flag to prevent recursion
+    isUpdatingInternally.value = true;
+    
+    try {
+      // âœ… Fetch customer by ID first
+      let result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { name: newVal },
+        fields: ["name", "customer_name", "custom_customercode", "custom_productname", "custom_remarks"],
+        limit: 1
+      });
+      
+      // âœ… Fallback: try by customer_name
+      if (!result || result.length === 0) {
+        console.log("[LINK FIELD] Trying by customer_name...");
+        result = await call("frappe.client.get_list", {
+          doctype: "HD Customer",
+          filters: { customer_name: newVal },
+          fields: ["name", "customer_name", "custom_customercode", "custom_productname", "custom_remarks"],
+          limit: 1
+        });
+      }
+      
+      if (result && result.length > 0) {
+        const customer = result[0];
+        console.log("[LINK FIELD] âœ… Found customer:", customer);
+        
+        // âœ… CRITICAL: Store product value and protect it
+        const productValue = customer.custom_productname || "";
+        const customerCode = customer.custom_customercode;
+        console.log("[FORCE] Product to set:", productValue);
+        
+        // âœ… Update non-product fields first
+        safeSetField('custom_customer_name', customer.customer_name);
+        safeSetField('custom_customercode', customerCode);
+        safeSetField('custom_remarks', customer.custom_remarks);
+        
+        lastValidatedCustomerCode.value = customerCode;
+        
+        // âœ… Wait for updates to settle
+        await nextTick();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // âœ… SET PRODUCT - Keep flag HIGH during this critical operation
+        console.log("[FORCE] Setting product NOW...");
+        
+        // Use all methods simultaneously
+        templateFields.custom_product = productValue;
+        safeSetField('custom_product', productValue);
+        
+        // Force Vue reactivity
+        if (templateFields.hasOwnProperty('custom_product')) {
+          Object.defineProperty(templateFields, 'custom_product', {
+            value: productValue,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+        }
+        
+        console.log("[FORCE] Immediate check:", templateFields.custom_product);
+        
+        // âœ… Wait for Vue to process
+        await nextTick();
+        await nextTick();
+        
+        console.log("[FORCE] After nextTick:", templateFields.custom_product);
+        
+        // âœ… Background operations AFTER product is set
+        const fetchPromises = [];
+        
+        if (customerCode) {
+          console.log("[LINK FIELD] Fetching license data...");
+          fetchPromises.push(fetchLicenseDataInBackground(customerCode));
+        }
+        
+        console.log("[LINK FIELD] Fetching customer alerts...");
+        fetchPromises.push(fetchCustomerRemarks(customer.customer_name));
+        fetchPromises.push(fetchCustomerAlerts(customer.customer_name));
+        
+        // Wait for all background fetches
+        await Promise.all(fetchPromises);
+        
+        // âœ… FINAL VERIFICATION - Re-assert product if cleared
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (templateFields.custom_product !== productValue) {
+          console.warn("[FORCE] âš ï¸ Product was cleared! Re-asserting...");
+          templateFields.custom_product = productValue;
+          safeSetField('custom_product', productValue);
+          await nextTick();
+        }
+        
+        console.log("[FORCE] âœ… FINAL Product value:", templateFields.custom_product);
+        
+        console.log("[LINK FIELD] ðŸ“¦ All fields confirmed:", {
+          name: templateFields.custom_customer_name,
+          code: templateFields.custom_customercode,
+          product: templateFields.custom_product,
+          remarks: templateFields.custom_remarks
+        });
+        
+        // âœ… Show alerts popup if alerts exist
+        if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
+          showAlertsPopup.value = true;
+        }
+        
+        console.log("[LINK FIELD] âœ… Complete - all data loaded");
+        
+      } else {
+        console.warn("[LINK FIELD] âŒ No customer found for:", newVal);
+        
+        // Clear fields if no customer found
+        safeSetField('custom_customercode', '');
+        safeSetField('custom_product', '');
+        safeSetField('custom_remarks', '');
+      }
+      
+    } catch (e) {
+      console.error("[LINK FIELD] âŒ Error:", e);
+      
+      // Clear fields on error
+      safeSetField('custom_customercode', '');
+      safeSetField('custom_product', '');
+      safeSetField('custom_remarks', '');
+      
+    } finally {
+      // âœ… Always reset flag AFTER a delay to ensure no race conditions
+      await new Promise(resolve => setTimeout(resolve, 150));
+      isUpdatingInternally.value = false;
+      console.log("[LINK FIELD] ðŸ Flag reset, watcher complete");
+    }
+  }
+);
+
+
+
 
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
@@ -1424,29 +1642,48 @@ function handleCustomerCodeInput(event: any) {
   safeSetField("custom_customercode", value);
 }
 
-async function fetchCustomerName(customerCode: string) {
+// ✅ FIXED: Replace your existing fetchCustomerName function
+async function fetchCustomerName(customerCode: string): Promise<boolean> {
   if (!customerCode || isFetchingCustomerName.value) return false;
+  
   isFetchingCustomerName.value = true;
+  
   try {
-    const result = await call("frappe.client.get_list", {
+    console.log("[TICKET CREATE] 🔍 fetchCustomerName called:", customerCode);
+    
+    // Same robust search logic as handleCustomerCodeEnter
+    let result = await call("frappe.client.get_list", {
       doctype: "HD Customer",
       filters: { custom_customercode: customerCode },
-      fields: ["name", "customer_name"],
-      limit: 1,
+      fields: ["name", "customer_name", "custom_customercode"],
+      limit: 1
     });
+
+    if (!result || result.length === 0) {
+      result = await call("frappe.client.get_list", {
+        doctype: "HD Customer",
+        filters: { custom_customercode: ["like", `%${customerCode}%`] },
+        fields: ["name", "customer_name", "custom_customercode"],
+        limit: 1
+      });
+    }
+
     if (result && result.length > 0) {
       const customer = result[0];
+      console.log("[TICKET CREATE] ✅ Setting customer name:", customer.customer_name);
+      
       isUpdatingInternally.value = true;
+      safeSetField('custom_customer_name', customer.customer_name); // ✅ DISPLAY NAME
       await nextTick();
-      safeSetField("custom_customer_name", customer.name);
-      await nextTick();
-      await fetchProductName(customer.name);
       isUpdatingInternally.value = false;
+      
       return true;
     }
+    
     return false;
-  } catch (e) {
-    console.error("Error fetching customer:", e);
+    
+  } catch (error) {
+    console.error("[TICKET CREATE] ❌ fetchCustomerName error:", error);
     return false;
   } finally {
     isFetchingCustomerName.value = false;
@@ -1561,15 +1798,23 @@ async function checkForDuplicates() {
 const ticket = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket.api.new",
   debounce: 300,
-  makeParams: () => ({
-    doc: {
-      description: description.value,
-      subject: subject.value,
-      template: props.templateId,
-      ...templateFields,
-    },
-    attachments: attachments.value,
-  }),
+  makeParams: () => {
+    // ✅ Use stored ID for backend, display name for UI
+    const fieldsToSave = { ...templateFields };
+    if (templateFields._customer_id) {
+      fieldsToSave.custom_customer_name = templateFields._customer_id; 
+    }
+    
+    return {
+      doc: {
+        description: description.value,
+        subject: subject.value,
+        template: props.templateId,
+        ...fieldsToSave,
+      },
+      attachments: attachments.value,
+    };
+  },
   validate(params: any) {
     const fields = visibleFields.value?.filter((f: any) => f.required);
 

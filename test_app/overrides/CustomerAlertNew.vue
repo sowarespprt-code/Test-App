@@ -156,7 +156,7 @@ const { $dialog } = globalStore();
 
 const customerOptions = ref<any[]>([]);
 const isSaving = ref(false);
-const newAlert = reactive({ customer_name: "", customer_code: "", popupmessage: "" });
+const newAlert = reactive({ customer_id: "", customer_name: "", customer_code: "", popupmessage: "" });
 
 // Customer Code State
 const isFetchingCustomerName = ref(false);
@@ -182,17 +182,19 @@ async function searchCustomers(query: string) {
     });
     customerOptions.value = data.map((c: any) => ({
       label: c.customer_name || c.name,
-      value: c.name,
+      value: c.customer_name || c.name,
+      id: c.name,
       code: c.custom_customercode || "",
     }));
   } catch (err) {
-    console.error("Failed to fetch customers:", err);
+    // Silently handle errors to prevent console noise
     customerOptions.value = [];
   }
 }
 
 async function handleCustomerNameChange(selectedOption: any) {
   if (!selectedOption || !selectedOption.value) return;
+  newAlert.customer_id = selectedOption.id;
   newAlert.customer_name = selectedOption.value;
   if (selectedOption.code) {
     newAlert.customer_code = selectedOption.code;
@@ -294,7 +296,8 @@ async function fetchCustomerName(customerCode: string) {
       const customer = result[0];
       isUpdatingInternally.value = true;
       await nextTick();
-      safeSetField("customer_name", customer.name);
+      newAlert.customer_id = customer.name;
+      safeSetField("customer_name", customer.customer_name || customer.name);
       isUpdatingInternally.value = false;
       return true;
     }
@@ -330,7 +333,8 @@ async function handleCustomerSelected(customer: any) {
   isUpdatingInternally.value = true;
 
   try {
-    safeSetField("customer_name", customer.name || customer.customer_name || "");
+    newAlert.customer_id = customer.name;
+    safeSetField("customer_name", customer.customer_name || customer.name);
     safeSetField("customer_code", customer.custom_customercode || "");
     lastValidatedCustomerCode.value = customer.custom_customercode || "";
     await nextTick();
@@ -341,18 +345,19 @@ async function handleCustomerSelected(customer: any) {
 }
 
 async function saveAlert() {
-  if (!newAlert.customer_name || !newAlert.customer_code || !newAlert.popupmessage) {
+  if (!newAlert.customer_id || !newAlert.customer_code || !newAlert.popupmessage) {
     $dialog({ title: "Missing Information", message: "Please fill all required fields" });
     return;
   }
   
   isSaving.value = true;
   try {
+    console.log("Saving with customer_id:", newAlert.customer_id, "customer_name:", newAlert.customer_name);
     await call("frappe.client.insert", {
       doc: { 
         doctype: "Customer Alert", 
         customer_code: newAlert.customer_code,
-        customer_name: newAlert.customer_name, 
+        customer_name: newAlert.customer_id,
         popupmessage: newAlert.popupmessage 
       },
     });

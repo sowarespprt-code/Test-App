@@ -72,7 +72,7 @@ import {
   IndicatorIcon,
   PinIcon,
   TicketIcon,
-  UnpinIcon,
+  UnpinIcon
 } from "@/components/icons";
 import ExportModal from "@/components/ticket/ExportModal.vue";
 import ViewBreadcrumbs from "@/components/ViewBreadcrumbs.vue";
@@ -84,7 +84,7 @@ import { globalStore } from "@/stores/globalStore";
 import { useTicketStatusStore } from "@/stores/ticketStatus";
 import { View } from "@/types";
 import { getIcon, isCustomerPortal } from "@/utils";
-import { Badge, FeatherIcon, toast, Tooltip, usePageMeta } from "frappe-ui";
+import { Badge, FeatherIcon, toast, Tooltip, usePageMeta, FormControl, Button} from "frappe-ui";
 import { computed, h, onMounted, onBeforeUnmount, reactive, ref, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -113,22 +113,18 @@ const { getStatus } = useTicketStatusStore();
 
 const listSelections = ref(new Set());
 
-// ⭐ NEW: Reactive today's date that updates automatically
 const todayDate = ref(dayjs().format('YYYY-MM-DD'));
 
-// ⭐ NEW: Function to update today's date at midnight
 const updateTodayDate = () => {
   todayDate.value = dayjs().format('YYYY-MM-DD');
 };
 
-// ⭐ NEW: Calculate milliseconds until next midnight
 const getMillisecondsUntilMidnight = () => {
   const now = dayjs();
   const midnight = now.add(1, 'day').startOf('day');
   return midnight.diff(now);
 };
 
-// Debounce and reload management
 let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
 let bannerTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -172,12 +168,10 @@ const playNotificationSound = () => {
   } catch (error) {}
 };
 
-// ⭐ FIXED: Safe list access helper
 const getListSafely = () => {
   return listViewRef.value?.list;
 };
 
-// ⭐ FIXED: Null-safe date filter check
 const hasDateFilter = () => {
   const list = getListSafely();
   if (!list || !list.params) return false;
@@ -186,7 +180,6 @@ const hasDateFilter = () => {
   return filters.hasOwnProperty('creation') || filters.hasOwnProperty('opening_date');
 };
 
-// ⭐ FIXED: Null-safe date field detection
 const getDateFilterField = () => {
   const list = getListSafely();
   if (!list || !list.params) return null;
@@ -197,7 +190,6 @@ const getDateFilterField = () => {
   return null;
 };
 
-// ⭐ FIXED: Null-safe date filter update
 const updateDateFilterToToday = () => {
   const list = getListSafely();
   if (!list || !list.params) return false;
@@ -207,7 +199,6 @@ const updateDateFilterToToday = () => {
   
   const today = dayjs().format('YYYY-MM-DD');
   
-  // Ensure filters object exists
   if (!list.params.filters) {
     list.params.filters = {};
   }
@@ -218,7 +209,6 @@ const updateDateFilterToToday = () => {
   return true;
 };
 
-// ⭐ FIXED: Null-safe config save
 const saveDateFilterConfig = () => {
   const dateField = getDateFilterField();
   if (dateField) {
@@ -233,9 +223,7 @@ const saveDateFilterConfig = () => {
   }
 };
 
-// ⭐ FIXED: Null-safe filter loading
 const loadAndApplyDateFilter = () => {
-
   if (route.query.filters) {
     console.log('✅ URL has live filters, skipping localStorage date filter');
     return;
@@ -260,15 +248,16 @@ const loadAndApplyDateFilter = () => {
   }
 };
 
+// ⭐ NEW: Customer Name filter query with proper search
+const getCustomerQuery = (txt: string) => {
+  return {
+    doctype: "HD Customer",
+    filters: txt ? { customer_name: ['like', `%${txt}%`] } : {},
+    fields: ["name", "customer_name"],
+    page_length: 20
+  };
+};
 
-// ⭐ Watch for filter changes in the list
-watch(() => listViewRef.value?.list?.params?.filters, (newFilters) => {
-  if (newFilters) {
-    saveDateFilterConfig();
-  }
-}, { deep: true });
-
-// Row class for SLA coloring
 const getRowClass = (row: any) => {
   const status = getStatus(row.status);
   if (!status) return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
@@ -334,11 +323,23 @@ const selectBannerActions = [
   },
 ];
 
-// ⭐ FIXED: Options as regular object with reactive properties
+// ⭐ UPDATED: Options with Customer Name filter properly configured
 const options = {
   doctype: "HD Ticket",
   filters: {},
-  pageLength: 100,  
+  pageLength: 100,
+
+  defaultFilters: [
+    { field: "id", label: "ID", fieldtype: "Data" },
+    { field: "subject", label: "Subject", fieldtype: "Data" },
+    { 
+      field: "customer", 
+      label: "Customer Name", 
+      fieldtype: "Link",
+      options: "HD Customer",
+      get_query: getCustomerQuery
+    }
+  ],
 
   columnConfig: {
     status: {
@@ -451,7 +452,6 @@ function handleResolutionByField(row: any, item: string) {
   }
 }
 
-// Export functionality
 async function handleExport({
   export_type,
   export_all,
@@ -496,7 +496,6 @@ const slaStatusColorMap = {
   Paused: "blue",
 };
 
-// View logic
 let viewDialog = reactive({
   show: false,
   view: {
@@ -766,6 +765,7 @@ function handleSuccess(msg = "created") {
   toast.success(`View ${msg}`);
   resetState();
 }
+
 function resetState() {
   viewDialog.show = false;
   viewDialog.view.label = "";
@@ -775,7 +775,6 @@ function resetState() {
   selectedView = null;
 }
 
-// Event handlers
 function handleEmptyStateAction() {
   router.push({
     name: isCustomerPortal.value ? "TicketNew" : "TicketAgentNew",
@@ -789,11 +788,14 @@ function handleRowClick(row) {
   });
 }
 
-// ⭐ NEW: Interval for midnight date update
+watch(() => listViewRef.value?.list?.params?.filters, (newFilters) => {
+  if (newFilters) {
+    saveDateFilterConfig();
+  }
+}, { deep: true });
+
 let midnightInterval: ReturnType<typeof setTimeout> | null = null;
 
-// ⭐ NEW: Function to schedule next midnight update
-// ⭐ NEW: Function to schedule next midnight update
 const scheduleMidnightUpdate = () => {
   if (midnightInterval) {
     clearTimeout(midnightInterval);
@@ -805,7 +807,6 @@ const scheduleMidnightUpdate = () => {
     console.log("🌅 Midnight reached - checking date filter");
     updateTodayDate();
     
-    // Auto-update date filter at midnight if enabled
     const saved = localStorage.getItem('tickets_auto_date_filter');
     if (saved) {
       try {
@@ -828,16 +829,14 @@ const scheduleMidnightUpdate = () => {
       }
     }
     
-    // Schedule the next midnight update
     scheduleMidnightUpdate();
   }, msUntilMidnight);
   
   console.log(`⏰ Next midnight update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
 };
-// Cleanup intervals
+
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-// Setup real-time updates
 onMounted(() => {
   if (!route.query.view) {
     currentView.value = {
@@ -846,7 +845,6 @@ onMounted(() => {
     };
   }
   
-  // ⭐ FIXED: Wait for ListViewBuilder to fully initialize
   let initAttempts = 0;
   const initDateFilter = () => {
     initAttempts++;
@@ -857,7 +855,6 @@ onMounted(() => {
     }
     
     if (listViewRef.value?.list) {
-      // ✅ ONLY apply date filter if NO filters already exist (from URL)
       const existingFilters = listViewRef.value.list.params?.filters;
       if (!existingFilters || Object.keys(existingFilters).length === 0) {
         loadAndApplyDateFilter();
@@ -870,19 +867,15 @@ onMounted(() => {
       }
     }
   };
-
   
-  // ⭐ Load saved date filter and apply it
   nextTick(() => {
     initDateFilter();
   });
   
   console.log("✅ Setting up real-time ticket updates...");
   
-  // ⭐ Schedule automatic midnight update
   scheduleMidnightUpdate();
   
-  // Socket event listeners
   $socket.on("helpdesk:new-ticket", (data) => {
     console.log("🎫 New ticket created:", data);
     debouncedReload("🎫 New ticket created");
@@ -913,7 +906,6 @@ onMounted(() => {
     debouncedReload("✅ Ticket assigned");
   });
   
-  // Fallback polling every 30 seconds
   pollInterval = setInterval(() => {
     if (listViewRef.value?.reload) {
       console.log("🔄 Polling for updates...");
@@ -924,19 +916,15 @@ onMounted(() => {
   console.log("✅ Real-time updates initialized");
 });
 
-// Cleanup on unmount
 onBeforeUnmount(() => {
   console.log("🧹 Cleaning up real-time updates...");
   
-  // Clear timeouts
   if (reloadTimeout) clearTimeout(reloadTimeout);
   if (bannerTimeout) clearTimeout(bannerTimeout);
   if (midnightInterval) clearTimeout(midnightInterval);
   
-  // Clear polling interval
   if (pollInterval) clearInterval(pollInterval);
   
-  // Remove socket listeners
   $socket.off("helpdesk:new-ticket");
   $socket.off("ticket_updated");
   $socket.off("helpdesk:ticket-update");
@@ -955,7 +943,6 @@ usePageMeta(() => {
 </script>
 
 <style scoped>
-/* Slide down animation for update banner */
 .slide-down-enter-active,
 .slide-down-leave-active {
   transition: all 0.3s ease;
@@ -971,14 +958,12 @@ usePageMeta(() => {
   transform: translateY(-20px);
 }
 
-/* Fix z-index issue for column dropdowns */
 :deep(.column-settings-dropdown),
 :deep(.frappe-dropdown-menu),
 :deep([data-testid="column-settings"]) {
   z-index: 9999 !important;
 }
 
-/* Ensure ListViewBuilder column settings appear above other dropdowns */
 :deep(.list-view-builder .dropdown-menu),
 :deep(.list-view-builder [role="menu"]) {
   z-index: 10000 !important;
