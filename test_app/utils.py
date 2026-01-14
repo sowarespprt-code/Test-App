@@ -110,3 +110,54 @@ def notify_ticket_status_change(doc, method):
 
 
 
+def auto_assign_on_start(doc, method):
+    """Force ONLY current user as assignee (clear old ToDos first)."""
+    if frappe.session.user == "Administrator":
+        return
+    
+    old = doc.get_doc_before_save()
+    if not old or old.status == doc.status:
+        return
+    
+    # Replace with your exact "Start Ticket" status
+    START_STATUS = "In Progress"  # Update this!
+    if doc.status != START_STATUS:
+        return
+    
+    # 1. Cancel ALL existing ToDos (clears all assignees)
+    todos = frappe.get_all(
+        "ToDo",
+        filters={
+            "reference_type": "HD Ticket",
+            "reference_name": doc.name,
+            "status": ["!=", "Cancelled"],
+        },
+        pluck="name",
+    )
+    for todo_name in todos:
+        frappe.db.set_value("ToDo", todo_name, "status", "Cancelled")
+    
+    # 2. Clear _assign field completely
+    frappe.db.set_value("HD Ticket", doc.name, "_assign", "[]")
+    doc._assign = []
+    
+    # 3. Create NEW single ToDo for current user only
+    todo = frappe.get_doc({
+        "doctype": "ToDo",
+        "reference_type": "HD Ticket",
+        "reference_name": doc.name,
+        "status": "Open",
+        "allocated_to": frappe.session.user,  # ✅ Correct: allocated_to on ToDo
+        "description": f"Started by {frappe.session.user}",
+        "priority": "Medium"  # Optional
+    })
+    todo.insert(ignore_permissions=True)
+    
+    # 4. Update _assign to reflect single assignee
+    frappe.db.set_value("HD Ticket", doc.name, "_assign", json.dumps([frappe.session.user]))
+    doc._assign = [frappe.session.user]
+    
+    frappe.db.commit()
+
+
+

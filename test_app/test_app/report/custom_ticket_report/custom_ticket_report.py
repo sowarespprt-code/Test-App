@@ -46,7 +46,16 @@ def get_data(filters):
     if filters.get("custom_customer_name"):
         conditions += f" AND t.custom_customer_name = '{filters.get('custom_customer_name')}'"
     if filters.get("assigned_to"):
-        conditions += f" AND a.allocated_to = '{filters.get('assigned_to')}'"
+        conditions += f"""
+            AND (
+                SELECT a.allocated_to
+                FROM `tabToDo` a
+                WHERE a.reference_type = 'HD Ticket'
+                AND a.reference_name = t.name
+                ORDER BY a.creation DESC
+                LIMIT 1
+            ) = {frappe.db.escape(filters.get("assigned_to"))}
+        """
     if filters.get("agent_group"):
         conditions += f" AND t.agent_group = {frappe.db.escape(filters.get('agent_group'))}"
 
@@ -61,21 +70,26 @@ def get_data(filters):
             t.agent_group,
             t.status,
             t.priority,
-            GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS assigned_to,
+            -- ✅ FIXED: Get LATEST assignee by MAX creation time
+            (SELECT u.full_name 
+            FROM `tabToDo` a 
+            JOIN `tabUser` u ON u.name = a.allocated_to
+            WHERE a.reference_type = 'HD Ticket' 
+            AND a.reference_name = t.name
+            ORDER BY a.creation DESC 
+            LIMIT 1) AS assigned_to,
             t.custom_time_worked,
             COALESCE(GROUP_CONCAT(DISTINCT c.content SEPARATOR ' || '), '') AS latest_comment
         FROM `tabHD Ticket` t
-        LEFT JOIN `tabToDo` a 
-            ON a.reference_type = 'HD Ticket' 
-            AND a.reference_name = t.name
-        LEFT JOIN `tabUser` u
-            ON u.name = a.allocated_to
         LEFT JOIN `tabHD Ticket Comment` c
             ON c.reference_ticket = t.name
         WHERE {conditions}
         GROUP BY t.name
         ORDER BY t.creation DESC
     """, as_dict=True)
+
+
+
 
 
 

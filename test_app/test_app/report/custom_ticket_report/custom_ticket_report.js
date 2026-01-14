@@ -54,7 +54,15 @@ frappe.query_reports["Custom Ticket Report"] = {
             fieldname: "assigned_to",
             label: "Assigned To",
             fieldtype: "Link",
-            options: "User"
+            options: "User",
+            link_title_field: "full_name",
+            get_query: () => {
+                return {
+                    filters: {
+                        enabled: 1
+                    }
+                };
+            }
         },
         {
             fieldname: "agent_group",
