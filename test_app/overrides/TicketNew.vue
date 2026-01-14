@@ -766,7 +766,21 @@ async function handleCustomerCodeEnter(event: any) {
   invalidCodeError.value = '';
   const previousCode = lastValidatedCustomerCode.value?.trim();
   
+  // ✅ KEY FIX: Handle EMPTY CODE case - CLEAR ALL DATA
   if (!enteredCode || isUpdatingInternally.value) {
+    if (!enteredCode) {
+      console.log("[TICKET CREATE] 🧹 Clearing all customer data (empty code)");
+      // Clear ALL dependent fields when code is empty
+      safeSetField('custom_customer_name', '');
+      safeSetField('custom_product', '');
+      safeSetField('custom_remarks', '');
+      popupMessagesText.value = '';
+      licenseData.value = null;
+      showLicensePopup.value = false;
+      showAlertsPopup.value = false;
+      customerAlerts.value = [];
+      lastValidatedCustomerCode.value = '';
+    }
     isUpdatingInternally.value = false;
     return;
   }
@@ -781,7 +795,7 @@ async function handleCustomerCodeEnter(event: any) {
     return; // No change
   }
 
-  // Clear all dependent fields
+  // Clear all dependent fields BEFORE search
   isUpdatingInternally.value = true;
   safeSetField('custom_customer_name', '');
   safeSetField('custom_product', '');
@@ -794,7 +808,7 @@ async function handleCustomerCodeEnter(event: any) {
   try {
     console.log("[TICKET CREATE] 🔍 Searching customer by code:", enteredCode);
     
-    // ✅ CRITICAL: Search by EXACT custom_customercode first
+    // Search logic (unchanged from your code)
     let result = await call("frappe.client.get_list", {
       doctype: "HD Customer",
       filters: { custom_customercode: enteredCode },
@@ -808,11 +822,7 @@ async function handleCustomerCodeEnter(event: any) {
       limit: 1
     });
 
-    console.log("[TICKET CREATE] 📋 Exact code search result:", result);
-
-    // ✅ FALLBACK 1: Try partial match if exact fails
     if (!result || result.length === 0) {
-      console.log("[TICKET CREATE] 🔍 Trying partial match...");
       result = await call("frappe.client.get_list", {
         doctype: "HD Customer",
         filters: { custom_customercode: ["like", `%${enteredCode}%`] },
@@ -827,9 +837,7 @@ async function handleCustomerCodeEnter(event: any) {
       });
     }
 
-    // ✅ FALLBACK 2: Try by customer_name if still no result
     if (!result || result.length === 0) {
-      console.log("[TICKET CREATE] 🔍 Trying by customer_name...");
       result = await call("frappe.client.get_list", {
         doctype: "HD Customer",
         filters: { customer_name: enteredCode },
@@ -846,28 +854,20 @@ async function handleCustomerCodeEnter(event: any) {
 
     if (result && result.length > 0) {
       const customer = result[0];
-      console.log("[TICKET CREATE] ✅ Customer found:", customer);
-      
-      // ✅ Populate ALL fields with customer data
-      safeSetField('custom_customer_name', customer.customer_name);  // ✅ DISPLAY NAME
+      safeSetField('custom_customer_name', customer.customer_name);
       safeSetField('custom_customercode', customer.custom_customercode);
       safeSetField('custom_product', customer.custom_productname);
       safeSetField('custom_remarks', customer.custom_remarks || '');
       
       lastValidatedCustomerCode.value = customer.custom_customercode;
       
-      // ✅ Background fetch AMC/license data
       if (customer.custom_customercode) {
         await fetchLicenseDataInBackground(customer.custom_customercode);
       }
       
-      // ✅ Fetch alerts
       await fetchCustomerAlerts(customer.customer_name, customer.custom_customercode);
       
-      console.log("[TICKET CREATE] ✅ All fields populated successfully");
-      
     } else {
-      console.log("[TICKET CREATE] ❌ No customer found for code:", enteredCode);
       dialog.title = "Customer Not Found";
       dialog.message = `No customer found for code "${enteredCode}". Please check and try again.`;
     }
