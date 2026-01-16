@@ -329,18 +329,6 @@ const options = {
   filters: {},
   pageLength: 100,
 
-  defaultFilters: [
-    { field: "id", label: "ID", fieldtype: "Data" },
-    { field: "subject", label: "Subject", fieldtype: "Data" },
-    { 
-      field: "customer", 
-      label: "Customer Name", 
-      fieldtype: "Link",
-      options: "HD Customer",
-      get_query: getCustomerQuery
-    }
-  ],
-
   columnConfig: {
     status: {
       custom: ({ item }) => {

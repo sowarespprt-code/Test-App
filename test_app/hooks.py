@@ -159,8 +159,10 @@ doc_events = {
         "on_update": [
             "test_app.utils.clear_ticket_todo_on_unassign",
             "test_app.utils.notify_ticket_status_change",
-            "test_app.utils.auto_assign_on_status_change",
-            "test_app.utils.auto_assign_on_start"
+            # "test_app.utils.auto_assign_on_status_change",
+            "test_app.utils.handle_start_ticket_assignment",
+            "test_app.utils.prevent_frappe_auto_assignment",
+            # "test_app.utils.auto_assign_on_start"
         ]
     }
 }

@@ -77,48 +77,42 @@ def get_ticket_button_visibility(ticket_name):
 
 @frappe.whitelist()
 def start_ticket(ticket_name):
-    """Atomic ticket start - NO DUPLICATES even with concurrent clicks"""
     current_user = frappe.session.user
-    
-    # ✅ ATOMIC LOCK: Prevents concurrent access
+
+    # Lock doc
     ticket = frappe.get_doc("HD Ticket", ticket_name, for_update=True)
-    
-    # ✅ CHECK ALL Open ToDos (not just current user)
-    existing_todos = frappe.get_all("ToDo", 
+
+    # Mark this update as "from Start button"
+    ticket.flags.via_start_ticket_button = True
+
+    # Your existing duplicate protection
+    existing_todos = frappe.get_all(
+        "ToDo",
         filters={
             "reference_type": "HD Ticket",
             "reference_name": ticket_name,
-            "status": "Open"
+            "status": "Open",
         },
         fields=["allocated_to"],
-        limit=1
+        limit=1,
     )
-    
+
     if existing_todos:
-        # ✅ ANY existing assignee blocks (even other users)
         assignee_email = existing_todos[0].allocated_to
         assignee_name = frappe.db.get_value("User", assignee_email, "full_name") or assignee_email
         return {
             "show_alert": 1,
             "message": f"You cannot start this ticket because {assignee_name} is assigned",
-            "assignee": assignee_name
+            "assignee": assignee_name,
         }
-    
-    # ✅ SAFE: No existing ToDo → Create new one + update ticket
-    todo = frappe.get_doc({
-        "doctype": "ToDo",
-        "reference_type": "HD Ticket",
-        "reference_name": ticket_name,
-        "allocated_to": current_user,
-        "description": f"Started working on ticket {ticket_name}",
-        "status": "Open"
-    })
-    todo.insert()
-    
-    ticket.status = "In Progress"  # Or "Progressing"
+
+    # Set status and times here
+    ticket.status = "In Progress"
     ticket.custom_start_time = frappe.utils.now_datetime()
-    ticket.save()
-    
+
+    # Let handle_start_ticket_assignment create ToDo + _assign
+    ticket.save()  # on_update hooks will see flags.via_start_ticket_button
+
     frappe.db.commit()
     return {"message": "Ticket started successfully"}
 
@@ -159,5 +153,4 @@ def get_ticket_assignment_alert(ticket_name):
     except Exception as e:
         frappe.log_error(f"Alert error {ticket_name}: {str(e)}")
         return {"show_alert": 0, "message": "", "assignee": ""}
-
 
