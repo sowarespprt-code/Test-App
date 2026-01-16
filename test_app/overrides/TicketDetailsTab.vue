@@ -150,97 +150,64 @@ function openCustomerSearchPopup() {
 }
 
 
-// ✅ IMPROVED: handleCustomerSelected with better error handling
+// ✅ FIXED: handleCustomerSelected - NO ticket.get/reload, pure memory updates
 async function handleCustomerSelected(customer: any) {
-  console.log("[DETAILS TAB] 👤 Customer selected from popup:", customer);
+  console.log("[DETAILS TAB] 👤 Customer selected:", customer);
   
   if (!customer || !customer.name) {
-    console.log("[DETAILS TAB] ⚠️ Invalid customer data");
+    console.warn("[DETAILS TAB] ⚠️ Invalid customer");
     return;
   }
 
-  const customerId = customer.name; // HD Customer ID
-  const customerName = customer.customer_name; // Actual name
-  
-  console.log("[DETAILS TAB] 📝 Customer selection:", {
-    customerId,
-    customerName,
-  });
+  const customerId = customer.name;
+  const customerName = customer.customer_name;
 
   try {
-    // ✅ Reload ticket to get latest version
-    console.log("[DETAILS TAB] 🔄 Reloading ticket...");
-    await ticket.value.reload();
+    // ✅ MEMORY ONLY: Update fields directly (ticket.doc already loaded)
+    ticket.value.doc.customer = customerId;
+    ticket.value.doc.custom_customer_name = customerName;
     
-    // ✅ SINGLE SAVE: Update both fields at once
-    console.log("[DETAILS TAB] 💾 Saving customer fields...");
+    // Trigger virtual field population (uses get_list, safe)
+    lastProcessedCustomer.value = customerId;
+    await reloadAllCustomerData();  // Populates virtuals from customer lookup
+
+    // ✅ Safe save - no get/reload needed
     await ticket.value.setValue.submit({
-      customer: customerId,  // Link field
-      custom_customer_name: customerName  // Display field
+      customer: customerId,
+      custom_customer_name: customerName
     });
-    
-    console.log("[DETAILS TAB] ✅ Customer fields saved successfully");
-    
-    // ✅ Wait for Frappe to process
-    await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // ✅ Reload to get the updated document
-    console.log("[DETAILS TAB] 🔄 Reloading after save...");
-    await ticket.value.reload();
-    
-    // ✅ Now load all customer data
-    console.log("[DETAILS TAB] 📥 Loading customer data...");
-    await reloadAllCustomerData();
 
+    // ✅ Refresh assignees if available (list query, not get_doc)
     if (assignees?.value) {
-      console.log("[DETAILS TAB] 🔄 Reloading assignees after popup...");
-      await assignees.value.reload();
-      console.log("[DETAILS TAB] ✅ Team options refreshed");
+      assignees.value.reload();
     }
-    
-  } catch (error) {
-    console.error("[DETAILS TAB] ❌ Error updating customer:", error);
-    
-    // ✅ Handle timestamp mismatch
-    const errorString = String(error);
-    if (errorString.includes("TimestampMismatchError") || 
-        error.exc_type === "TimestampMismatchError") {
-      console.log("[DETAILS TAB] 🔁 Timestamp mismatch - retrying...");
-      
-      try {
-        // Wait a bit before retry
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Reload and try again
-        await ticket.value.reload();
-        
-        await ticket.value.setValue.submit({
-          customer: customerId,
-          custom_customer_name: customerName
-        });
-        
-        await nextTick();
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        await ticket.value.reload();
-        await reloadAllCustomerData();
 
-        if (assignees?.value) {
-          console.log("[DETAILS TAB] 🔄 Reloading assignees after retry...");
-          await assignees.value.reload();
-        }
-        
-        console.log("[DETAILS TAB] ✅ Retry successful");
-      } catch (retryError) {
-        console.error("[DETAILS TAB] ❌ Retry failed:", retryError);
-        alert("Failed to update customer after retry. Please refresh the page and try again.");
-      }
+    console.log("[DETAILS TAB] ✅ Customer updated successfully");
+    
+  } catch (error: any) {
+    console.error("[DETAILS TAB] ❌ Save error:", error);
+    
+    // Handle only TimestampMismatch (common after concurrent edits)
+    if (error._server_messages?.[0]?.includes("TimestampMismatchError")) {
+      // Force reload once (doc already permitted since page loaded)
+      await ticket.value.reload();
+      
+      // Retry memory + save
+      ticket.value.doc.customer = customerId;
+      ticket.value.doc.custom_customer_name = customerName;
+      await ticket.value.setValue.submit({
+        customer: customerId,
+        custom_customer_name: customerName
+      });
+      
+      await reloadAllCustomerData();
+      console.log("[DETAILS TAB] ✅ Retry successful");
     } else {
-      alert("Failed to update customer. Please try again.");
+      throw error;  // Re-throw for UI alert
     }
   }
 }
+
 
 
 async function openLicensePopup() {
