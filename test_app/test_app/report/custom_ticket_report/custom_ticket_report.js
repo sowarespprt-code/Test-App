@@ -1,3 +1,6 @@
+// Copyright (c) 2026, soware and contributors
+// For license information, please see license.txt
+
 function debounce(fn, delay) {
     let timer = null;
     return function(...args) {
@@ -70,23 +73,37 @@ frappe.query_reports["Custom Ticket Report"] = {
             fieldtype: "Link",
             options: "HD Team"
         },
+        {
+            fieldname: "group_by_assignee",
+            label: "Group By Assignee",
+            fieldtype: "Check",
+            default: 0
+        },
     ],
     
     onload: function(report) {
-         report.set_filter_value("from_date", "");
-        report.set_filter_value("to_date", "");
-        report.set_filter_value("custom_customer_name", "");
-        report.set_filter_value("priority", "");
-        report.set_filter_value("status", "");
-        report.set_filter_value("assigned_to", "");
-        report.set_filter_value("agent_group", "");
-        
-        // Clear the datatable on load
         if (report.datatable) {
             report.datatable.refresh([]);
         }
-        // Add Search Customer button AFTER priority field (at the end, same line)
-         // ✨ CHANGE 2: Clear the datatable on load to show empty state
+
+        // NEW: Reset filters AFTER render (1500ms)
+        setTimeout(() => {
+            report.set_filter_value("from_date", "");
+            report.set_filter_value("to_date", "");
+            report.set_filter_value("custom_customer_name", "");
+            report.set_filter_value("priority", "");
+            report.set_filter_value("status", "");
+            report.set_filter_value("assigned_to", "");
+            report.set_filter_value("agent_group", "");
+            report.set_filter_value("group_by_assignee", 0);
+            
+            // Force checkbox refresh
+            if (report.page.fields_dict.group_by_assignee) {
+                report.page.fields_dict.group_by_assignee.refresh();
+            }
+        }, 1500);
+
+        // EXISTING: Clear datatable
         setTimeout(function() {
             if (report.datatable && report.datatable.datamanager) {
                 report.datatable.refresh([]);
@@ -94,111 +111,74 @@ frappe.query_reports["Custom Ticket Report"] = {
         }, 100);
         
         setTimeout(function() {
-            // ✨ FIRST: Disable auto-refresh for ALL filter fields
+            // UPDATED: FIRST disabling with skip_fields (2000ms)
+            const skip_fields = ['group_by_assignee'];
+            
             setTimeout(function() {
-                // ✨ Disable date field auto-refresh
+                // Date fields - SKIP if in skip_fields
                 const from_date = report.get_filter("from_date");
-                const to_date = report.get_filter("to_date");
-
-                if (from_date) {
-                    from_date.df.onchange = () => {};     // disable frappe handler
-                    from_date.$input.off("change");       // disable DOM event
-                    from_date.$input.off("blur");         // VERY important
-                    from_date.$input.off("input");        // internal trigger
+                if (from_date && !skip_fields.includes('from_date')) {
+                    from_date.df.onchange = () => {};
+                    from_date.$input.off("change");
+                    from_date.$input.off("blur");
+                    from_date.$input.off("input");
                 }
 
-                if (to_date) {
+                const to_date = report.get_filter("to_date");
+                if (to_date && !skip_fields.includes('to_date')) {
                     to_date.df.onchange = () => {};
                     to_date.$input.off("change");
                     to_date.$input.off("blur");
                     to_date.$input.off("input");
                 }
                 
-                // Disable customer field auto-refresh
-                report.page.fields_dict.custom_customer_name.$input.off('change awesomplete-selectcomplete');
+                // Other fields with skip check
+                const field_names = ['custom_customer_name', 'priority', 'status', 'assigned_to', 'agent_group'];
+                field_names.forEach(field_name => {
+                    const field = report.page.fields_dict[field_name];
+                    if (field && !skip_fields.includes(field_name)) {
+                        field.$input.off('change awesomplete-selectcomplete');
+                        field.df.onchange = null;
+                    }
+                });
                 
-                // Disable priority field auto-refresh
-                report.page.fields_dict.priority.$input.off('change');
-                
-                // Disable status field auto-refresh
-                report.page.fields_dict.status.$input.off('change');
-
-                if (report.page.fields_dict.assigned_to) {
-                    report.page.fields_dict.assigned_to.$input.off('change awesomplete-selectcomplete');
-                    report.page.fields_dict.assigned_to.df.onchange = null;
-                }
-
-                if (report.page.fields_dict.agent_group) {
-                    report.page.fields_dict.agent_group.$input.off('change awesomplete-selectcomplete');
-                    report.page.fields_dict.agent_group.df.onchange = null;
-                }
-                
-                // ✨ CRITICAL: Completely disable onchange handlers
-                report.page.fields_dict.from_date.df.onchange = null;
-                report.page.fields_dict.to_date.df.onchange = null;
-                report.page.fields_dict.priority.df.onchange = null;
-                report.page.fields_dict.status.df.onchange = null;
+                // CRITICAL handlers - skip checkbox
+                const critical_fields = ['from_date', 'to_date', 'priority', 'status'];
+                critical_fields.forEach(field_name => {
+                    if (report.page.fields_dict[field_name]) {
+                        report.page.fields_dict[field_name].df.onchange = null;
+                    }
+                });
             }, 2000);
 
+            // UPDATED: SECOND disabling with skip_fields (2500ms)
             setTimeout(() => {
-                // ✨ Disable from_date filter
-                const from_date_filter = report.get_filter('from_date');
-                if (from_date_filter) {
-                    from_date_filter.df.onchange = null;
-                    from_date_filter.$input.off('change');
-                    from_date_filter.$input.off('blur');
-                }
+                const skip_fields = ['group_by_assignee'];
                 
-                // ✨ Disable to_date filter
-                const to_date_filter = report.get_filter('to_date');
-                if (to_date_filter) {
-                    to_date_filter.df.onchange = null;
-                    to_date_filter.$input.off('change');
-                    to_date_filter.$input.off('blur');
-                }
+                // All filters with skip check
+                const all_filters = ['from_date', 'to_date', 'custom_customer_name', 'priority', 'status', 'assigned_to', 'agent_group'];
+                all_filters.forEach(field_name => {
+                    const filter = report.get_filter(field_name);
+                    if (filter && !skip_fields.includes(field_name)) {
+                        filter.df.onchange = null;
+                        filter.$input.off('change');
+                        if (filter.$input.hasClass('awesomplete')) {
+                            filter.$input.off('awesomplete-selectcomplete focusout');
+                        }
+                        filter.df.onchange = null;
+                    }
+                });
                 
-                // Disable customer filter
-                const customer_filter = report.get_filter('custom_customer_name');
-                if (customer_filter) {
-                    customer_filter.df.onchange = () => {};  // disable refresh
-                    customer_filter.$input.off('awesomplete-selectcomplete');
-                    customer_filter.$input.off('focusout');
-                    customer_filter.$input.off('change');
+                // RE-ENABLE dropdown for checkbox specifically
+                const group_filter = report.get_filter('group_by_assignee');
+                if (group_filter) {
+                    console.log('Checkbox found, re-enabling dropdown');
+                    group_filter.df.onchange = null;  // Only disable auto-refresh, keep dropdown
+                    // DON'T remove click events
                 }
-                
-                // ✨ Double-check: Disable priority and status onchange again
-                const priority_filter = report.get_filter('priority');
-                if (priority_filter) {
-                    priority_filter.df.onchange = null;
-                    priority_filter.$input.off('change');
-                }
-                
-                const status_filter = report.get_filter('status');
-                if (status_filter) {
-                    status_filter.df.onchange = null;
-                    status_filter.$input.off('change');
-                }
+            }, 2500);
 
-                // Disable assigned_to filter
-                const assigned_to_filter = report.get_filter('assigned_to');
-                if (assigned_to_filter) {
-                    assigned_to_filter.df.onchange = null;
-                    assigned_to_filter.$input.off('awesomplete-selectcomplete');
-                    assigned_to_filter.$input.off('focusout');
-                    assigned_to_filter.$input.off('change');
-                }
-
-                const team_filter = report.get_filter('agent_group');
-                if (team_filter) {
-                    team_filter.df.onchange = null;
-                    team_filter.$input.off('awesomplete-selectcomplete');
-                    team_filter.$input.off('focusout');
-                    team_filter.$input.off('change');
-                }
-
-            }, 2200);
-
-            // Make sure filters are displayed inline first
+            // EXISTING: Flex layout
             $('.page-form .form-section').css({
                 'display': 'flex',
                 'flex-wrap': 'wrap',
@@ -405,13 +385,101 @@ frappe.query_reports["Custom Ticket Report"] = {
         setTimeout(hide_row_filters, 500);
         setTimeout(hide_row_filters, 1000);
 
-        // ✨ CHANGE 6: Hide again whenever report refreshes (fixed implementation)
+        // ⭐ UPDATED: Apply colspan effect to Assigned To column when grouped
         const originalRefresh = report.refresh.bind(report);
         report.refresh = function() {
             originalRefresh();
-            setTimeout(hide_row_filters, 100);
-            setTimeout(hide_row_filters, 300);
+            setTimeout(() => {
+                apply_colspan_to_headers();
+                hide_row_filters();
+            }, 500);  // Increased timeout to ensure table is fully rendered
         };
+
+        function apply_colspan_to_headers() {
+            const is_grouped = report.get_filter_value('group_by_assignee');
+            
+            if (!is_grouped) return;
+            
+            // Wait for DOM to be ready
+            setTimeout(() => {
+                // Find rows where assigned_to contains group-header-row
+                $('.dt-cell').each(function() {
+                    const cellContent = $(this).find('.dt-cell__content').html();
+                    
+                    if (cellContent && cellContent.includes('group-header-row')) {
+                        const row = $(this).closest('.dt-row');
+                        const allCells = row.find('.dt-cell');
+                        const firstCell = $(this);
+                        
+                        // Calculate total width of all cells
+                        let totalWidth = 0;
+                        allCells.each(function() {
+                            totalWidth += $(this).outerWidth();
+                        });
+                        
+                        // Make first cell span full width
+                        firstCell.css({
+                            'position': 'relative',
+                            'width': totalWidth + 'px !important',
+                            'min-width': totalWidth + 'px !important',
+                            'background': '#000 !important',
+                            'color': '#fff !important',
+                            'font-weight': 'bold !important',
+                            'padding': '12px 16px !important',
+                            'border-radius': '6px !important',
+                            'font-size': '14px !important',
+                            'text-align': 'left !important',
+                            'cursor': 'pointer',
+                            'z-index': '10'
+                        });
+                        
+                        // Extract assignee name from the HTML
+                        const assigneeName = $(cellContent).data('assignee') || $(cellContent).text();
+                        firstCell.find('.dt-cell__content').html(`
+                            <span class="collapse-arrow" style="margin-right: 8px;">▼</span>
+                            ${assigneeName}
+                        `);
+                        
+                        // Hide all other cells in the row
+                        allCells.not(firstCell).css({
+                            'visibility': 'hidden',
+                            'width': '0 !important',
+                            'min-width': '0 !important',
+                            'padding': '0 !important',
+                            'border': 'none !important'
+                        });
+                        
+                        // Add collapse/expand functionality
+                        firstCell.off('click').on('click', function() {
+                            const currentRow = $(this).closest('.dt-row');
+                            let nextRow = currentRow.next('.dt-row');
+                            let rowsToToggle = [];
+                            
+                            // Find all rows until next header
+                            while (nextRow.length) {
+                                const hasHeader = nextRow.find('.dt-cell__content').html();
+                                if (hasHeader && hasHeader.includes('group-header-row')) {
+                                    break;
+                                }
+                                rowsToToggle.push(nextRow);
+                                nextRow = nextRow.next('.dt-row');
+                            }
+                            
+                            // Toggle visibility
+                            $(rowsToToggle).each(function() {
+                                $(this).toggle();
+                            });
+                            
+                            // Toggle arrow
+                            const arrow = $(this).find('.collapse-arrow');
+                            arrow.text(arrow.text() === '▼' ? '▶' : '▼');
+                        });
+                    }
+                });
+            }, 100);
+        }
+
+
 
         // ✨ CHANGE 7: Hide again when data table re-renders (very important)
         $(document).on('data-table-render', function () {
@@ -595,6 +663,26 @@ function add_mobile_styles() {
                     .report-wrapper .datatable .dt-row:hover {
                         background-color: #f8f9fa !important;
                     }
+                    
+                    /* ===== ⭐ ASSIGNED TO COLUMN - FONT STYLING ONLY ===== */
+                    .report-wrapper .datatable .dt-cell[data-fieldname="assigned_to"] {
+                        font-size: 16px !important;           /* bigger font */
+                        font-weight: 700 !important;          /* bold */
+                        font-family: 'Arial Black', 'Arial Bold', sans-serif !important;  /* bolder font family */
+                        color: #000000 !important;            /* pure black */
+                        letter-spacing: 0.5px !important;     /* space between letters */
+                        text-transform: uppercase !important; /* ALL CAPS for visibility */
+                    }
+
+                    /* Header also gets same font */
+                    .report-wrapper .datatable .dt-cell--header[data-fieldname="assigned_to"] {
+                        font-size: 16px !important;
+                        font-weight: 700 !important;
+                        font-family: 'Arial Black', 'Arial Bold', sans-serif !important;
+                        color: #000000 !important;
+                    }
+
+
                 }
                 
                 /* ⭐ UPDATED: Extra small devices (phones in portrait, less than 576px) */
@@ -795,3 +883,5 @@ function show_customer_search_popup(report) {
         dialog.fields_dict.search_input.$input.focus();
     }, 300);
 }
+
+
