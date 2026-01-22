@@ -17,7 +17,7 @@ def get_columns(filters):
             "label": "Assigned To", 
             "fieldname": "assigned_to", 
             "fieldtype": "Data", 
-            "width": 200
+            "width": 200,
         })
     
     # Add remaining columns

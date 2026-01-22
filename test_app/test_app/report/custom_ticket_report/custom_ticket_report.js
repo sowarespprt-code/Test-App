@@ -101,7 +101,7 @@ frappe.query_reports["Custom Ticket Report"] = {
             if (report.page.fields_dict.group_by_assignee) {
                 report.page.fields_dict.group_by_assignee.refresh();
             }
-        }, 1500);
+        }, 800);
 
         // EXISTING: Clear datatable
         setTimeout(function() {
@@ -149,7 +149,7 @@ frappe.query_reports["Custom Ticket Report"] = {
                         report.page.fields_dict[field_name].df.onchange = null;
                     }
                 });
-            }, 2000);
+            }, 500);
 
             // UPDATED: SECOND disabling with skip_fields (2500ms)
             setTimeout(() => {
@@ -176,7 +176,7 @@ frappe.query_reports["Custom Ticket Report"] = {
                     group_filter.df.onchange = null;  // Only disable auto-refresh, keep dropdown
                     // DON'T remove click events
                 }
-            }, 2500);
+            }, 1000);
 
             // EXISTING: Flex layout
             $('.page-form .form-section').css({
@@ -265,7 +265,7 @@ frappe.query_reports["Custom Ticket Report"] = {
                     show_customer_search_popup(report);
                 });
             }
-        }, 600);
+        }, 300);
 
          // Add Show Report button next to Actions
         setTimeout(function() {
@@ -380,10 +380,10 @@ frappe.query_reports["Custom Ticket Report"] = {
         }
 
         // ✨ CHANGE 5: Initial hide - multiple attempts for reliability
+        setTimeout(hide_row_filters, 50);
         setTimeout(hide_row_filters, 100);
-        setTimeout(hide_row_filters, 300);
+        setTimeout(hide_row_filters, 200);
         setTimeout(hide_row_filters, 500);
-        setTimeout(hide_row_filters, 1000);
 
         // ⭐ UPDATED: Apply colspan effect to Assigned To column when grouped
         const originalRefresh = report.refresh.bind(report);
@@ -392,7 +392,7 @@ frappe.query_reports["Custom Ticket Report"] = {
             setTimeout(() => {
                 apply_colspan_to_headers();
                 hide_row_filters();
-            }, 500);  // Increased timeout to ensure table is fully rendered
+            }, 300);  // Increased timeout to ensure table is fully rendered
         };
 
         function apply_colspan_to_headers() {
@@ -476,10 +476,58 @@ frappe.query_reports["Custom Ticket Report"] = {
                         });
                     }
                 });
-            }, 100);
-        }
+            }, 50);
+        };
+        
+        // ⭐ UPDATED: Better observer with proper cleanup
+        let headerStyleObserver = null;
 
-
+        setTimeout(() => {
+            const isGrouped = frappe.query_report.get_filter_value('group_by_assignee');
+            
+            // ⭐ Clear styles if ungrouped
+            if (!isGrouped) {
+                // Clear all possible styled cells
+                for (let i = 0; i < 1000; i++) {  // Clear up to 1000 rows
+                    $(`.dt-cell--1-${i}`).css({
+                        backgroundColor: '',
+                        color: '',
+                        fontWeight: '',
+                        fontSize: ''
+                    });
+                    $(`.dt-cell--1-${i} .dt-cell__content`).css({
+                        color: '',
+                        fontWeight: '',
+                        textShadow: ''
+                    });
+                    $(`.dt-cell--0-${i}`).css('visibility', '');
+                }
+            }
+            
+            // Start observer for continuous monitoring
+            headerStyleObserver = new MutationObserver(() => {
+                const currentGrouped = frappe.query_report.get_filter_value('group_by_assignee');
+                if (!currentGrouped) {
+                    // Clear styles when ungrouped
+                    $('.dt-cell--1, .dt-cell--1 .dt-cell__content, .dt-cell--0').css({
+                        backgroundColor: '',
+                        color: '',
+                        fontWeight: '',
+                        fontSize: '',
+                        textShadow: '',
+                        visibility: ''
+                    });
+                }
+            });
+            
+            const tableWrapper = $('.report-wrapper .datatable-wrapper')[0];
+            if (tableWrapper) {
+                headerStyleObserver.observe(tableWrapper, { 
+                    childList: true, 
+                    subtree: true 
+                });
+            }
+        }, 500);
 
         // ✨ CHANGE 7: Hide again when data table re-renders (very important)
         $(document).on('data-table-render', function () {
@@ -499,13 +547,71 @@ frappe.query_reports["Custom Ticket Report"] = {
                     subtree: true
                 });
             }
-        }, 1000);
+        }, 100);
         
         // Make report mobile responsive
         add_mobile_styles();
-    }
-};
+    },
 
+    after_datatable_render(table_instance) {
+        const isGrouped = frappe.query_report.get_filter_value('group_by_assignee');
+        
+        // ⭐ ALWAYS clear all styles first (for both grouped and ungrouped)
+        if (table_instance && table_instance.datamanager && table_instance.datamanager.data) {
+            table_instance.datamanager.data.forEach((row, rowIdx) => {
+                // Clear assigned_to column styles
+                table_instance.style.setStyle(`.dt-cell--1-${rowIdx}`, {
+                    backgroundColor: '',
+                    color: '',
+                    fontWeight: '',
+                    fontSize: ''
+                });
+                
+                // Clear content styles
+                $(`.dt-cell--1-${rowIdx} .dt-cell__content`).css({
+                    color: '',
+                    fontWeight: '',
+                    textShadow: ''
+                });
+                
+                // Clear first column visibility
+                table_instance.style.setStyle(`.dt-cell--0-${rowIdx}`, {
+                    visibility: ''
+                });
+            });
+        }
+        
+        // ⭐ Only apply styles if grouped
+        if (isGrouped && table_instance && table_instance.datamanager && table_instance.datamanager.data) {
+            table_instance.datamanager.data.forEach((row, rowIdx) => {
+                // Check if this is a header row (has assigned_to but no ticket name)
+                if (row.assigned_to && (!row.name || row.name === "")) {
+                    table_instance.style.setStyle(`.dt-cell--1-${rowIdx}`, {
+                        backgroundColor: '#a5ee88 !important',
+                        color: '#000000 !important',
+                        fontWeight: '1000 !important',
+                        fontStyle: 'bold',
+                        fontSize: '19px !important',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',  
+                        height: '100%',                       
+                    });
+                    
+                    $(`.dt-cell--1-${rowIdx} .dt-cell__content`).css({
+                        color: '#ffffff !important',
+                        fontWeight: '900 !important',
+                        textShadow: '0 0 3px rgba(255,255,255,0.8) !important',
+                    });
+                    
+                    table_instance.style.setStyle(`.dt-cell--0-${rowIdx}`, {
+                        visibility: 'hidden !important'
+                    });
+                }
+            });
+        }
+    },
+};
 
 // ⭐ UPDATED: Add mobile responsive styles - COMPLETE REWRITE FOR MOBILE
 function add_mobile_styles() {
@@ -881,7 +987,7 @@ function show_customer_search_popup(report) {
     
     setTimeout(function() {
         dialog.fields_dict.search_input.$input.focus();
-    }, 300);
+    }, 100);
 }
 
 
