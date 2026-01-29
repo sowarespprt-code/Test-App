@@ -61,5 +61,11 @@ class HDCustomer(Document):
                 "width": "8rem",
                 "type": "Datetime",
             },
+            {
+                "label": "Phone Number",
+                "type": "Data",
+                "key": "custom_phone001",
+                "width": "12rem"
+            },
         ]
         return {"columns": columns}

@@ -50,6 +50,44 @@ frappe.query_reports["Customer - AMC Details"] = {
             "fieldtype": "Int",
             "width": "120px",
             "hidden": 1
+        },
+
+
+        {
+            "fieldname": "address1",
+            "label": __("Address 1"),
+            "fieldtype": "Data",
+            "width": "200px"
+        },
+        {
+            "fieldname": "address2",
+            "label": __("Address 2"),
+            "fieldtype": "Data",
+            "width": "200px"
+        },
+        {
+            "fieldname": "phone1",
+            "label": __("Phone 1"),
+            "fieldtype": "Data",
+            "width": "150px"
+        },
+        {
+            "fieldname": "district",
+            "label": __("District"),
+            "fieldtype": "Data",
+            "width": "150px"
+        },
+        {
+            "fieldname": "place",
+            "label": __("Place"),
+            "fieldtype": "Data",
+            "width": "150px"
+        },
+        {
+            "fieldname": "email",
+            "label": __("Email"),
+            "fieldtype": "Data",
+            "width": "220px"
         }
     ],
     
@@ -73,6 +111,14 @@ frappe.query_reports["Customer - AMC Details"] = {
                 year_filter.$input.val('');
                 year_filter.set_value('');
             }
+
+            // ⭐ CLEAR NEW FILTERS
+            report.set_filter_value("address1", "");
+            report.set_filter_value("address2", "");
+            report.set_filter_value("phone1", "");
+            report.set_filter_value("district", "");
+            report.set_filter_value("place", "");
+            report.set_filter_value("email", "");
             
             console.log('✅ All filters cleared on page load');
         }, 50);

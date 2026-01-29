@@ -33,16 +33,40 @@ def get_columns():
             "width": 120
         },
         {
-            "label": _("Address"),
+            "label": _("Address1"),
             "fieldname": "address",
             "fieldtype": "Small Text",
             "width": 250
         },
         {
-            "label": _("Phone"),
+            "label": _("Address2"),
+            "fieldname": "custom_address2",
+            "fieldtype": "Small Text",
+            "width": 250
+        },
+        {
+            "label": _("Place"),
+            "fieldname": "custom_place",
+            "fieldtype": "Data",
+            "width": 150
+        },
+        {
+            "label": _("District"),
+            "fieldname": "custom_district",
+            "fieldtype": "Data",
+            "width": 150
+        },
+        {
+            "label": _("Phone1"),
             "fieldname": "phone",
             "fieldtype": "Data",
             "width": 120
+        },
+        {
+            "label": _("Email"),
+            "fieldname": "custom_email",
+            "fieldtype": "Data",
+            "width": 200
         },
         {
             "label": _("Product"),
@@ -95,6 +119,31 @@ def get_data(filters=None):
                     values.append(year_num)
                 except:
                     pass
+
+    # ⭐ NEW LIKE FILTERS (%search%)
+    if filters and filters.get("address1"):
+        conditions.append("custom_address1 LIKE %s")
+        values.append(f"%{filters.get('address1')}%")
+    
+    if filters and filters.get("address2"):
+        conditions.append("custom_address2 LIKE %s")
+        values.append(f"%{filters.get('address2')}%")
+    
+    if filters and filters.get("phone1"):
+        conditions.append("custom_phone001 LIKE %s")
+        values.append(f"%{filters.get('phone1')}%")
+    
+    if filters and filters.get("district"):
+        conditions.append("custom_district LIKE %s")
+        values.append(f"%{filters.get('district')}%")
+    
+    if filters and filters.get("place"):
+        conditions.append("custom_place LIKE %s")
+        values.append(f"%{filters.get('place')}%")
+    
+    if filters and filters.get("email"):
+        conditions.append("custom_email LIKE %s")
+        values.append(f"%{filters.get('email')}%")
     
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
     
@@ -104,7 +153,11 @@ def get_data(filters=None):
             customer_name,
             custom_dateofamclastpaid AS amc_end_date,
             custom_address1 AS address,
+            custom_address2 AS custom_address2,
+            custom_place,
+            custom_district,
             custom_phone001 AS phone,
+            custom_email,
             custom_productname AS product
         FROM `tabHD Customer`
         {where_clause}
