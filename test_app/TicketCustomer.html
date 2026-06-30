@@ -1,0 +1,14 @@
+TicketCustomer.vue
+
+line 12 - 23
+<Button
+          v-if="ticket.data.status !== 'Closed'"
+          label="Close"
+          theme="gray"
+          variant="solid"
+          @click="handleClose()"
+        >
+          <template #prefix>
+            <Icon icon="lucide:check" />
+          </template>
+        </Button>

@@ -340,5 +340,43 @@
   "reference_doctype": "HD Customer",
   "script": "if doc.has_value_changed('custom_customercode'):\n    # Get all tickets for this customer\n    tickets = frappe.get_all(\n        'HD Ticket',\n        filters={\n            'Customer': doc.name\n        },\n        fields=['name']\n    )\n    \n    # Update each ticket's custom_customercode field (in memory only)\n    for ticket in tickets:\n        # Get the ticket document\n        ticket_doc = frappe.get_doc('HD Ticket', ticket.name)\n        \n        # Update the custom_customercode field\n        ticket_doc.custom_customercode = doc.custom_customercode\n        \n        # Use db_set to update without triggering validations or workflows\n        # This will update the field value in memory/cache\n        frappe.db.set_value('HD Ticket', ticket.name, 'custom_customercode', doc.custom_customercode, update_modified=False)\n    \n    \n    frappe.msgprint(f'Updated Customer Code in {len(tickets)} ticket(s)', alert=True)",
   "script_type": "DocType Event"
+ },
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Insert",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2026-04-23 17:21:01.842473",
+  "module": null,
+  "name": "For Date Time",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "HD Ticket",
+  "script": "if not doc.custom_raised_at_utc:\n    doc.custom_raised_at_utc = frappe.utils.now_datetime()\n\nif not doc.custom_raised_timezone:\n    doc.custom_raised_timezone = frappe.session.data.time_zone or frappe.utils.get_system_timezone()\n\nif not doc.custom_raised_at_local:\n    doc.custom_raised_at_local = frappe.utils.now_datetime()",
+  "script_type": "DocType Event"
+ },
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2026-05-13 09:42:30.807449",
+  "module": "Test App",
+  "name": "To Fill customer Name",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "HD Ticket",
+  "script": "customer_code = (doc.custom_customercode or \"\").strip()\n\nif customer_code:\n    customer = frappe.db.get_value(\n        \"HD Customer\",\n        {\"custom_customercode\": customer_code},\n        [\"name\", \"customer_name\"],\n        as_dict=True\n    )\n\n    if customer:\n        doc.customer = customer.name\n        doc.custom_customer_name = customer.customer_name\n    else:\n        frappe.throw(f\"HD Customer not found for Customer Code: {customer_code}\")",
+  "script_type": "DocType Event"
  }
 ]

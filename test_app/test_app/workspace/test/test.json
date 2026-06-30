@@ -1,0 +1,50 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"_vjP4mdF-F\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Test</span>\",\"col\":12}},{\"id\":\"MFQvabJ2lN\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hd Ticket\",\"col\":3}},{\"id\":\"WrHvj-8Efi\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Customer   Amc Details\",\"col\":3}}]",
+ "creation": "2026-02-07 14:23:49.173435",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "solid-error",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Test",
+ "links": [],
+ "modified": "2026-02-07 14:25:37.878084",
+ "modified_by": "Administrator",
+ "module": "Test App",
+ "name": "Test",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Agent"
+  }
+ ],
+ "sequence_id": 28.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Hd Ticket",
+   "link_to": "HD Ticket",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Customer   Amc Details",
+   "link_to": "Customer - AMC Details",
+   "report_ref_doctype": "HD Customer",
+   "type": "Report"
+  }
+ ],
+ "title": "Test"
+}

@@ -1,0 +1,6041 @@
+diff --git a/desk/src/components/ListRows.vue b/desk/src/components/ListRows.vue
+index 4fa5298..f529a0d 100644
+--- a/desk/src/components/ListRows.vue
++++ b/desk/src/components/ListRows.vue
+@@ -36,7 +36,7 @@
+           :key="row.name"
+           v-slot="{ idx, column, item }"
+           :row="row"
+-          class="truncate text-base row"
++          :class="['truncate text-base row', getRowClass(row)]"
+         >
+           <slot v-bind="{ idx, column, item, row }" />
+         </ListRow>
+@@ -49,7 +49,7 @@
+       :key="row.name"
+       v-slot="{ idx, column, item }"
+       :row="row"
+-      class="truncate text-base"
++      :class="['truncate text-base', getRowClass(row)]"
+     >
+       <slot v-bind="{ idx, column, item, row }" />
+     </ListRow>
+@@ -65,9 +65,9 @@ import {
+   ListRow,
+   ListRows,
+ } from "frappe-ui";
+-import { computed, ref, watch } from "vue";
+-
++import { computed, ref, watch, inject } from "vue";
+ import IconMoreHorizontal from "~icons/lucide/more-horizontal";
++
+ const props = defineProps({
+   rows: {
+     type: Array,
+@@ -77,10 +77,27 @@ const props = defineProps({
+     type: Array,
+     default: () => [],
+   },
++  rowClass: {
++    type: Function,
++    default: null,
++  },
+ });
+ 
+-const groupedRows = ref(props.rows);
++// Inject the parent component's options if available
++const parentOptions = inject('listViewOptions', null);
+ 
++// Function to get row class
++const getRowClass = (row) => {
++  if (props.rowClass) {
++    return props.rowClass(row);
++  }
++  if (parentOptions?.rowClass) {
++    return parentOptions.rowClass(row);
++  }
++  return '';
++};
++
++const groupedRows = ref(props.rows);
+ const actions = (group) => {
+   let _actions = props.groupByActions.map((action) => {
+     return {
+@@ -106,4 +123,9 @@ let showGroupedRows = computed(() => {
+ });
+ </script>
+ 
+-<style></style>
++<style scoped>
++/* Ensure row backgrounds fill completely */
++:deep(.list-row) {
++  background: inherit !important;
++}
++</style>
+\ No newline at end of file
+diff --git a/desk/src/components/ListViewBuilder.vue b/desk/src/components/ListViewBuilder.vue
+index 1e33115..c428dd0 100644
+--- a/desk/src/components/ListViewBuilder.vue
++++ b/desk/src/components/ListViewBuilder.vue
+@@ -38,7 +38,8 @@
+     :options="{
+       selectable: options.selectable,
+       showTooltip: false,
+-      resizeColumn: false,
++      resizeColumn: true,
++      rowClass: getRowClass,
+       getRowRoute: (row) => ({
+         name: options.rowRoute?.name,
+         params: { [options.rowRoute?.prop]: row.name },
+@@ -57,6 +58,7 @@
+     </ListHeader>
+     <ListRows
+       :rows="rows"
++      :row-class="getRowClass"
+       v-slot="{ idx, column, item, row }"
+       :group-by-actions="options.groupByActions"
+       @scrollend="handleListScroll"
+@@ -186,6 +188,7 @@ interface P {
+     default_page_length?: number;
+     isCustomerPortal?: boolean;
+     rowRoute?: Record<string, string>;
++    rowClass?: Function;
+   };
+ }
+ 
+@@ -200,6 +203,8 @@ const router = useRouter();
+ const { isManager } = useAuthStore();
+ const { $dialog } = globalStore();
+ const { getStatus } = useTicketStatusStore();
++const userNameCache = new Map();
++
+ 
+ const listSelections = ref(new Set());
+ const defaultOptions = reactive({
+@@ -212,7 +217,7 @@ const defaultOptions = reactive({
+     name: route.query.view,
+   },
+   groupByActions: [],
+-  default_page_length: 20,
++  default_page_length: 100,
+   isCustomerPortal: false,
+   hideColumnSetting: true,
+   rowRoute: {
+@@ -245,16 +250,38 @@ const defaultOptions = reactive({
+ 
+ function handleBulkDelete(hide: Function, selections: Set<string>) {
+   capture("bulk_delete" + props.options.doctype);
++  
++  // Convert selections to array of strings (document names)
++  const docNames = Array.from(selections).map(item => String(item));
++  
++  console.log("Deleting documents:", docNames);
++  
++  if (docNames.length === 0) {
++    toast.error("No documents selected");
++    hide();
++    return;
++  }
++  
++  // Call Frappe's delete API
+   call("frappe.desk.reportview.delete_items", {
+-    items: JSON.stringify(Array.from(selections)),
++    items: JSON.stringify(docNames),
+     doctype: props.options.doctype,
+-  }).then(() => {
+-    toast.success("Item(s) deleted successfully");
++  })
++  .then(() => {
++    toast.success(`${docNames.length} document(s) deleted successfully`);
+     hide();
+     reset();
++  })
++  .catch((error) => {
++    console.error("Delete error:", error);
++    const errorMsg = error?.message || error?.exc || "Failed to delete documents";
++    toast.error(errorMsg);
++    hide();
+   });
+ }
+ 
++
++
+ function reset() {
+   exposeFunctions.reload();
+   exposeFunctions.unselectAll();
+@@ -267,6 +294,9 @@ const options = computed(() => {
+   };
+ });
+ 
++// Provide options to child components
++provide('listViewOptions', options.value);
++
+ const { isMobileView } = useScreenSize();
+ 
+ const defaultEmptyState = {
+@@ -305,6 +335,14 @@ const list = createResource({
+     return data;
+   },
+   onSuccess: (data) => {
++    data.columns.forEach((column) => {
++      if (column.key === "custom_customer_name") {
++        column.key = "customer_display_name";
++      }
++      handleFetchFromField(column);
++      handleColumnConfig(column);
++    });
++
+     list.params = defaultParams;
+     columns.value = data.columns;
+   },
+@@ -319,30 +357,47 @@ const exposeFunctions = {
+ function selectBannerOptions(selections: Set<string>, unselectAll = () => {}) {
+   exposeFunctions["unselectAll"] = unselectAll;
+ 
+-  // Get the user-provided actions
+-  const userActions = options.value.selectBannerActions.map((action) => ({
+-    ...action,
+-    onClick: () => action.onClick?.(selections),
+-  }));
++  // Safety check - ensure selectBannerActions exists and is an array
++  const userProvidedActions = Array.isArray(options.value.selectBannerActions) 
++    ? options.value.selectBannerActions 
++    : [];
++  
++  const userActions = userProvidedActions
++    .filter((action) => {
++      // Check condition if exists
++      if (typeof action.condition === 'function') {
++        return action.condition();
++      }
++      return true;
++    })
++    .map((action) => ({
++      ...action,
++      onClick: () => action.onClick?.(selections),
++    }));
+ 
+-  // Get the default actions
+-  // overwrite the default actions if user provided actions with same label
+   const defaultActions = defaultOptions.selectBannerActions
+-    .filter(
+-      (action) =>
+-        !userActions.some(
+-          (defaultAction) => defaultAction.label === action.label
+-        )
+-    )
++    .filter((action) => {
++      // Skip if user already provided this action
++      const isDuplicate = userActions.some(
++        (userAction) => userAction.label === action.label
++      );
++      if (isDuplicate) return false;
++      
++      // Check condition
++      if (typeof action.condition === 'function') {
++        return action.condition();
++      }
++      return true;
++    })
+     .map((action) => ({
+       ...action,
+       onClick: () => action.onClick?.(selections),
+     }));
+ 
+-  // Return combined actions
+   return [...userActions, ...defaultActions];
+ }
+ 
++
+ const rows = computed(() => {
+   if (!list.data?.data) return [];
+   if (list.data.view_type === "group_by") {
+@@ -440,6 +495,47 @@ const quickFilters = createResource({
+   },
+ });
+ 
++async function getUserFullName(email) {
++  if (!email) return null;
++  
++  if (userNameCache.has(email)) {
++    return userNameCache.get(email);
++  }
++  
++  try {
++    const result = await call("frappe.client.get_value", {
++      doctype: "User",
++      filters: { name: email },
++      fieldname: ["full_name", "first_name", "last_name"],
++    });
++    
++    let fullName = null;
++    
++    if (result?.message?.full_name) {
++      fullName = result.message.full_name;
++    } else if (result?.full_name) {
++      fullName = result.full_name;
++    } else if (result?.message?.first_name || result?.message?.last_name) {
++      const first = result.message.first_name || "";
++      const last = result.message.last_name || "";
++      fullName = `${first} ${last}`.trim();
++    } else if (result?.first_name || result?.last_name) {
++      const first = result.first_name || "";
++      const last = result.last_name || "";
++      fullName = `${first} ${last}`.trim();
++    }
++    
++    const nameToCache = fullName || email;
++    userNameCache.set(email, nameToCache);
++    return nameToCache;
++  } catch (error) {
++    console.error("Error fetching user name for", email, ":", error);
++    userNameCache.set(email, email);
++    return email;
++  }
++}
++
++
+ function listCell(column: any, row: any, item: any, idx: number) {
+   const columnConfig = options.value.columnConfig;
+   if (columnConfig && columnConfig[column.key]?.custom) {
+@@ -457,13 +553,88 @@ function listCell(column: any, row: any, item: any, idx: number) {
+       textContent: formatTimeShort(item),
+     });
+   }
++  // MultipleAvatar section - Updated to show blank when empty and real names when assigned
+   if (column.type === "MultipleAvatar") {
+-    return h(MultipleAvatar, {
+-      avatars: item,
+-      hideName: true,
+-      class: "flex items-center truncate flex-1 flex-row-reverse justify-end",
++    // Handle empty/null case
++    if (!item || item === "") {
++      return h("span", {
++        class: "truncate flex-1 text-sm text-gray-700",
++        textContent: "",
++      });
++    }
++    
++    // Parse JSON string if needed
++    let parsedItem = item;
++    if (typeof item === "string") {
++      const trimmed = item.trim();
++      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
++        try {
++          parsedItem = JSON.parse(trimmed);
++        } catch (e) {
++          parsedItem = item;
++        }
++      }
++    }
++    
++    // Extract emails
++    let emails = [];
++    if (Array.isArray(parsedItem)) {
++      if (parsedItem.length === 0) {
++        return h("span", {
++          class: "truncate flex-1 text-sm text-gray-700",
++          textContent: "",
++        });
++      }
++      emails = parsedItem.filter(email => email && typeof email === "string" && email.trim());
++    } else if (typeof parsedItem === "string" && parsedItem.trim()) {
++      emails = [parsedItem.trim()];
++    } else if (typeof parsedItem === "object" && parsedItem !== null) {
++      const email = parsedItem.full_name || parsedItem.name || parsedItem.user || parsedItem.email;
++      if (email) emails = [email];
++    }
++    
++    if (emails.length === 0) {
++      return h("span", {
++        class: "truncate flex-1 text-sm text-gray-700",
++        textContent: "",
++      });
++    }
++    
++    // Get current display names (cached or email)
++    const getDisplayNames = () => {
++      return emails.map(email => userNameCache.get(email) || email).filter(Boolean).join(", ");
++    };
++    
++    const initialDisplay = getDisplayNames();
++    
++    // Create VNode with proper lifecycle hooks
++    const vnode = h("span", {
++      class: "truncate flex-1 text-sm text-gray-700",
++      textContent: initialDisplay,
++      ref: (el) => {
++        if (el) {
++          // Check for uncached emails
++          const uncachedEmails = emails.filter(email => !userNameCache.has(email));
++          
++          if (uncachedEmails.length > 0) {
++            // Fetch names and update DOM directly
++            Promise.all(uncachedEmails.map(email => getUserFullName(email)))
++              .then(() => {
++                const updatedDisplay = getDisplayNames();
++                el.textContent = updatedDisplay;
++                el.title = updatedDisplay;
++              })
++              .catch(error => {
++                console.error("Error updating assignee names:", error);
++              });
++          }
++        }
++      }
+     });
++    
++    return vnode;
+   }
++  
+   if (column.type === "Rating") {
+     return h(StarRating, {
+       rating: item || 0,
+@@ -478,6 +649,14 @@ function listCell(column: any, row: any, item: any, idx: number) {
+ 
+ function handleFieldClick(e: MouseEvent, column, row, item) {
+   const noFilterFields = ["Data", "Datetime", "Rating", "Int", "Float"];
++  
++   // Always open the row; never apply filters on cell click
++  if (options.value.rowRoute?.name !== "") {
++    return;
++  }
++  emit("rowClick", row.name);
++
++  
+   if (noFilterFields.includes(column.type)) {
+     if (options.value.rowRoute?.name !== "") {
+       return;
+@@ -508,6 +687,31 @@ function handleFieldClick(e: MouseEvent, column, row, item) {
+   applyFilters({ ...defaultParams.filters, [column.key]: item });
+ }
+ 
++// NEW FUNCTION: Get row class for urgent + not assigned tickets
++function getRowClass(row: any) {
++  let classes = [];
++
++  // Apply urgent style only when BOTH conditions match
++  if (
++    options.value.doctype === "HD Ticket" &&
++    row.priority === "Urgent" &&
++    row.status === "Not Assigned"
++  ) {
++    classes.push("urgent-ticket-row");
++  }
++
++  // Run user-provided custom rowClass if exists
++  if (options.value.rowClass) {
++    const customClass = options.value.rowClass(row);
++    if (customClass) {
++      classes.push(customClass);
++    }
++  }
++
++  return classes.join(" ");
++}
++
++
+ const showViewControls = computed(() => {
+   return (
+     !options.value.hideViewControls &&
+@@ -700,3 +904,63 @@ onMounted(async () => {
+ 
+ defineExpose(exposeFunctions);
+ </script>
++
++<style scoped>
++/* Neon Orange Urgent border + glowing background */
++:deep(.urgent-ticket-row) {
++  position: relative;
++  background: rgba(255, 140, 0, 0.12) !important;
++  box-shadow: inset 0 0 18px rgba(255, 115, 0, 0.35);
++  animation: urgent-glow 1.8s ease-in-out infinite;
++  overflow: hidden;
++}
++
++@keyframes urgent-glow {
++  0%, 100% {
++    box-shadow: inset 0 0 18px rgba(255, 115, 0, 0.35),
++                0 0 12px rgba(255, 140, 0, 0.5);
++  }
++  50% {
++    box-shadow: inset 0 0 28px rgba(255, 115, 0, 0.6),
++                0 0 22px rgba(255, 140, 0, 0.8);
++  }
++}
++
++/* Racing streak highlight */
++:deep(.urgent-ticket-row::before) {
++  content: "";
++  position: absolute;
++  top: 0;
++  left: -120%;
++  width: 120%;
++  height: 100%;
++  background: linear-gradient(
++    90deg,
++    transparent,
++    rgba(255, 160, 69, 0.5),
++    transparent
++  );
++  animation: streak-run 1.8s linear infinite;
++}
++
++@keyframes streak-run {
++  0% { left: -120%; }
++  100% { left: 120%; }
++}
++
++@keyframes urgent-badge-pulse {
++  0%, 100% { transform: translateY(-50%) scale(1); }
++  50% { transform: translateY(-50%) scale(1.15); }
++}
++
++/* shake on hover */
++:deep(.urgent-ticket-row:hover) {
++  animation: shake 0.35s ease-in-out;
++}
++
++@keyframes shake {
++  0%, 100% { transform: translateX(0); }
++  25% { transform: translateX(-2px); }
++  75% { transform: translateX(2px); }
++}
++</style>
+\ No newline at end of file
+diff --git a/desk/src/components/desk/global/NewCustomerDialog.vue b/desk/src/components/desk/global/NewCustomerDialog.vue
+index 4073911..d3a8c8f 100644
+--- a/desk/src/components/desk/global/NewCustomerDialog.vue
++++ b/desk/src/components/desk/global/NewCustomerDialog.vue
+@@ -2,27 +2,223 @@
+   <div>
+     <Dialog
+       v-model="model"
+-      :options="{ title: 'Add New Customer', size: 'sm' }"
++      :options="{ title: 'Add New Customer', size: 'lg' }"
+     >
+       <template #body-content>
+         <div class="space-y-4">
+-          <div class="space-y-1">
+-            <Input
+-              v-model="state.customer"
+-              label="Customer Name"
+-              type="text"
+-              placeholder="Tesla Inc."
+-            />
+-          </div>
+-          <div class="space-y-1">
+-            <Input
+-              v-model="state.domain"
+-              label="Domain"
+-              type="text"
+-              placeholder="eg: tesla.com, mycompany.com"
+-            />
++          <div class="grid grid-cols-2 gap-4">
++            <!-- Customer Name -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.customer_name"
++                label="Customer Name"
++                type="text"
++                placeholder="Tesla Inc."
++              />
++            </div>
++
++            <!-- Customer Code (Mandatory, Unique) -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_customercode"
++                label="Customer Code *"
++                type="text"
++                placeholder="CUST001"
++              />
++            </div>
++
++            <!-- Product Name (Mandatory) -->
++            <div class="space-y-1">
++              <label class="text-sm font-medium text-gray-700">Product *</label>
++              <Autocomplete
++                v-model="state.custom_productname"
++                :options="productOptions.data || []"
++                placeholder="Select Product..."
++                class="w-full"
++                @search="handleProductSearch"
++              />
++            </div>
++
++            <!-- Domain -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.domain"
++                label="Domain"
++                type="text"
++                placeholder="eg: tesla.com, mycompany.com"
++              />
++            </div>
++
++            <!-- Address 1 (Text type) -->
++            <div class="space-y-1 col-span-2">
++              <Input
++                v-model="state.custom_address1"
++                label="Address 1"
++                type="textarea"
++                placeholder="Address Line 1"
++              />
++            </div>
++
++            <!-- Address 2 (Small Text type) -->
++            <div class="space-y-1 col-span-2">
++              <Input
++                v-model="state.custom_address2"
++                label="Address 2"
++                type="textarea"
++                placeholder="Address Line 2"
++              />
++            </div>
++
++            <!-- Place -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_place"
++                label="Place"
++                type="text"
++                placeholder="Place"
++              />
++            </div>
++
++            <!-- District -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_district"
++                label="District"
++                type="text"
++                placeholder="District"
++              />
++            </div>
++
++            <!-- Pincode -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_pincode"
++                label="Pincode"
++                type="text"
++                placeholder="Pincode"
++              />
++            </div>
++
++            <!-- State -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_state"
++                label="State"
++                type="text"
++                placeholder="State"
++              />
++            </div>
++
++            <!-- Country -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_country"
++                label="Country"
++                type="text"
++                placeholder="Country"
++              />
++            </div>
++
++            <!-- Contact Person -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_contactperson"
++                label="Contact Person"
++                type="text"
++                placeholder="Contact Person Name"
++              />
++            </div>
++
++            <!-- Phone 1 -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_phone001"
++                label="Phone1"
++                type="text"
++                placeholder="Phone Number"
++              />
++            </div>
++
++            <!-- Phone 2 -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_phone002"
++                label="Phone2"
++                type="text"
++                placeholder="Alternate Phone"
++              />
++            </div>
++
++            <!-- GST No -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_gstno"
++                label="GST No"
++                type="text"
++                placeholder="GST Number"
++              />
++            </div>
++
++            <!-- Email -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_email"
++                label="Email"
++                type="email"
++                placeholder="email@example.com"
++              />
++            </div>
++
++            <!-- No of License -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_nooflicense"
++                label="No of License"
++                type="text"
++                placeholder="Number of Licenses"
++              />
++            </div>
++
++            <!-- Date of AMC Last Paid -->
++            <div class="space-y-1">
++              <Input
++                v-model="state.custom_dateofamclastpaid"
++                label="Date of AMC Last Paid"
++                type="date"
++                placeholder="Select Date"
++              />
++            </div>
++
++            <!-- Remarks -->
++            <div class="space-y-1 col-span-2">
++              <Input
++                v-model="state.custom_remarks"
++                label="Remarks"
++                type="text"
++                placeholder="Enter remarks"
++              />
++            </div>
++
++            <!-- Status (Enabled / Disabled, mandatory) -->
++            <div class="space-y-1">
++              <label class="text-sm font-medium text-gray-700">Status *</label>
++              <select
++                v-model="state.custom_status"
++                class="border rounded px-2 py-1 text-sm w-full"
++              >
++                <option value="Enabled">Enabled</option>
++                <option value="Disabled">Disabled</option>
++              </select>
++            </div>
+           </div>
++
+           <div class="float-right flex space-x-2">
++            <Button
++              label="Cancel"
++              theme="gray"
++              variant="subtle"
++              @click="model = false"
++            />
+             <Button
+               label="Add"
+               theme="gray"
+@@ -37,49 +233,167 @@
+ </template>
+ 
+ <script setup lang="ts">
+-import { Dialog, Input, createResource, toast } from "frappe-ui";
++import { Dialog, Input, Autocomplete, createResource, toast } from "frappe-ui";
+ import { reactive } from "vue";
+ 
+ const emit = defineEmits(["customerCreated"]);
+ const model = defineModel<boolean>();
+ 
+ const state = reactive({
+-  customer: "",
++  customer_name: "",
+   domain: "",
++  custom_customercode: "",
++  custom_productname: "",
++  custom_address1: "",
++  custom_address2: "",
++  custom_place: "",
++  custom_district: "",
++  custom_pincode: "",
++  custom_state: "",
++  custom_country: "",
++  custom_contactperson: "",
++  custom_phone001: "",
++  custom_phone002: "",
++  custom_gstno: "",
++  custom_email: "",
++  custom_nooflicense: "",
++  custom_dateofamclastpaid: "",
++  custom_remarks: "",
++  custom_status: "Enabled", // default
+ });
+ 
++// product list
++const productOptions = createResource({
++  url: "frappe.client.get_list",
++  params: {
++    doctype: "Product",
++    fields: ["name", "product", "status", "team"],
++    order_by: "product asc",
++    limit_page_length: 999,
++  },
++  auto: true,
++  transform: (data: any[]) => {
++    if (!data || !Array.isArray(data)) return [];
++    return data.map((item) => ({
++      label: item.product || item.name,
++      value: item.name,
++    }));
++  },
++  onError: (error) => {
++    console.error("Error fetching products:", error);
++    return [];
++  },
++});
++
++// search in products
++let searchTimeout: any = null;
++function handleProductSearch(query: string) {
++  if (searchTimeout) clearTimeout(searchTimeout);
++
++  searchTimeout = setTimeout(() => {
++    const params: any = {
++      doctype: "Product",
++      fields: ["name", "product", "status", "team"],
++      order_by: "product asc",
++      limit_page_length: 999,
++    };
++
++    if (query) {
++      params.filters = [["product", "like", `%${query}%`]];
++    }
++
++    productOptions.update({ params });
++    productOptions.fetch();
++  }, 300);
++}
++
++// insert customer
+ const customerResource = createResource({
+   url: "frappe.client.insert",
+   method: "POST",
+-  data: {
+-    doc: {
+-      doctype: "HD Customer",
+-      customer_name: state.customer,
+-      domain: state.domain,
+-    },
+-  },
+   onSuccess: () => {
+-    state.customer = "";
++    // Reset form fields
++    state.customer_name = "";
+     state.domain = "";
++    state.custom_customercode = "";
++    state.custom_productname = "";
++    state.custom_address1 = "";
++    state.custom_address2 = "";
++    state.custom_place = "";
++    state.custom_district = "";
++    state.custom_pincode = "";
++    state.custom_state = "";
++    state.custom_country = "";
++    state.custom_contactperson = "";
++    state.custom_phone001 = "";
++    state.custom_phone002 = "";
++    state.custom_gstno = "";
++    state.custom_email = "";
++    state.custom_nooflicense = "";
++    state.custom_dateofamclastpaid = "";
++    state.custom_remarks = "";
++    state.custom_status = "Enabled";
++
++    // DON'T clear productOptions.data - keep the product list
++    // Instead, just reload the products to ensure fresh data
++    productOptions.reload();
++
+     toast.success("Customer created");
+     emit("customerCreated");
++    model.value = false;
+   },
+   onError: (err) => {
+-    toast.error(err.messages[0]);
++    toast.error(err.messages?.[0] || "Failed to create customer");
+   },
+ });
+ 
+ function addCustomer() {
+-  if (!state.customer) {
++  if (!state.customer_name) {
+     toast.error("Customer name is required");
+     return;
+   }
++  if (!state.custom_customercode) {
++    toast.error("Customer code is required");
++    return;
++  }
++  if (!state.custom_productname) {
++    toast.error("Product name is required");
++    return;
++  }
++  if (!state.custom_status) {
++    toast.error("Status is required");
++    return;
++  }
++
++  const productValue =
++    typeof state.custom_productname === "object"
++      ? state.custom_productname.value
++      : state.custom_productname;
++
+   customerResource.submit({
+     doc: {
+       doctype: "HD Customer",
+-      customer_name: state.customer,
++      customer_name: state.customer_name,
+       domain: state.domain,
++      custom_customercode: state.custom_customercode,
++      custom_productname: productValue,
++      custom_address1: state.custom_address1,
++      custom_address2: state.custom_address2,
++      custom_place: state.custom_place,
++      custom_district: state.custom_district,
++      custom_pincode: state.custom_pincode,
++      custom_state: state.custom_state,
++      custom_country: state.custom_country,
++      custom_contactperson: state.custom_contactperson,
++      custom_phone001: state.custom_phone001,
++      custom_phone002: state.custom_phone002,
++      custom_gstno: state.custom_gstno,
++      custom_email: state.custom_email,
++      custom_nooflicense: state.custom_nooflicense,
++      custom_dateofamclastpaid: state.custom_dateofamclastpaid,
++      custom_remarks: state.custom_remarks,
++      custom_status: state.custom_status,
+     },
+   });
+ }
+-</script>
++</script>
+\ No newline at end of file
+diff --git a/desk/src/components/layouts/layoutSettings.ts b/desk/src/components/layouts/layoutSettings.ts
+index 1c0b6fd..2ce7e51 100644
+--- a/desk/src/components/layouts/layoutSettings.ts
++++ b/desk/src/components/layouts/layoutSettings.ts
+@@ -1,9 +1,17 @@
++import LucideTicket from "~icons/lucide/ticket";
+ import LucideBookOpen from "~icons/lucide/book-open";
+ import LucideCloudLightning from "~icons/lucide/cloud-lightning";
++import OrganizationsIcon from "~icons/lucide/building-2";
+ import LucideContact2 from "~icons/lucide/contact-2";
+-import LucideTicket from "~icons/lucide/ticket";
+-import { OrganizationsIcon } from "../icons";
+-import PhoneIcon from "../icons/PhoneIcon.vue";
++import LucideBox from "~icons/lucide/box";
++import PhoneIcon from "~icons/lucide/phone";
++import LucideBell from "~icons/lucide/bell";
++import LucidePanelLeft from "~icons/lucide/layout-panel-left";
++import LucideFileText from "~icons/lucide/file-text";
++import LucideDollarSign from "~icons/lucide/dollar-sign";
++import LucideTrendingUp from "~icons/lucide/trending-up";
++import LucidePhoneCall from "~icons/lucide/phone-call";
++
+ 
+ export const agentPortalSidebarOptions = [
+   {
+@@ -31,11 +38,46 @@ export const agentPortalSidebarOptions = [
+     icon: LucideContact2,
+     to: "ContactList",
+   },
++  {
++    label: "Products",
++    icon: LucideBox,
++    to: "ProductList",
++  },
++  {
++    label : "Customer Alert",
++    icon : LucideBell,
++    to : "CustomerAlertList", 
++  },
++  {
++    label: "Show summary",          // NEW
++    icon: LucidePanelLeft,          // NEW icon
++    to: "ShowSummary",            
++  },
++  {
++    label: "Customer AMC Details",
++    icon: LucideFileText,
++    to: "CustomerAMCDetails",
++  },
+   {
+     label: "Call Logs",
+     icon: PhoneIcon,
+     to: "CallLogs",
+   },
++  {
++    label: "Payment Collection",
++    icon: LucideDollarSign,
++    to: "PaymentCollectionTaskList",
++  },
++  {
++    label: "Call Management",
++    icon: LucidePhoneCall,
++    to: "CallManagementTaskList",
++  },
++  {
++    label: "Payment Dashboard",
++    icon: LucideTrendingUp,
++    to: "PaymentCollectionDashboard",
++  },
+ ];
+ 
+ export const customerPortalSidebarOptions = [
+@@ -49,4 +86,4 @@ export const customerPortalSidebarOptions = [
+     icon: LucideBookOpen,
+     to: "CustomerKnowledgeBase",
+   },
+-];
++];
+\ No newline at end of file
+diff --git a/desk/src/components/ticket-agent/TicketActivityPanel.vue b/desk/src/components/ticket-agent/TicketActivityPanel.vue
+index 347187b..357fc3f 100644
+--- a/desk/src/components/ticket-agent/TicketActivityPanel.vue
++++ b/desk/src/components/ticket-agent/TicketActivityPanel.vue
+@@ -8,6 +8,7 @@
+         :activities="filterActivities(tab.name as TicketTab)"
+         :title="tab.label"
+         :ticket-status="ticket.doc.status"
++        :ticket-name="ticket.doc.name" 
+         @email:reply="
+           (e) => {
+             communicationAreaRef.replyToEmail(e);
+@@ -23,7 +24,7 @@
+     </TabPanel>
+   </Tabs>
+   <!-- Comm Area -->
+-  <CommunicationArea
++  `<CommunicationArea
+     ref="communicationAreaRef"
+     :ticketId="String(ticket.doc?.name)"
+     :to-emails="[ticket.doc?.raised_by]"
+@@ -36,7 +37,7 @@
+         ticketAgentActivitiesRef.scrollToLatestActivity();
+       }
+     "
+-  />
++  />`
+ </template>
+ 
+ <script setup lang="ts">
+@@ -54,8 +55,8 @@ import {
+   TicketSymbol,
+   TicketTab,
+ } from "@/types";
+-import { LoadingIndicator, TabList, TabPanel, Tabs } from "frappe-ui";
+-import { computed, ComputedRef, inject, ref } from "vue";
++import { LoadingIndicator, TabList, TabPanel, Tabs} from "frappe-ui";
++import { computed, ComputedRef, inject, ref} from "vue";
+ import TicketAgentActivities from "../ticket/TicketAgentActivities.vue";
+ import { useTelephonyStore } from "@/stores/telephony";
+ import { storeToRefs } from "pinia";
+diff --git a/desk/src/components/ticket-agent/TicketDetailsTab.vue b/desk/src/components/ticket-agent/TicketDetailsTab.vue
+index 1f6ca10..011d0b6 100644
+--- a/desk/src/components/ticket-agent/TicketDetailsTab.vue
++++ b/desk/src/components/ticket-agent/TicketDetailsTab.vue
+@@ -2,6 +2,17 @@
+   <div
+     class="h-full overflow-y-hidden flex flex-1 flex-col justify-between overflow-hidden max-h-full"
+   >
++    <!-- ✅ Popup Components -->
++    <CustomerSearchPopup 
++      v-model="showCustomerSearchPopup" 
++      @customer-selected="handleCustomerSelected" 
++    />
++    <LicenseDetailsPopup 
++      v-model="showLicensePopup" 
++      :customer-code="virtualFields.custom_customercode" 
++      @license-loaded="handleLicenseLoaded" 
++    />
++
+     <div class="px-5 pb-4 flex flex-col">
+       <!-- User avatar with buttons -->
+       <TicketContact />
+@@ -40,14 +51,47 @@
+ 
+     <!-- Additional Fields -->
+     <div class="border-t flex flex-col flex-1 h-full pb-3 overflow-y-hidden">
+-      <!-- TODO: Hack of 80 % for now, will refactor -->
+       <div class="overflow-y-scroll max-h-[80%]">
++        <!-- ✅ BUTTONS ROW (Above Customer Code) -->
++        <div class="px-5 pt-3 pb-2">
++          <div class="flex gap-2">
++            <!-- Customer Search Button -->
++            <button
++              class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium rounded transition-colors duration-200 shadow-sm"
++              @click="openCustomerSearchPopup"
++              title="Search Customer Details"
++              type="button"
++            >
++              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                <circle cx="11" cy="11" r="8"></circle>
++                <path d="m21 21-4.35-4.35"></path>
++              </svg>
++              <span>Search Customer</span>
++            </button>
++            
++            <!-- License Button -->
++            <button
++              class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white font-medium rounded transition-colors duration-200 shadow-sm"
++              @click="openLicensePopup"
++              title="View License Details"
++              type="button"
++            >
++              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
++                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
++              </svg>
++              <span>View License</span>
++            </button>
++          </div>
++        </div>
++
++        <!-- All Custom Fields (Normal rendering) -->
+         <template v-for="field in customFields">
+           <TicketField
+             v-if="field.visible"
+             :key="field.fieldname"
+             :field="field"
+-            :value="field.value"
++            :value="getFieldValueWithVirtual(field.fieldname)"
+             @change="
+               ({ fieldname, value }) => handleFieldUpdate(fieldname, value)
+             "
+@@ -69,24 +113,619 @@ import {
+   FieldValue,
+   TicketSymbol,
+ } from "@/types";
+-import { computed, inject } from "vue";
++import { computed, inject, ref, watch, onMounted, nextTick } from "vue";
+ import TicketField from "../TicketField.vue";
+ import AssignTo from "./AssignTo.vue";
+ import TicketContact from "./TicketContact.vue";
++import { call } from "frappe-ui";
++import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
++import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
+ 
+ const ticket = inject(TicketSymbol);
+ const assignees = inject(AssigneeSymbol);
+ const customizations = inject(CustomizationSymbol);
+ const { getFields, getField } = getMeta("HD Ticket");
+ const { notifyTicketUpdate } = useNotifyTicketUpdate(ticket.value?.name);
++const licenseData = ref<any | null>(null);
++const licenseLoading = ref(false);
++const amcSnapshot = ref<{ AMCEndDate: string | null; status: string | null } | null>(null);
++
++const showCustomerSearchPopup = ref(false);
++const showLicensePopup = ref(false);
++
++const virtualFields = ref({
++  custom_customercode: "",
++  custom_product: "",
++  custom_popup_messages: "",
++  custom_remarks: "",
++  custom_amc_end_date: "",
++  custom_amc_status: "",
++});
++
++const lastProcessedCustomer = ref("");
++
++function openCustomerSearchPopup() {
++  console.log("[DETAILS TAB] 🔍 Opening customer search popup");
++  showCustomerSearchPopup.value = true;
++}
++
++
++// ✅ FIXED: handleCustomerSelected - NO ticket.get/reload, pure memory updates
++async function handleCustomerSelected(customer: any) {
++  console.log("[DETAILS TAB] 👤 Customer selected:", customer);
++  
++  if (!customer || !customer.name) {
++    console.warn("[DETAILS TAB] ⚠️ Invalid customer");
++    return;
++  }
++
++  const customerId = customer.name;
++  const customerName = customer.customer_name;
++
++  try {
++    // ✅ MEMORY ONLY: Update fields directly (ticket.doc already loaded)
++    ticket.value.doc.customer = customerId;
++    ticket.value.doc.custom_customer_name = customerName;
++    
++    // Trigger virtual field population (uses get_list, safe)
++    lastProcessedCustomer.value = customerId;
++    await reloadAllCustomerData();  // Populates virtuals from customer lookup
++
++    // ✅ Safe save - no get/reload needed
++    await ticket.value.setValue.submit({
++      customer: customerId,
++      custom_customer_name: customerName
++    });
++
++    // ✅ Refresh assignees if available (list query, not get_doc)
++    if (assignees?.value) {
++      assignees.value.reload();
++    }
++
++    console.log("[DETAILS TAB] ✅ Customer updated successfully");
++    
++  } catch (error: any) {
++    console.error("[DETAILS TAB] ❌ Save error:", error);
++    
++    // Handle only TimestampMismatch (common after concurrent edits)
++    if (error._server_messages?.[0]?.includes("TimestampMismatchError")) {
++      // Force reload once (doc already permitted since page loaded)
++      await ticket.value.reload();
++      
++      // Retry memory + save
++      ticket.value.doc.customer = customerId;
++      ticket.value.doc.custom_customer_name = customerName;
++      await ticket.value.setValue.submit({
++        customer: customerId,
++        custom_customer_name: customerName
++      });
++      
++      await reloadAllCustomerData();
++      console.log("[DETAILS TAB] ✅ Retry successful");
++    } else {
++      throw error;  // Re-throw for UI alert
++    }
++  }
++}
++
++
++
++async function openLicensePopup() {
++  const code = virtualFields.value.custom_customercode?.trim();
++  
++  if (!code) {
++    alert("Please select a customer first to view license details.");
++    return;
++  }
++
++  if (code.length < 3) {
++    alert("Customer Code must be at least 3 characters.");
++    return;
++  }
++
++  console.log("[DETAILS TAB] 🔓 Opening license popup for code:", code);
++  showLicensePopup.value = true;
++  await fetchLicenseDataForTicket();
++}
++
++function handleLicenseLoaded(data: any) {
++  console.log("[DETAILS TAB] 📦 License data loaded:", data);
++  licenseData.value = data;
++}
++
++
++// ✅ SIMPLIFIED: loadVirtualFields - no more saves
++async function loadVirtualFields() {
++  const customerId = ticket?.value?.doc?.customer;
++  const customerNameField = ticket?.value?.doc?.custom_customer_name;
++  const ticketName = ticket?.value?.doc?.name;
++  
++  console.log("[DETAILS TAB] 📥 Loading virtual fields with:", {
++    customerId,
++    customerNameField,
++    ticketName
++  });
++  
++  if (!customerId && !customerNameField) {
++    console.log("[DETAILS TAB] ⚠️ No customer information available");
++    clearVirtualFields();
++    return;
++  }
++
++  const lookupValue = customerId || customerNameField;
++  console.log("[DETAILS TAB] 📥 Fetching HD Customer:", lookupValue);
++  lastProcessedCustomer.value = lookupValue;
++
++  try {
++    // ✅ Try by ID first
++    let result = await call("frappe.client.get_list", {
++      doctype: "HD Customer",
++      filters: { name: lookupValue },
++      fields: [
++        "name",
++        "customer_name", 
++        "custom_customercode", 
++        "custom_productname", 
++        "custom_remarks"
++      ],
++      limit: 1
++    });
++
++    console.log("[DETAILS TAB] ✅ HD Customer lookup by ID:", result);
++    
++    // ✅ Fallback to customer_name if needed
++    if (!result || result.length === 0) {
++      console.log("[DETAILS TAB] 🔍 Trying lookup by customer_name...");
++      
++      result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { customer_name: lookupValue },
++        fields: [
++          "name",
++          "customer_name",
++          "custom_customercode",
++          "custom_productname",
++          "custom_remarks"
++        ],
++        limit: 1
++      });
++      
++      console.log("[DETAILS TAB] ✅ HD Customer lookup by name:", result);
++    }
++    
++    if (result && result.length > 0) {
++      const customer = result[0];
++      await populateCustomerData(customer, ticketName);
++    } else {
++      console.log("[DETAILS TAB] ❌ Customer not found");
++      clearVirtualFields();
++    }
++
++  } catch (error) {
++    console.error("[DETAILS TAB] ❌ Virtual fields error:", error);
++    clearVirtualFields();
++  }
++}
++
++// ✅ FIXED: Remove the save attempt from populateCustomerData
++async function populateCustomerData(customer: any, ticketName: string) {
++  console.log("[DETAILS TAB] 📝 Populating data from customer:", customer);
++  
++  // ✅ Update virtual fields
++  virtualFields.value.custom_customercode = customer.custom_customercode || "";
++  virtualFields.value.custom_product = customer.custom_productname || "";
++  virtualFields.value.custom_remarks = customer.custom_remarks || "";
++
++  // ✅ Update ticket document (in memory only)
++  ticket.value.doc.custom_customercode = virtualFields.value.custom_customercode;
++  ticket.value.doc.custom_remarks = virtualFields.value.custom_remarks;
++  
++  // ✅ Update custom_customer_name in memory (NO SAVE)
++  const currentCustomerName = ticket.value.doc.custom_customer_name;
++  if (!currentCustomerName || currentCustomerName.length < 10 || currentCustomerName === customer.name) {
++    console.log("[DETAILS TAB] 🔧 Updating custom_customer_name in memory to:", customer.customer_name);
++    ticket.value.doc.custom_customer_name = customer.customer_name;
++    // ❌ REMOVED: Don't save here - it causes timestamp mismatch
++  }
++
++  // ✅ Fetch license data if customer code exists
++  if (virtualFields.value.custom_customercode) {
++    console.log("[DETAILS TAB] 🚀 Triggering AMC for code:", virtualFields.value.custom_customercode);
++    await fetchLicenseDataForTicket();
++  }
++
++  // ✅ Load customer alerts
++  if (ticketName && !ticket.value.doc.__islocal) {
++    const storageKey = `ticket_popup_${ticketName}`;
++    const storedPopupMessages = localStorage.getItem(storageKey);
++    if (storedPopupMessages) {
++      virtualFields.value.custom_popup_messages = storedPopupMessages;
++    } else {
++      await fetchCustomerAlerts(customer.name, virtualFields.value.custom_customercode);
++    }
++  } else {
++    await fetchCustomerAlerts(customer.name, virtualFields.value.custom_customercode);
++  }
++
++  console.log("[DETAILS TAB] ✅ Virtual fields loaded:", virtualFields.value);
++}
++
++function clearVirtualFields() {
++  virtualFields.value = {
++    custom_customercode: "",
++    custom_product: "",
++    custom_popup_messages: "",
++    custom_remarks: "",
++    custom_amc_end_date: "",
++    custom_amc_status: "",
++  };
++  ticket.value.doc.custom_customercode = "";
++  ticket.value.doc.custom_remarks = "";
++  licenseData.value = null;
++  amcSnapshot.value = null;
++}
++
++async function fetchCustomerAlerts(customerName: string, customerCode?: string) {
++  try {
++    const code = customerCode || virtualFields.value.custom_customercode;
++    let result: any[] = [];
++    
++    if (code) {
++      result = await call('frappe.client.get_list', {
++        doctype: 'Customer Alert',
++        filters: { customer_code: code },
++        fields: ['name', 'popupmessage', 'modified'],
++        order_by: 'modified desc',
++        limit: 10
++      });
++    }
++    
++    if (!result || result.length === 0) {
++      result = await call('frappe.client.get_list', {
++        doctype: 'Customer Alert',
++        filters: { customer_name: customerName },
++        fields: ['name', 'popupmessage', 'modified'],
++        order_by: 'modified desc',
++        limit: 10
++      });
++    }
++    
++    if (result && result.length > 0) {
++      virtualFields.value.custom_popup_messages = result
++        .map(a => a.popupmessage)
++        .filter(msg => msg)
++        .join('\n\n') || '';
++      console.log("[DETAILS TAB] ✅ Popup messages loaded");
++    } else {
++      virtualFields.value.custom_popup_messages = '';
++    }
++  } catch (error) {
++    console.error('[DETAILS TAB] ❌ Customer alerts error:', error);
++    virtualFields.value.custom_popup_messages = '';
++  }
++}
++
++async function fetchLicenseDataForTicket() {
++  const customerCode = (ticket.value?.doc?.custom_customercode || virtualFields.value.custom_customercode)?.trim();
++
++  console.log("[DETAILS TAB] 📡 License fetch for code:", customerCode);
++
++  if (!customerCode || customerCode.length < 3) {
++    console.log("[DETAILS TAB] ⚠️ Invalid customer code");
++    licenseData.value = null;
++    return;
++  }
++
++  licenseLoading.value = true;
++
++  try {
++    console.log("[DETAILS TAB] 🔗 Calling license API...");
++    const apiResult = await call("test_app.api.license.get_customer_license_details", {
++      customer_code: customerCode,
++    });
++
++    licenseData.value = apiResult || null;
++    console.log("[DETAILS TAB] 📦 API result:", apiResult);
++
++    if (!licenseData.value?.AMCEndDate || String(licenseData.value.AMCEndDate) === "null") {
++      console.log("[DETAILS TAB] ⚠️ No AMC in API → HD Customer");
++      const fallbackDate = await fetchAmcFromCustomer(customerCode);
++      if (fallbackDate) {
++        licenseData.value = {
++          ...licenseData.value,
++          AMCEndDate: fallbackDate,
++          source: "HD Customer",
++        };
++        console.log("[DETAILS TAB] ✅ HD Customer AMC:", fallbackDate);
++      } else {
++        licenseData.value = null;
++      }
++    } else {
++      licenseData.value.source = "API";
++    }
++
++  } catch (apiError) {
++    console.log("[DETAILS TAB] ❌ API failed → HD Customer fallback");
++    const fallbackDate = await fetchAmcFromCustomer(customerCode);
++    if (fallbackDate) {
++      licenseData.value = {
++        AMCEndDate: fallbackDate,
++        source: "HD Customer (API failed)",
++      };
++    } else {
++      licenseData.value = null;
++    }
++  } finally {
++    licenseLoading.value = false;
++  }
++}
++
++async function fetchAmcFromCustomer(customerCode: string) {
++  if (!customerCode || customerCode.length < 3) return null;
++
++  const cleanCode = customerCode.trim();
++  console.log("[DETAILS TAB] 🗄️ HD Customer lookup for:", cleanCode);
++
++  try {
++    let result = await call("frappe.client.get_list", {
++      doctype: "HD Customer",
++      filters: { custom_customercode: cleanCode },
++      fields: ["name", "custom_customercode", "custom_dateofamclastpaid"],
++      limit: 1
++    });
++
++    if (!result || result.length === 0) {
++      console.log("[DETAILS TAB] 🔍 Trying partial match...");
++      result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { custom_customercode: ["like", `%${cleanCode}%`] },
++        fields: ["name", "custom_customercode", "custom_dateofamclastpaid"],
++        limit: 3
++      });
++    }
++
++    console.log("[DETAILS TAB] 🗄️ HD Customer results:", result);
++
++    if (result && result.length > 0) {
++      const raw = result[0].custom_dateofamclastpaid;
++      const cleanDate = (raw && String(raw).trim()) ? String(raw).trim() : null;
++      console.log("[DETAILS TAB] ✅ AMC FOUND:", cleanDate);
++      return cleanDate;
++    }
++
++    console.log("[DETAILS TAB] ℹ️ No HD Customer match");
++    return null;
++
++  } catch (error) {
++    console.error("[DETAILS TAB] ❌ HD Customer error:", error);
++    return null;
++  }
++}
++
++function loadAmcSnapshotFromStorage() {
++  const ticketName = ticket.value?.doc?.name;
++  if (!ticketName || ticket.value.doc.__islocal) return;
++
++  const raw = localStorage.getItem(`ticket_amc_${ticketName}`);
++  if (!raw) return;
++
++  try {
++    amcSnapshot.value = JSON.parse(raw);
++    console.log("[DETAILS TAB] ✅ AMC snapshot loaded");
++  } catch (e) {
++    console.error("[DETAILS TAB] ❌ Snapshot parse error:", e);
++  }
++}
++
++const formattedAmcEndDate = computed(() => {
++  const snapDate = amcSnapshot.value?.AMCEndDate;
++  if (snapDate) return formatAmcDate(String(snapDate));
++
++  if (licenseLoading.value) return "Loading...";
++  if (!licenseData.value?.AMCEndDate) return "N/A";
++  return formatAmcDate(String(licenseData.value.AMCEndDate));
++});
++
++const amcStatusText = computed(() => {
++  const snapStatus = amcSnapshot.value?.status;
++  if (snapStatus) return String(snapStatus);
++
++  if (licenseLoading.value) return "Loading...";
++  if (!licenseData.value?.AMCEndDate) return "Unknown";
++  return deriveAmcStatus(String(licenseData.value.AMCEndDate));
++});
++
++const amcStatusClass = computed(() => {
++  if (licenseLoading.value) {
++    return "bg-gray-100 text-gray-600 border border-gray-300";
++  }
++  const status = amcStatusText.value;
++  if (status === "Expired") return "bg-red-100 text-red-800 border border-red-300";
++  if (status === "Active") return "bg-green-100 text-green-800 border border-green-300";
++  return "bg-gray-100 text-gray-800 border border-gray-300";
++});
++
++function formatAmcDate(rawInput: string): string {
++  const raw = String(rawInput || "").trim();
++  if (!raw || raw === "null" || raw === "undefined") return "N/A";
++
++  if (raw.includes("/")) {
++    const datePart = raw.split(" ")[0];
++    const parts = datePart.split("/");
++    if (parts.length === 3) {
++      const day = parseInt(parts[0], 10);
++      const month = parseInt(parts[1], 10);
++      const year = parseInt(parts[2], 10);
++      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
++        const d = new Date(year, month - 1, day);
++        if (!isNaN(d.getTime())) {
++          return d.toLocaleDateString("en-US", {
++            year: "numeric",
++            month: "short",
++            day: "numeric",
++          });
++        }
++      }
++    }
++  }
++
++  const d = new Date(raw);
++  if (!isNaN(d.getTime())) {
++    return d.toLocaleDateString("en-US", {
++      year: "numeric",
++      month: "short",
++      day: "numeric",
++    });
++  }
++
++  return "Invalid Date";
++}
++
++function deriveAmcStatus(rawInput: string): string {
++  const raw = String(rawInput || "").trim();
++  if (!raw || raw === "null" || raw === "undefined") return "Unknown";
++
++  let endDate: Date | undefined;
++
++  if (raw.includes("/")) {
++    const datePart = raw.split(" ")[0];
++    const parts = datePart.split("/");
++    if (parts.length === 3) {
++      const day = parseInt(parts[0], 10);
++      const month = parseInt(parts[1], 10);
++      const year = parseInt(parts[2], 10);
++      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
++        endDate = new Date(year, month - 1, day);
++      }
++    }
++  } else {
++    endDate = new Date(raw);
++  }
++
++  if (!endDate || isNaN(endDate.getTime())) return "Unknown";
++
++  const today = new Date();
++  endDate.setHours(0, 0, 0, 0);
++  today.setHours(0, 0, 0, 0);
++
++  return endDate < today ? "Expired" : "Active";
++}
++
++async function reloadAllCustomerData() {
++  console.log("[DETAILS TAB] 🔄 Reloading all customer data...");
++  clearVirtualFields();
++  await loadVirtualFields();
++  loadAmcSnapshotFromStorage();
++}
++
++onMounted(async () => {
++  console.log("[DETAILS TAB] 🎬 Component mounted");
++  await nextTick();
++  await reloadAllCustomerData();
++});
++
++watch(
++  () => ticket?.value?.doc?.customer, // Watch the Link field instead
++  async (newCustomerId, oldCustomerId) => {
++    console.log("[DETAILS TAB] 👤 Customer ID changed:", oldCustomerId, "→", newCustomerId);
++    
++    if (!newCustomerId) {
++      clearVirtualFields();
++      lastProcessedCustomer.value = "";
++      return;
++    }
++    
++    if (newCustomerId !== oldCustomerId && newCustomerId !== lastProcessedCustomer.value) {
++      lastProcessedCustomer.value = newCustomerId;
++      await nextTick();
++      await reloadAllCustomerData();
++    }
++  },
++  { immediate: false }
++);
++
++watch(
++  () => ticket?.value?.doc?.name,
++  async (newTicketName) => {
++    if (newTicketName && !ticket.value.doc.__islocal) {
++      await nextTick();
++      loadAmcSnapshotFromStorage();
++    }
++  },
++  { immediate: false }
++);
++
++watch(
++  () => ticket?.value?.doc?.custom_customercode,
++  async (newCode) => {
++    if (newCode && newCode.length >= 3) {
++      await fetchLicenseDataForTicket();
++    }
++  },
++  { immediate: true }
++);
++
++watch(
++  () => licenseData.value?.AMCEndDate,
++  (newVal) => {
++    if (!newVal) {
++      virtualFields.value.custom_amc_end_date = "";
++      virtualFields.value.custom_amc_status = "";
++      return;
++    }
++
++    virtualFields.value.custom_amc_end_date = String(newVal);
++    virtualFields.value.custom_amc_status = amcStatusText.value;
++
++    console.log("[DETAILS TAB] 💾 AMC virtual fields updated:", {
++      end: virtualFields.value.custom_amc_end_date,
++      status: virtualFields.value.custom_amc_status,
++    });
++  }
++);
++
++watch(
++  () => ticket?.value?.doc?.customer,
++  async (newCustomerId) => {
++    if (!newCustomerId || !ticket.value) return;
++
++    console.log("[DETAILS TAB] 👤 Customer changed:", newCustomerId);
++    
++    try {
++      // ✅ Display name only (memory)
++      const result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { name: newCustomerId },
++        fields: ["customer_name"],
++        limit: 1,
++      });
++      if (result?.[0]) {
++        ticket.value.doc.custom_customer_name = result[0].customer_name;
++      }
++      
++      lastProcessedCustomer.value = newCustomerId;
++      await reloadAllCustomerData();
++
++      // ✅ Reload assignees
++      await new Promise(resolve => setTimeout(resolve, 500));
++      if (assignees?.value) {
++        await assignees.value.reload();
++        console.log("[DETAILS TAB] ✅ Team refreshed");
++      }
++      
++    } catch (err) {
++      console.error("[DETAILS TAB] Display error:", err);
++    }
++  },
++  { immediate: false }
++);
++
++
+ 
+-// ticket_type, priority, customer, agent_group
+ const coreFields = computed(() => {
+-  // TODO: to confirm whether customizations should apply to core fields as well
+   const fieldsMeta = getFields();
+-  if (!fieldsMeta || fieldsMeta.length === 0) {
+-    return [];
+-  }
++  if (!fieldsMeta || fieldsMeta.length === 0) return [];
++  
+   const _coreFields = [
+     { group: true, fields: [getField("ticket_type"), getField("priority")] },
+     { group: false, fields: [getField("customer")] },
+@@ -95,60 +734,67 @@ const coreFields = computed(() => {
+ 
+   _coreFields.forEach((section) => {
+     section.fields = section.fields.map((f) => {
+-      f = parseField(f, ticket.value.doc);
++      let meta = parseField(f, ticket.value.doc);
++      meta["required"] = meta.reqd;
++      let field = getFieldInFormat(meta, meta);
++      field["visible"] = true;
+ 
+-      // cant handle required depends on as we directly set the value in DB on change
+-      f["required"] = f.reqd;
++      // ✅ Force customer field to always show display name
++      if (field.fieldname === "customer") {
++        field.value = getCustomerDisplayValue();
++      }
+ 
+-      f = getFieldInFormat(f, f);
+-      f["visible"] = true;
+-      return f;
++      return field;
+     });
+   });
++
+   return _coreFields;
+ });
+ 
++
++
++
+ const customFields = computed(() => {
+   const fieldsMeta = getFields();
+-  if (!fieldsMeta || fieldsMeta.length === 0) {
+-    return [];
+-  }
++  if (!fieldsMeta || fieldsMeta.length === 0) return [];
+ 
+   if (!customizations.value.data || customizations.value.loading) return [];
+   let customFields = customizations.value.data?.custom_fields || [];
+   const _coreFields = [
+-    "ticket_type",
+-    "priority",
+-    "customer",
+-    "agent_group",
+-    "subject",
+-    "status",
++    "ticket_type", "priority", "customer", "agent_group", "subject", "status",
+   ];
+   customFields = customFields.filter((f) => !_coreFields.includes(f.fieldname));
+-  let _customFields = customFields.map((f) => {
++  
++  return customFields.map((f) => {
+     let fieldMeta = getField(f.fieldname);
+-
+     fieldMeta = parseField(fieldMeta, ticket.value.doc);
+-    // cant handle required depends on as we directly set the value in DB
+     fieldMeta["required"] = fieldMeta.reqd || f.required;
+-
+     return getFieldInFormat(f, fieldMeta);
+   });
+-  return _customFields;
+ });
+ 
+-function getFieldInFormat(fieldTemplate, fieldMeta) {
++const isTicketCreated = computed(() => {
++  return ticket.value?.doc?.name && !ticket.value.doc.__islocal;
++});
++
++function getFieldInFormat(fieldTemplate: any, fieldMeta: any) {
++  const virtualReadonlyFields = [
++    "custom_product", "custom_customercode", "custom_popup_messages",
++    "custom_popupmessage", "custom_amc_end_date", "custom_amc_status", "custom_remarks"
++  ];
++  
++  const isVirtualField = virtualReadonlyFields.includes(fieldTemplate.fieldname);
++  const shouldBeReadonly = isVirtualField && isTicketCreated.value;
++
+   return {
+     label: fieldMeta?.label || fieldTemplate.fieldname,
+     value: ticket.value.doc[fieldTemplate.fieldname],
+     fieldtype: fieldMeta?.fieldtype,
+     doctype: fieldMeta?.options || "",
+     options: fieldMeta?.options || "",
+-    placeholder:
+-      fieldTemplate.placeholder ||
+-      `Enter ${fieldMeta?.label || fieldTemplate.fieldname}`,
+-    readonly: Boolean(fieldMeta.readonly),
+-    disabled: Boolean(fieldMeta.readonly),
++    placeholder: fieldTemplate.placeholder || `Enter ${fieldMeta?.label || fieldTemplate.fieldname}`,
++    readonly: Boolean(fieldMeta.readonly) || shouldBeReadonly,
++    disabled: Boolean(fieldMeta.readonly) || shouldBeReadonly,
+     url_method: fieldTemplate.url_method || "",
+     fieldname: fieldTemplate.fieldname,
+     required: fieldTemplate.required || fieldMeta?.required || false,
+@@ -156,44 +802,127 @@ function getFieldInFormat(fieldTemplate, fieldMeta) {
+   };
+ }
+ 
+-function handleFieldUpdate(
+-  fieldname: string,
+-  value: FieldValue,
+-  isCoreFieldUpdated = false
+-) {
++function getCustomerDisplayValue() {
++  // Prefer the explicit display name field
++  const nameFromCustom = ticket.value?.doc?.custom_customer_name;
++  if (nameFromCustom && String(nameFromCustom).trim().length > 0) {
++    return nameFromCustom;
++  }
++
++  // Fallback: use HD Customer document name if it looks like a name
++  const customerId = ticket.value?.doc?.customer;
++  if (!customerId) return "";
++
++  // If ticket.customer already looks like a name (not hash-like), use it
++  if (!/^[a-z0-9]{6,}$/.test(String(customerId))) {
++    return customerId;
++  }
++
++  // Last fallback: whatever is there
++  return customerId;
++}
++
++
++function getFieldValueWithVirtual(fieldname: string) {
++  if (fieldname === "custom_popup_messages" || fieldname === "custom_popupmessage") {
++    return virtualFields.value.custom_popup_messages;
++  }
++  if (fieldname === "custom_customercode") {
++    return virtualFields.value.custom_customercode;
++  }
++  if (fieldname === "custom_product") {
++    return virtualFields.value.custom_product;
++  }
++  if (fieldname === "custom_remarks") {
++    return virtualFields.value.custom_remarks;
++  }
++  if (fieldname === "custom_amc_end_date") {
++    return virtualFields.value.custom_amc_end_date || formattedAmcEndDate.value;
++  }
++  if (fieldname === "custom_amc_status") {
++    return virtualFields.value.custom_amc_status || amcStatusText.value;
++  }
++  return ticket.value.doc[fieldname];
++}
++
++function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpdated = false) {
++  // ✅ SPECIAL: Handle custom_customer_name Link field changes
++  if (fieldname === "custom_customer_name" && value) {
++    console.log("[DETAILS TAB] 🔄 custom_customer_name selected:", value);
++    
++    // Fetch full customer data using the ID (value)
++    call("frappe.client.get_list", {
++      doctype: "HD Customer",
++      filters: { name: value },  // value = customer ID (e.g., "dfi3gq0")
++      fields: ["name", "customer_name", "custom_productname"],
++      limit: 1
++    }).then(async (result) => {
++      if (result?.[0]) {
++        const customer = result[0];
++        console.log("[DETAILS TAB] ✅ Customer data:", customer);
++        
++        // ✅ Save all three fields for server script
++        await ticket.value.setValue.submit({
++          customer: customer.name,                      // ID for backend
++          custom_customer_name: customer.customer_name, // Display name
++          custom_product: customer.custom_productname   // For server script!
++        });
++        
++        console.log("[DETAILS TAB] 💾 Saved:", {
++          customer: customer.name,
++          display: customer.customer_name,
++          product: customer.custom_productname
++        });
++        
++        // ✅ Wait for server script execution
++        await new Promise(resolve => setTimeout(resolve, 800));
++        await ticket.value.reload();
++        await reloadAllCustomerData();
++        
++        // ✅ Reload team dropdown
++        if (assignees?.value) {
++          await assignees.value.reload();
++          console.log("[DETAILS TAB] ✅ Team updated:", ticket.value.doc.agent_group);
++        }
++      } else {
++        console.error("[DETAILS TAB] ❌ Customer not found:", value);
++      }
++    }).catch(err => {
++      console.error("[DETAILS TAB] ❌ Lookup error:", err);
++    });
++    
++    return; // Exit early - don't process as normal field
++  }
++
++  // Virtual fields check (keep custom_customer_name blocked for normal processing)
++  const virtualFieldsList = [
++    "custom_popup_messages", "custom_popupmessage", "custom_product", 
++    "custom_customercode", "custom_amc_end_date", "custom_amc_status", "custom_remarks"
++  ];
++  
++  if (virtualFieldsList.includes(fieldname)) {
++    console.log(`[DETAILS TAB] ⛔ Virtual field blocked: ${fieldname}`);
++    return;
++  }
++
++  // Rest of your existing code (unchanged)
+   if (ticket.value.doc[fieldname] === value) return;
++  
+   if (isCoreFieldUpdated) {
+     const label = getField(fieldname)?.label || fieldname;
+     notifyTicketUpdate(label, value as string);
+   }
++  
+   ticket.value.setValue.submit(
+     { [fieldname]: value },
+     {
+       onSuccess: () => {
+-        // TODO: emit the event for notification to listeners
+         if (fieldname === "agent_group") {
+           assignees.value.reload();
+         }
+       },
+     }
+-
+-    //show error toast
+   );
+ }
+-</script>
+ 
+-<style scoped>
+-:deep(.form-control-core button) {
+-  @apply text-base rounded h-7 py-1.5 border border-outline-gray-2 bg-surface-white placeholder-ink-gray-4 hover:border-outline-gray-3 hover:shadow-sm focus:bg-surface-white focus:border-outline-gray-4 focus:shadow-sm focus:ring-0 focus-visible:ring-0 text-ink-gray-8 transition-colors w-full dark:[color-scheme:dark];
+-}
+-:deep(.form-control-core button > div) {
+-  overflow: hidden;
+-  text-overflow: ellipsis;
+-  white-space: nowrap;
+-}
+-
+-:deep(.form-control-core div) {
+-  width: 100%;
+-  display: flex;
+-}
+-</style>
++</script>
+\ No newline at end of file
+diff --git a/desk/src/components/ticket-agent/TicketHeader.vue b/desk/src/components/ticket-agent/TicketHeader.vue
+index f3e5ea6..cf68c1e 100644
+--- a/desk/src/components/ticket-agent/TicketHeader.vue
++++ b/desk/src/components/ticket-agent/TicketHeader.vue
+@@ -97,16 +97,19 @@ import {
+   ActivitiesSymbol,
+   CustomizationSymbol,
+   TicketSymbol,
++  AssigneeSymbol,
+   View,
+ } from "@/types";
+ import { HDTicketStatus } from "@/types/doctypes";
+ import { getIcon } from "@/utils";
+-import { Breadcrumbs, call, Dropdown, toast } from "frappe-ui";
++import { Breadcrumbs, call, Dropdown, toast, createResource } from "frappe-ui";
+ import {
+   computed,
+   ComputedRef,
+   h,
+   inject,
++  onMounted, 
++  onUnmounted,
+   PropType,
+   ref,
+   watchEffect,
+@@ -118,6 +121,7 @@ import TicketNavigation from "./TicketNavigation.vue";
+ import TicketSLA from "./TicketSLA.vue";
+ import TicketSubjectModal from "./TicketSubjectModal.vue";
+ 
++
+ defineProps({
+   viewers: {
+     type: Array as PropType<string[]>,
+@@ -133,6 +137,34 @@ const ticketStatusStore = useTicketStatusStore();
+ const ticket = inject(TicketSymbol);
+ const customizations = inject(CustomizationSymbol);
+ const activities = inject(ActivitiesSymbol);
++const assignees = inject(AssigneeSymbol);
++
++
++//function handleAssigneeEvent(data: any) {
++  //if (data.name === ticket.value.name) {
++    //console.log("🔥 Assignee updated via realtime event");
++    
++    // Reload both ticket and assignees
++    //Promise.all([
++      //ticket.value.reload(),
++      //assignees.value.reload()
++    //]).then(() => {
++      //console.log("✅ Reload completed");
++    //});
++  //}
++//}
++
++//onMounted(() => {
++  //if (window.frappe?.realtime) {
++    //window.frappe.realtime.on("helpdesk:ticket-assignee-update", handleAssigneeEvent);
++  //}
++//});
++
++//onUnmounted(() => {
++  //if (window.frappe?.realtime) {
++    //window.frappe.realtime.off("helpdesk:ticket-assignee-update", handleAssigneeEvent);
++  //}
++//});
+ 
+ const showSubjectDialog = ref(false);
+ 
+@@ -151,6 +183,11 @@ const statusDropdown = computed(() => {
+         {
+           onSuccess() {
+             activities.value.reload();
++            setTimeout(() => {
++              console.log("Fallback reload triggered");
++              ticket.value.reload();
++              assignees.value.reload();
++            }, 1000);
+           },
+         }
+       );
+diff --git a/desk/src/components/ticket/ActivityHeader.vue b/desk/src/components/ticket/ActivityHeader.vue
+index 308cca3..83d36c8 100644
+--- a/desk/src/components/ticket/ActivityHeader.vue
++++ b/desk/src/components/ticket/ActivityHeader.vue
+@@ -1,92 +1,427 @@
+ <template>
+   <div
+     class="md:mx-10 md:my-4 flex items-center justify-between text-lg font-medium mx-6 mb-4 !mt-8"
++    v-show="!showAssignmentPopup"
+   >
+-    <div class="flex h-8 items-center text-xl font-semibold text-gray-800">
+-      {{ title }}
++    <!-- LEFT: labels + times + LOCATION -->
++    <div class="flex flex-col gap-2">
++      <div class="flex items-center text-xl font-semibold text-gray-800 gap-4">
++        <span>{{ title }}</span>
++        <div v-if="title === 'Activity'" class="flex items-center gap-6 text-xs text-gray-500 mb-1">
++          <span v-if="startTimeDisplay">
++            <span class="font-semibold">Start:</span> {{ formatTime(startTimeDisplay) }}
++          </span>
++          <span v-if="endTimeDisplay">
++            <span class="font-semibold">End:</span> {{ formatTime(endTimeDisplay) }}
++          </span>
++        </div>
++      </div>
++      
++      <!-- Clickable location display -->
++      <div v-if="title === 'Activity' && locationText" 
++          @click="showLocationModal = true"
++          class="flex items-center gap-2 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 
++                  border border-blue-100 px-4 py-2 rounded-xl shadow-sm max-w-md cursor-pointer 
++                  hover:shadow-md hover:border-blue-200 transition-all duration-200">
++        <span class="text-lg">📍</span>
++        <span class="font-medium text-gray-800 truncate">{{ locationText }}</span>
++        <span class="text-blue-500 text-xs ml-auto">View Map</span>
++      </div>
++    </div>
++
++
++    <!-- RIGHT: buttons -->
++    <div class="flex items-center gap-2" style="position: relative; z-index: 10;">
++      <!-- Start / Close Ticket button -->
++      <button
++        v-if="showStartClose && title === 'Activity'"
++        :disabled="isUpdating"
++        :class="[
++          'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200',
++          'focus:outline-none focus:ring-2 focus:ring-offset-1 touch-manipulation',
++          isUpdating 
++            ? 'bg-gray-400 text-white cursor-not-allowed' 
++            : buttonState.isClose 
++              ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500'
++              : 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500'
++        ]"
++        @click.stop="handleButtonClick"
++      >
++        <span v-if="isUpdating" class="flex items-center gap-2">
++          <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
++          {{ buttonInfo?.is_close ? 'Closing...' : 'Starting...' }}
++        </span>
++        <span v-else>{{ buttonState.text || buttonInfo?.button_text || 'Start Ticket' }}</span>
++      </button>
++
++      <div v-if="isStatusRefreshing" 
++          class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center rounded-lg z-10"
++          style="pointer-events: none;">
++        <div class="bg-white p-3 rounded-full shadow-lg animate-spin">
++          <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24">
++            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" pathLength="1" class="opacity-25"/>
++            <path d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" stroke="currentColor" stroke-width="3" pathLength="1" class="opacity-75"/>
++          </svg>
++        </div>
++      </div>
++
++
++      <!-- ✅ MOBILE-FRIENDLY: Assigned to message -->
++      <div 
++        v-else-if="!showStartClose && buttonInfo.button_text && title === 'Activity'"
++        class="px-3 py-2 sm:px-4 sm:py-2.5 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-lg text-xs sm:text-sm font-semibold text-amber-900 flex items-center justify-center gap-2 shadow-sm"
++      >
++        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
++        </svg>
++        <span class="truncate">{{ buttonInfo.button_text }}</span>
++      </div>
++
++
++      <Button
++        v-if="title == 'Emails'"
++        variant="solid"
++        @click="communicationAreaRef?.toggleEmailBox() ?? toggleEmailBox()"
++      >
++        <template #prefix>
++          <FeatherIcon name="plus" class="h-4 w-4" />
++        </template>
++        <span>New Email</span>
++      </Button>
++
++      <Button
++        v-else-if="title == 'Comments'"
++        variant="solid"
++        @click="communicationAreaRef?.toggleCommentBox() ?? toggleCommentBox()"
++      >
++        <template #prefix>
++          <FeatherIcon name="plus" class="h-4 w-4" />
++        </template>
++        <span>New Comment</span>
++      </Button>
++
++      <Dropdown v-else-if="title == 'Calls'" :options="callActions" @click.stop>
++        <template #default="{ open }">
++          <Button variant="solid" class="flex items-center gap-1">
++            <template #prefix>
++              <FeatherIcon name="plus" class="h-4 w-4" />
++            </template>
++            <span>New</span>
++            <template #suffix>
++              <FeatherIcon
++                :name="open ? 'chevron-up' : 'chevron-down'"
++                class="h-4 w-4"
++              />
++            </template>
++          </Button>
++        </template>
++      </Dropdown>
++
++      <Dropdown v-else :options="defaultActions" @click.stop>
++        <template #default="{ open }">
++          <Button variant="solid" class="flex items-center gap-1">
++            <template #prefix>
++              <FeatherIcon name="plus" class="h-4 w-4" />
++            </template>
++            <span>New</span>
++            <template #suffix>
++              <FeatherIcon
++                :name="open ? 'chevron-up' : 'chevron-down'"
++                class="h-4 w-4"
++              />
++            </template>
++          </Button>
++        </template>
++      </Dropdown>
+     </div>
+-    <Button
+-      v-if="title == 'Emails'"
+-      variant="solid"
+-      @click="communicationAreaRef?.toggleEmailBox() ?? toggleEmailBox()"
+-    >
+-      <template #prefix>
+-        <FeatherIcon name="plus" class="h-4 w-4" />
+-      </template>
+-      <span>{{ "New Email" }}</span>
+-    </Button>
+-    <Button
+-      v-else-if="title == 'Comments'"
+-      variant="solid"
+-      @click="communicationAreaRef?.toggleCommentBox() ?? toggleCommentBox()"
+-    >
+-      <template #prefix>
+-        <FeatherIcon name="plus" class="h-4 w-4" />
+-      </template>
+-      <span>{{ "New Comment" }}</span>
+-    </Button>
+-    <Dropdown v-else-if="title == 'Calls'" :options="callActions" @click.stop>
+-      <template v-slot="{ open }">
+-        <Button variant="solid" class="flex items-center gap-1">
+-          <template #prefix>
+-            <FeatherIcon name="plus" class="h-4 w-4" />
+-          </template>
+-          <span>{{ "New" }}</span>
+-          <template #suffix>
+-            <FeatherIcon
+-              :name="open ? 'chevron-up' : 'chevron-down'"
+-              class="h-4 w-4"
+-            />
+-          </template>
+-        </Button>
+-      </template>
+-    </Dropdown>
+-    <Dropdown v-else :options="defaultActions" @click.stop>
+-      <template v-slot="{ open }">
+-        <Button variant="solid" class="flex items-center gap-1">
+-          <template #prefix>
+-            <FeatherIcon name="plus" class="h-4 w-4" />
+-          </template>
+-          <span>{{ "New" }}</span>
+-          <template #suffix>
+-            <FeatherIcon
+-              :name="open ? 'chevron-up' : 'chevron-down'"
+-              class="h-4 w-4"
+-            />
+-          </template>
+-        </Button>
+-      </template>
+-    </Dropdown>
+   </div>
++
+   <CallLogModal
+     v-model="showCallLogModal"
+     :ticketId="ticketId"
+     @after-insert="refreshTicket"
+   />
++
++  <!-- ✅ Close Ticket Modal -->
++  <TicketCommentModal
++    v-model="showCloseModal"
++    :ticket-name="props.ticketName"
++    @success="onCloseWithComment"
++  />
++
++  <!-- Mobile-Responsive Agent Map Modal -->
++  <div 
++    v-if="showLocationModal"
++    class="fixed inset-0 z-[9999] bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4"
++    @click.self="showLocationModal = false"
++    @keydown.esc="showLocationModal = false"
++  >
++    <!-- Map Container - Responsive sizing -->
++    <div class="bg-white rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh] flex flex-col overflow-hidden">
++      
++      <!-- Header - Compact on mobile -->
++      <div class="flex items-center justify-between p-3 sm:p-6 border-b border-gray-100">
++        <div class="flex-1 min-w-0">
++          <h2 class="text-lg sm:text-2xl font-bold text-gray-900">Agent Location</h2>
++          <p v-if="locationText" class="text-xs sm:text-sm text-gray-500 mt-1 truncate">
++            {{ locationText }}
++          </p>
++        </div>
++        <button 
++          @click="showLocationModal = false"
++          class="p-2 sm:p-3 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all ml-2 sm:ml-4 flex-shrink-0"
++          title="Close">
++          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
++          </svg>
++        </button>
++      </div>
++      
++      <!-- Map - Full height on mobile, constrained on desktop -->
++      <div ref="mapContainer" class="flex-1 w-full min-h-[400px] sm:min-h-[500px]"></div>
++    </div>
++  </div>
++
++  <!-- ✅ ADD THIS NEW DIALOG (at very end) -->
++  <Dialog
++    v-model="showAssignmentPopup"
++    :options="{
++      title: 'Ticket Already Assigned',
++      size: 'md',
++    }"
++  >
++    <template #body-content>
++      <div class="space-y-4 py-4">
++        <div class="flex items-start gap-4">
++          <div class="flex-shrink-0 w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
++            <svg class="w-7 h-7 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
++              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
++            </svg>
++          </div>
++          <div class="flex-1">
++            <p class="text-lg font-semibold text-gray-900 mb-3">
++              {{ assignmentAlert.message }}
++            </p>
++            <p class="text-sm text-gray-600 leading-relaxed">
++              This ticket is currently being handled by <span class="font-semibold text-gray-800">{{ assignmentAlert.assignee }}</span>. 
++            </p>
++          </div>
++        </div>
++      </div>
++    </template>
++
++    <template #actions>
++      <Button variant="solid" @click="closeAssignmentPopup">
++        OK, Got It
++      </Button>
++    </template>
++  </Dialog>
+ </template>
+ 
+ <script setup lang="ts">
+ import { CommentIcon, EmailIcon, PhoneIcon } from "@/components/icons";
+ import CallLogModal from "@/pages/call-logs/CallLogModal.vue";
++import TicketCommentModal from "@/components/ticket/TicketCommentModal.vue";
+ import { useTelephonyStore } from "@/stores/telephony";
+ import { toggleCommentBox, toggleEmailBox } from "@/pages/ticket/modalStates";
+-import { Dropdown } from "frappe-ui";
++import { Dropdown, Button, call, Dialog } from "frappe-ui";
+ import { storeToRefs } from "pinia";
+-import { computed, h, inject, ref, Ref } from "vue";
+-defineProps({
++import { ActivitiesSymbol } from "@/types";
++import { computed, h, inject, ref, Ref, watch, onMounted, nextTick } from "vue";
++
++
++const props = defineProps({
+   title: {
+     type: String,
+     required: true,
+   },
++  ticketName: {
++    type: String,
++    required: false,
++    default: "",
++  },
++  ticketStatus: {
++    type: String,
++    required: false,
++    default: "",
++  },
++  customStartTime: {
++    type: String,
++    required: false,
++    default: "",
++  },
++  customEndTime: {
++    type: String,
++    required: false,
++    default: "",
++  }
+ });
+ 
+ const communicationAreaRef: Ref = inject("communicationArea");
+ const makeCall = inject<() => void>("makeCall");
+ const refreshTicket = inject<() => void>("refreshTicket");
+ const showCallLogModal = ref(false);
++const showCloseModal = ref(false);
+ const { isCallingEnabled } = storeToRefs(useTelephonyStore());
+ const ticketId = inject<string>("ticketId");
+ 
++const isTicketStarted = ref(false);
++const isUpdating = ref(false);
++
++const fetchedStartTime = ref("");
++const fetchedEndTime = ref("");
++const fetchedLocationText = ref("");
++
++const showLocationModal = ref(false);
++const mapContainer = ref(null);
++const mapInstance = ref(null);
++const savedLatitude = ref(null);
++const savedLongitude = ref(null);
++const fetchedAssignedTo = ref("");
++const isAdminRole = ref(false);
++const isAssignee = ref(false);
++const currentUser = inject('user'); 
++const buttonInfo = ref({});
++const showStartClose = ref(true);
++const buttonState = ref({ show: true, text: 'Start Ticket', isClose: false });
++const isStatusRefreshing = ref(false);
++
++const assignmentAlert = ref({ show_alert: 0, message: '', assignee: '' });
++const showAssignmentPopup = ref(false); 
++
++
++const locationText = computed(() => {
++  return fetchedLocationText.value || '';
++});
++
++const closeAssignmentPopup = () => {
++  showAssignmentPopup.value = false;
++  // ✅ Auto-refresh page when "OK, Got It" clicked
++  setTimeout(() => {
++    fetchTicketTimes();
++    window.location.reload();
++  }, 300);
++};
++
++
++
++
++const fetchTicketTimes = async () => {
++  if (!props.ticketName) return;
++
++  try {
++    // ✅ NO AUTO-ALERT CHECK → No popup on page load
++    
++    // Backend API (button state only)
++    const btnResponse = await call("test_app.api1.get_ticket_button_visibility", {
++      ticket_name: props.ticketName
++    });
++    
++    console.log("Backend response:", btnResponse);
++    
++    buttonState.value = {
++      show: !!btnResponse.show_button,
++      text: btnResponse.button_text || 'Start Ticket',
++      isClose: !!btnResponse.is_close
++    };
++    buttonInfo.value = btnResponse;
++    showStartClose.value = buttonState.value.show;
++
++    // Existing fields (unchanged)
++    const ticketDoc = await call("frappe.client.get", {
++      doctype: "HD Ticket",
++      name: props.ticketName
++    });
++    
++    fetchedStartTime.value = ticketDoc.custom_start_time || "";
++    fetchedEndTime.value = ticketDoc.custom_end_time || "";
++    fetchedLocationText.value = ticketDoc.custom_location_text || "";
++    
++    // GeoJSON (unchanged)
++    if (ticketDoc.custom_location) {
++      try {
++        const geojson = JSON.parse(ticketDoc.custom_location);
++        if (geojson.features?.[0]?.geometry?.coordinates) {
++          const coords = geojson.features[0].geometry.coordinates;
++          savedLongitude.value = coords[0];
++          savedLatitude.value = coords[1];
++        }
++      } catch (e) {
++        console.warn('GeoJSON parse failed:', e);
++      }
++    }
++  } catch (e) {
++    console.error("fetchTicketTimes failed:", e);
++    // Fallback: safe "Start Ticket" state
++    buttonState.value = { show: true, text: 'Start Ticket', isClose: false };
++    showStartClose.value = true;
++  }
++};
++
++
++
++onMounted(async () => {
++  await fetchTicketTimes();
++});
++
++
++watch(
++  () => props.ticketName,
++  async (newName) => {
++    if (newName) {
++      await fetchTicketTimes();
++    }
++  }
++);
++
++watch(showLocationModal, async (isOpen) => {
++  if (isOpen && savedLatitude.value && savedLongitude.value) {
++    await nextTick();
++    setTimeout(initializeMap, 200);
++  } else if (!isOpen && mapInstance.value) {
++    // Clean shutdown when closing
++    try {
++      mapInstance.value.stop();
++      mapInstance.value.off();
++      mapInstance.value.remove();
++    } catch (e) {}
++    mapInstance.value = null;
++  }
++});
++
++watch(() => props.ticketStatus, async (newStatus, oldStatus) => {
++  if (newStatus && newStatus !== oldStatus && props.ticketName) {
++    console.log(`🔄 Auto-refresh: ${oldStatus || '?'} → ${newStatus}`);
++    isStatusRefreshing.value = true;
++    
++    // 300ms delay + refresh
++    await new Promise(resolve => setTimeout(resolve, 300));
++    await fetchTicketTimes();
++    
++    // Brief success
++    setTimeout(() => {
++      isStatusRefreshing.value = false;
++    }, 500);
++  }
++}, { immediate: true, flush: 'post' });
++
++watch([() => props.ticketStatus, () => props.ticketName], async () => {
++  if (props.ticketName) await fetchTicketTimes();
++}, { immediate: true });
++
++
++
++const handleButtonClick = async () => {
++  if (isUpdating.value) return;
++  if (buttonState.value.isClose) {
++    showCloseModal.value = true;
++  } else {
++    await handleStartTicket();
++  }
++};
++
++
++
+ const defaultActions = computed(() => {
+   let actions = [
+     {
+@@ -102,31 +439,220 @@ const defaultActions = computed(() => {
+         communicationAreaRef?.value?.toggleCommentBox() ?? toggleCommentBox(),
+     },
+   ];
+-
+   if (isCallingEnabled.value) {
+     actions.push(...callActions.value);
+   }
+-
+   return actions;
+ });
+ 
+-const callActions = computed(() => {
+-  let actions = [
+-    {
+-      icon: h(PhoneIcon, { class: "h-4 w-4" }),
+-      label: "Make a Call",
+-      onClick: () => makeCall(),
++const callActions = computed(() => [
++  {
++    icon: h(PhoneIcon, { class: "h-4 w-4" }),
++    label: "Make a Call",
++    onClick: () => makeCall && makeCall(),
++  },
++  {
++    icon: "edit-3",
++    label: "Log a Call",
++    onClick: () => {
++      showCallLogModal.value = true;
+     },
+-    {
+-      icon: "edit-3",
+-      label: "Log a Call",
+-      onClick: () => {
+-        showCallLogModal.value = true;
++  },
++]);
++
++const startTimeDisplay = computed(() => fetchedStartTime.value || props.customStartTime || '');
++const endTimeDisplay = computed(() => fetchedEndTime.value || props.customEndTime || '');
++
++const nowFrappeFormat = () => {
++  const d = new Date();
++  const pad = (n: number) => n.toString().padStart(2, "0");
++  return (
++    d.getFullYear() +
++    "-" + pad(d.getMonth() + 1) +
++    "-" + pad(d.getDate()) +
++    " " + pad(d.getHours()) +
++    ":" + pad(d.getMinutes()) +
++    ":" + pad(d.getSeconds())
++  );
++};
++
++const formatTime = (timeStr: string) => {
++  if (!timeStr) return '';
++  const date = new Date(timeStr);
++  if (window.innerWidth < 768) {
++    return date.toLocaleTimeString('en-IN', { 
++      hour: '2-digit', 
++      minute: '2-digit',
++      hour12: true 
++    });
++  }
++  return date.toLocaleString('en-IN', {
++    year: 'numeric',
++    month: 'short',
++    day: 'numeric',
++    hour: '2-digit',
++    minute: '2-digit',
++    hour12: true
++  });
++};
++
++
++
++const captureCurrentLocation = () => {
++  return new Promise((resolve, reject) => {
++    if (!navigator.geolocation) {
++      console.warn("❌ Geolocation not supported");
++      return resolve(null);
++    }
++    
++    navigator.geolocation.getCurrentPosition(
++      (position) => {
++        resolve({
++          latitude: position.coords.latitude,
++          longitude: position.coords.longitude
++        });
+       },
+-    },
+-  ];
+-  return actions;
+-});
+-</script>
++      (error) => {
++        console.warn("Location error:", error.code);
++        resolve(null);  // Don't reject - continue without location
++      },
++      {
++        enableHighAccuracy: false, 
++        timeout: 10000,            
++        maximumAge: 300000        
++      }
++    );
++  });
++};
++
++const initializeMap = () => {
++  if (!mapContainer.value || !savedLatitude.value || !savedLongitude.value) return;
++  
++  const lat = parseFloat(savedLatitude.value);
++  const lng = parseFloat(savedLongitude.value);
++  
++  // Safe cleanup - stop all animations first
++  if (mapInstance.value) {
++    try {
++      mapInstance.value.stop();
++      mapInstance.value.off();
++      mapInstance.value.remove();
++    } catch (e) {}
++    mapInstance.value = null;
++  }
++  
++  // Create map
++  mapInstance.value = L.map(mapContainer.value, {
++    scrollWheelZoom: true,
++    dragging: true,
++    zoomControl: true,
++    zoomAnimation: false  // Prevents animation errors
++  }).setView([lat, lng], 15);
++  
++  // Tiles
++  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
++    attribution: '© OpenStreetMap',
++    maxZoom: 19
++  }).addTo(mapInstance.value);
++  
++  // Marker
++  const markerIcon = L.divIcon({
++    html: '<div style="width:40px;height:40px;background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:50%;border:3px solid white;box-shadow:0 4px 12px rgba(239,68,68,0.5);display:flex;align-items:center;justify-content:center;font-size:18px;">📍</div>',
++    className: '',
++    iconSize: [40, 40],
++    iconAnchor: [20, 40],
++    popupAnchor: [0, -40]
++  });
++  
++  L.marker([lat, lng], { icon: markerIcon }).addTo(mapInstance.value)
++    .bindPopup(locationText.value || 'Agent Location')
++    .openPopup();
++  
++  setTimeout(() => mapInstance.value?.invalidateSize(), 150);
++};
+ 
+-<style scoped></style>
++
++
++
++
++const handleStartTicket = async () => {
++  if (!props.ticketName || isUpdating.value) return;
++  isUpdating.value = true;
++
++  try {
++    const result = await call("test_app.api1.start_ticket", {
++      ticket_name: props.ticketName
++    });
++    
++    // ✅ CHECK if backend returned alert data
++    if (result?.show_alert === 1) {
++      assignmentAlert.value = {
++        show_alert: 1,
++        message: result.message,
++        assignee: result.assignee
++      };
++      showAssignmentPopup.value = true;
++      return; // Don't continue to location/refresh
++    }
++    
++    // ✅ Success: Capture location (existing code)
++    const location = await captureCurrentLocation();
++    if (location?.latitude && location?.longitude) {
++      await call("test_app.ticket_location.capture_agent_location", {
++        ticket_name: props.ticketName,
++        latitude: location.latitude,
++        longitude: location.longitude,
++      });
++    }
++    
++    await fetchTicketTimes();
++    setTimeout(() => window.location.reload(), 100);
++    
++  } catch (e) {
++    console.error("❌ Ticket start failed:", e);
++    // ✅ Don't show generic alert - let get_ticket_assignment_alert handle it
++  } finally {
++    isUpdating.value = false;
++  }
++};
++
++
++
++
++
++const onCloseWithComment = async (commentText: string) => {
++  console.log('💬 Closing with comment:', commentText);
++  
++  if (!props.ticketName || isUpdating.value) return;
++  
++  isUpdating.value = true;
++  try {
++    const currentTime = nowFrappeFormat();
++    
++    await call("frappe.client.set_value", {
++      doctype: "HD Ticket",
++      name: props.ticketName,
++      fieldname: "status",
++      value: "Closed",
++    });
++    
++    await call("frappe.client.set_value", {
++      doctype: "HD Ticket",
++      name: props.ticketName,
++      fieldname: "custom_end_time",
++      value: currentTime,
++    });
++    
++    isTicketStarted.value = false;
++    await fetchTicketTimes();
++    
++    console.log('✅ Ticket closed with comment');
++    window.location.reload();
++  } catch (e) {
++    console.error("Close failed:", e);
++    alert("Failed to close ticket");
++  } finally {
++    isUpdating.value = false;
++  }
++};
++</script>
+\ No newline at end of file
+diff --git a/desk/src/components/ticket/TicketAgentActivities.vue b/desk/src/components/ticket/TicketAgentActivities.vue
+index 5b9402e..284363f 100644
+--- a/desk/src/components/ticket/TicketAgentActivities.vue
++++ b/desk/src/components/ticket/TicketAgentActivities.vue
+@@ -1,5 +1,13 @@
+ <template>
+-  <ActivityHeader :title="title" />
++  <ActivityHeader
++    :title="title"
++    :ticket-name="ticketName"
++    :ticket-status="ticketStatus" 
++    :custom-start-time="ticket?.custom_start_time || ''"
++    :custom-end-time="ticket?.custom_end_time || ''"
++  />
++
++
+   <FadedScrollableDiv
+     class="flex flex-col flex-1 overflow-y-scroll"
+     :mask-length="20"
+@@ -136,6 +144,10 @@ const props = defineProps({
+     type: String,
+     default: "",
+   },
++  ticketName: {            // ✅ FIXED: proper object syntax
++    type: String,
++    default: "",
++  },
+ });
+ 
+ const emit = defineEmits(["email:reply", "update"]);
+@@ -171,16 +183,31 @@ const emptyTextIcon = computed(() => {
+ 
+ function scrollToLatestActivity() {
+   setTimeout(() => {
+-    let el;
+-    let e = document.getElementsByClassName("activity");
+-    el = e[e.length - 1];
++    const elements = document.getElementsByClassName("activity");
++    const el = elements[elements.length - 1];
++
+     if (el && !isElementInViewport(el)) {
+-      el.scrollIntoViewIfNeeded();
+-      el.focus();
++      // Standard, widely supported
++      if (typeof el.scrollIntoView === "function") {
++        el.scrollIntoView({
++          block: "nearest",
++          inline: "nearest",
++          behavior: "smooth",
++        });
++      }
++      // Optional: support old Chrome, but guarded
++      else if (typeof el.scrollIntoViewIfNeeded === "function") {
++        el.scrollIntoViewIfNeeded();
++      }
++
++      if (typeof el.focus === "function") {
++        el.focus();
++      }
+     }
+   }, 500);
+ }
+ 
++
+ defineExpose({
+   scrollToLatestActivity,
+ });
+diff --git a/desk/src/components/ticket/TicketAgentFields.vue b/desk/src/components/ticket/TicketAgentFields.vue
+index ed3e738..d267204 100644
+--- a/desk/src/components/ticket/TicketAgentFields.vue
++++ b/desk/src/components/ticket/TicketAgentFields.vue
+@@ -4,39 +4,239 @@
+       v-for="field in fields"
+       :key="field.fieldname"
+       :field="field"
+-      :value="ticket[field.fieldname]"
++      :value="getFieldValue(field.fieldname)"
+       @change="(data) => update(data.fieldname, data.value)"
+     />
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
+-import { Field, FieldValue } from "@/types";
+-import { toast } from "frappe-ui";
+-import { computed } from "vue";
++import { Field, FieldValue, TicketSymbol } from "@/types";
++import { toast, call } from "frappe-ui";
++import { computed, ref, watch, onMounted, nextTick, onActivated, inject } from "vue";
+ import TicketField from "../TicketField.vue";
++
+ const emit = defineEmits(["update"]);
+ 
+-const props = defineProps({
+-  ticket: {
+-    type: Object,
+-    required: true,
+-  },
++// ✅ CHANGE: Use TicketSymbol instead of ITicket
++const ticket = inject(TicketSymbol);
++
++console.log("[AGENT FIELDS] 🚀 Component mounted");
++console.log("[AGENT FIELDS] 🚀 Injected ticket:", ticket);
++console.log("[AGENT FIELDS] 🚀 Ticket value:", ticket.value);
++console.log("[AGENT FIELDS] 🚀 Ticket data:", ticket.value?.data);
++
++const virtualFieldsCache = ref({
++  custom_customercode: "",
++  custom_product: "",
++  loaded: false,
++});
++
++const refreshKey = ref(0);
++
++async function loadVirtualFields(ticketId: string) {
++  console.log("[AGENT FIELDS] 📥 loadVirtualFields called for ticket:", ticketId);
++  
++  if (!ticketId) {
++    console.warn("[AGENT FIELDS] ⚠️ No ticket ID provided");
++    return;
++  }
++
++  virtualFieldsCache.value.loaded = false;
++
++  // Strategy 1: Check latest_ticket_virtual
++  console.log("[AGENT FIELDS] 🔍 Strategy 1: Checking latest_ticket_virtual");
++  const latestStored = sessionStorage.getItem('latest_ticket_virtual');
++  console.log("[AGENT FIELDS] 🔍 latest_ticket_virtual:", latestStored);
++  
++  if (latestStored) {
++    try {
++      const data = JSON.parse(latestStored);
++      console.log("[AGENT FIELDS] 🔍 Found latest_ticket_virtual:", data);
++      
++      if (String(data.ticketId) === String(ticketId)) {
++        console.log("[AGENT FIELDS] ✅ MATCH! Using latest_ticket_virtual");
++        virtualFieldsCache.value.custom_customercode = data.custom_customercode || "";
++        virtualFieldsCache.value.custom_product = data.custom_product || "";
++        virtualFieldsCache.value.loaded = true;
++        refreshKey.value++;
++        
++        console.log("[AGENT FIELDS] ✅ Cache updated:", virtualFieldsCache.value);
++        sessionStorage.removeItem('latest_ticket_virtual');
++        return;
++      }
++    } catch (e) {
++      console.error("[AGENT FIELDS] ❌ Parse error for latest_ticket_virtual:", e);
++    }
++  }
++
++  // Strategy 2: Check ticket-specific storage
++  console.log("[AGENT FIELDS] 🔍 Strategy 2: Checking ticket_virtual_" + ticketId);
++  const storageKey = `ticket_virtual_${ticketId}`;
++  const stored = sessionStorage.getItem(storageKey);
++  console.log("[AGENT FIELDS] 🔍 Stored data:", stored);
++
++  if (stored) {
++    try {
++      const data = JSON.parse(stored);
++      console.log("[AGENT FIELDS] ✅ Found stored data:", data);
++      
++      virtualFieldsCache.value.custom_customercode = data.custom_customercode || "";
++      virtualFieldsCache.value.custom_product = data.custom_product || "";
++      virtualFieldsCache.value.loaded = true;
++      refreshKey.value++;
++      
++      console.log("[AGENT FIELDS] ✅ Cache updated from storage:", virtualFieldsCache.value);
++      return;
++    } catch (e) {
++      console.error("[AGENT FIELDS] ❌ Parse error:", e);
++    }
++  }
++
++  // Strategy 3: Fetch from customer
++  console.log("[AGENT FIELDS] 🔍 Strategy 3: Fetching from HD Customer");
++  const customerName = ticket.value?.data?.custom_customer_name;
++  console.log("[AGENT FIELDS] 🔍 Customer name:", customerName);
++  
++  if (customerName) {
++    try {
++      console.log("[AGENT FIELDS] 📡 Fetching from HD Customer:", customerName);
++      
++      const result = await call("frappe.client.get_value", {
++        doctype: "HD Customer",
++        filters: { name: customerName },
++        fieldname: ["custom_customercode", "custom_productname"],
++      });
++
++      console.log("[AGENT FIELDS] ✅ Fetch result:", result);
++
++      if (result?.message) {
++        virtualFieldsCache.value.custom_customercode = result.message.custom_customercode || "";
++        virtualFieldsCache.value.custom_product = result.message.custom_productname || "";
++      } else if (result) {
++        virtualFieldsCache.value.custom_customercode = result.custom_customercode || "";
++        virtualFieldsCache.value.custom_product = result.custom_productname || "";
++      }
++      
++      virtualFieldsCache.value.loaded = true;
++      refreshKey.value++;
++      console.log("[AGENT FIELDS] ✅ Cache updated from API:", virtualFieldsCache.value);
++      
++      sessionStorage.setItem(storageKey, JSON.stringify({
++        ticketId,
++        custom_customercode: virtualFieldsCache.value.custom_customercode,
++        custom_product: virtualFieldsCache.value.custom_product,
++        timestamp: Date.now()
++      }));
++      
++    } catch (e) {
++      console.error("[AGENT FIELDS] ❌ Fetch error:", e);
++    }
++  }
++}
++
++onMounted(async () => {
++  console.log("[AGENT FIELDS] 🎬 onMounted triggered");
++  await nextTick();
++  
++  const ticketId = ticket.value?.data?.name || ticket.value?.name;
++  console.log("[AGENT FIELDS] 🎬 Ticket ID on mount:", ticketId);
++  
++  if (ticketId) {
++    loadVirtualFields(ticketId);
++    
++    setTimeout(() => {
++      console.log("[AGENT FIELDS] ⏰ Delayed load triggered");
++      if (!virtualFieldsCache.value.loaded) {
++        console.log("[AGENT FIELDS] ⏰ Cache not loaded yet, retrying...");
++        loadVirtualFields(ticketId);
++      }
++    }, 300);
++  } else {
++    console.warn("[AGENT FIELDS] 🎬 No ticket ID found!");
++  }
+ });
+ 
++onActivated(() => {
++  console.log("[AGENT FIELDS] 🔄 Component activated (keep-alive)");
++  const ticketId = ticket.value?.data?.name || ticket.value?.name;
++  if (ticketId) {
++    loadVirtualFields(ticketId);
++  }
++});
++
++watch(
++  () => ticket.value?.data?.name || ticket.value?.name,
++  async (newTicketId, oldTicketId) => {
++    console.log("[AGENT FIELDS] 👀 Ticket ID watcher triggered");
++    console.log("[AGENT FIELDS] 👀 Old:", oldTicketId, "New:", newTicketId);
++    
++    if (newTicketId && newTicketId !== oldTicketId) {
++      virtualFieldsCache.value.loaded = false;
++      await nextTick();
++      loadVirtualFields(newTicketId);
++    }
++  },
++  { immediate: true }
++);
++
++watch(
++  () => ticket.value?.data,
++  async (newTicket) => {
++    console.log("[AGENT FIELDS] 👀 Ticket object watcher triggered");
++    console.log("[AGENT FIELDS] 👀 New ticket data:", newTicket);
++    
++    if (newTicket?.name && !virtualFieldsCache.value.loaded) {
++      console.log("[AGENT FIELDS] 👀 Ticket loaded but no cache yet");
++      await nextTick();
++      loadVirtualFields(newTicket.name);
++    }
++  },
++  { deep: true, immediate: true }
++);
++
+ const fields = computed(() => {
+-  return props.ticket.fields;
++  const _ = refreshKey.value;
++  const fieldsList = ticket.value?.data?.fields || [];
++  console.log("[AGENT FIELDS] 📋 Computing fields, count:", fieldsList.length);
++  return fieldsList;
+ });
+ 
++function getFieldValue(fieldname: string) {
++  const _ = refreshKey.value;
++  
++  if (fieldname === "custom_customercode") {
++    const value = virtualFieldsCache.value.custom_customercode || "";
++    console.log("[AGENT FIELDS] 🔄 Getting customer code:", value);
++    return value;
++  }
++  
++  if (fieldname === "custom_product") {
++    const value = virtualFieldsCache.value.custom_product || "";
++    console.log("[AGENT FIELDS] 🔄 Getting product:", value);
++    return value;
++  }
++  
++  const value = ticket.value?.data[fieldname];
++  console.log("[AGENT FIELDS] 🔄 Getting field", fieldname + ":", value);
++  return value;
++}
++
+ function update(field: Field["fieldname"], value: FieldValue, event = null) {
++  console.log("[AGENT FIELDS] 💾 Update called for:", field, "with value:", value);
++  
+   if (field === "subject" && value === "") {
+     toast.error("Subject is required");
+-    event.target.value = props.ticket.subject;
++    if (event?.target) {
++      event.target.value = ticket.value?.data.subject;
++    }
+     return;
+   }
++  
+   emit("update", { field, value });
+ }
+ </script>
++
+ <style scoped>
+ :deep(.form-control input:not([type="checkbox"])),
+ :deep(.form-control select),
+@@ -45,6 +245,7 @@ function update(field: Field["fieldname"], value: FieldValue, event = null) {
+   border-color: transparent;
+   background: white;
+ }
++
+ :deep(.form-control textarea) {
+   field-sizing: content;
+ }
+@@ -52,6 +253,7 @@ function update(field: Field["fieldname"], value: FieldValue, event = null) {
+ :deep(.form-control button) {
+   gap: 0;
+ }
++
+ :deep(.form-control [type="checkbox"]) {
+   margin-left: 9px;
+   cursor: pointer;
+diff --git a/desk/src/pages/desk/customer/CustomerDialog.vue b/desk/src/pages/desk/customer/CustomerDialog.vue
+index 65120c3..6796c13 100644
+--- a/desk/src/pages/desk/customer/CustomerDialog.vue
++++ b/desk/src/pages/desk/customer/CustomerDialog.vue
+@@ -12,7 +12,7 @@
+           class="cursor-pointer hover:opacity-80"
+         />
+         <div class="flex gap-2">
+-          <FileUploader @success="(file) => updateImage(file)">
++          <FileUploader @success="updateImage">
+             <template #default="{ uploading, openFileSelector }">
+               <Button
+                 :label="customer.doc?.image ? 'Change photo' : 'Upload photo'"
+@@ -27,8 +27,97 @@
+             @click="updateImage(null)"
+           />
+         </div>
+-        <form class="w-full" @submit.prevent="update">
+-          <Input v-model="domain" label="Domain" placeholder="example.com" />
++
++        <form class="w-full flex flex-col gap-4" @submit.prevent="update">
++          <Input
++            v-model="formData.customer_name"
++            label="Customer Name"
++            type="text"
++            placeholder="Tesla Inc."
++            required
++          />
++          <Input
++            v-model="formData.custom_customercode"
++            label="Customer Code"
++            placeholder="Enter Code"
++            required
++          />
++
++          <!-- Product Select Field -->
++          <div class="space-y-1">
++            <label class="text-sm font-medium text-gray-700">Product *</label>
++            <select
++              v-model="formData.custom_productname"
++              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
++              required
++            >
++              <option value="" disabled>Select Product</option>
++
++              <!-- Show previous product if it doesn't exist in Product doctype -->
++              <option
++                v-if="
++                  formData.custom_productname &&
++                  !products.find(p => p.name === formData.custom_productname)
++                "
++                :value="formData.custom_productname"
++              >
++                {{ formData.custom_productname }}
++              </option>
++
++              <!-- List all products -->
++              <option
++                v-for="product in products"
++                :key="product.name"
++                :value="product.name"
++              >
++                {{ product.product }}
++              </option>
++            </select>
++          </div>
++
++          <Input v-model="formData.custom_address1" label="Address Line 1" />
++          <Input v-model="formData.custom_address2" label="Address Line 2" />
++          <Input v-model="formData.custom_place" label="Place" />
++          <Input v-model="formData.custom_district" label="District" />
++
++          <!-- New Pincode field below District -->
++          <Input v-model="formData.custom_pincode" label="Pincode" />
++
++          <Input v-model="formData.custom_state" label="State" />
++          <Input v-model="formData.custom_country" label="Country" />
++          <Input v-model="formData.custom_contactperson" label="Contact Person" />
++          <Input v-model="formData.custom_phone001" label="Phone 1" />
++          <Input v-model="formData.custom_phone002" label="Phone 2" />
++          <Input v-model="formData.custom_email" label="Email" />
++          <Input v-model="formData.custom_gstno" label="GST No" />
++          <Input v-model="formData.custom_nooflicense" label="No of License" />
++          <Input
++            v-model="formData.custom_dateofamclastpaid"
++            label="Date of AMC Last Paid"
++            type="date"
++          />
++          <Input v-model="formData.domain" label="Domain" placeholder="example.com" />
++
++          <!-- Remarks -->
++          <Input
++            v-model="formData.custom_remarks"
++            label="Remarks"
++            type="text"
++            placeholder="Enter remarks"
++          />
++
++          <!-- Status (Enabled / Disabled, mandatory, default Enabled) -->
++          <div class="space-y-1">
++            <label class="text-sm font-medium text-gray-700">Status *</label>
++            <select
++              v-model="formData.custom_status"
++              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
++              required
++            >
++              <option value="Enabled">Enabled</option>
++              <option value="Disabled">Disabled</option>
++            </select>
++          </div>
+         </form>
+       </div>
+     </template>
+@@ -42,8 +131,11 @@ import {
+   Dialog,
+   FileUploader,
+   toast,
++  Button,
++  Input,
++  call,
+ } from "frappe-ui";
+-import { computed } from "vue";
++import { computed, ref, watch, onMounted } from "vue";
+ 
+ const props = defineProps({
+   name: {
+@@ -51,17 +143,8 @@ const props = defineProps({
+     required: true,
+   },
+ });
+-
+ const emit = defineEmits(["customer-updated"]);
+ 
+-const domain = computed({
+-  get() {
+-    return customer.doc?.domain;
+-  },
+-  set(d: string) {
+-    customer.doc.domain = d;
+-  },
+-});
+ 
+ const customer = createDocumentResource({
+   doctype: "HD Customer",
+@@ -70,36 +153,152 @@ const customer = createDocumentResource({
+   setValue: {
+     onSuccess() {
+       toast.success("Customer updated");
++      emit("customer-updated");
+     },
+-    onError() {
++    onError(error) {
++      console.error("Error updating customer:", error);
+       toast.error("Error updating customer");
+     },
+   },
+ });
+ 
++const formData = ref({
++  customer_name: "",
++  custom_customercode: "",
++  custom_productname: "",
++  custom_address1: "",
++  custom_address2: "",
++  custom_place: "",
++  custom_district: "",
++  custom_pincode: "",             // new pincode field
++  custom_state: "",
++  custom_country: "",
++  custom_contactperson: "",
++  custom_phone001: "",
++  custom_phone002: "",
++  custom_email: "",
++  custom_gstno: "",
++  custom_nooflicense: "",
++  custom_dateofamclastpaid: "",
++  domain: "",
++  custom_remarks: "",
++  custom_status: "Enabled",   // new status field, default Enabled
++});
++
++const products = ref([]);
++
++const convertToYYYYMMDD = (dateStr: string) => {
++  if (!dateStr) return "";
++  if (dateStr.includes(" ")) dateStr = dateStr.split(" ")[0];
++  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
++  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
++    const [day, month, year] = dateStr.split("-");
++    return `${year}-${month}-${day}`;
++  }
++  return dateStr;
++};
++
++const updateFormData = (doc: any) => {
++  if (!doc) return;
++
++  const matchedProduct = products.value.find(
++    p => p.product.toLowerCase() === (doc.custom_productname || "").toLowerCase()
++  );
++
++  formData.value = {
++    customer_name: doc.customer_name || "",
++    custom_customercode: doc.custom_customercode || "",
++    custom_productname: matchedProduct ? matchedProduct.name : (doc.custom_productname || ""),
++    custom_address1: doc.custom_address1 || "",
++    custom_address2: doc.custom_address2 || "",
++    custom_place: doc.custom_place || "",
++    custom_district: doc.custom_district || "",
++    custom_pincode: doc.custom_pincode || "",
++    custom_state: doc.custom_state || "",
++    custom_country: doc.custom_country || "",
++    custom_contactperson: doc.custom_contactperson || "",
++    custom_phone001: doc.custom_phone001 || "",
++    custom_phone002: doc.custom_phone002 || "",
++    custom_email: doc.custom_email || "",
++    custom_gstno: doc.custom_gstno || "",
++    custom_nooflicense: doc.custom_nooflicense || "",
++    custom_dateofamclastpaid: convertToYYYYMMDD(doc.custom_dateofamclastpaid || ""),
++    domain: doc.domain || "",
++    custom_remarks: doc.custom_remarks || "",
++    custom_status: doc.custom_status || "Enabled",
++  };
++};
++
++const fetchProducts = async () => {
++  try {
++    const data = await call("frappe.client.get_list", {
++      doctype: "Product",
++      fields: ["name", "product", "status", "team"],
++      limit_page_length: 999,
++    });
++    products.value = Array.isArray(data) ? data : [];
++  } catch (error) {
++    console.error("Error fetching products:", error);
++    products.value = [];
++  }
++};
++
++watch(
++  () => customer.doc,
++  (newDoc) => {
++    if (newDoc) updateFormData(newDoc);
++  },
++  { immediate: true }
++);
++
++onMounted(() => {
++  fetchProducts();
++});
++
+ const options = computed(() => ({
+-  title: customer.doc?.name,
++  title: customer.doc?.name || "Customer",
+   actions: [
++    {
++      label: "Cancel",
++      variant: "outline",
++    },
+     {
+       label: "Save",
+       theme: "gray",
+       variant: "solid",
+-      onClick: () => update(),
++      onClick: update,
+     },
+   ],
+ }));
+ 
++
+ async function update() {
+-  await customer.setValue.submit({
+-    domain: domain.value,
+-  });
+-  emit("customer-updated");
++  try {
++    // enforce mandatory Status
++    if (!formData.value.custom_status) {
++      toast.error("Status is required");
++      return;
++    }
++
++    const doc = customer.doc;
++    Object.keys(formData.value).forEach((key) => {
++      doc[key] = (formData.value as any)[key];
++    });
++
++    await call("frappe.client.save", { doc });
++    await customer.reload();
++    toast.success("Customer updated successfully");
++    emit("customer-updated");
++  } catch (error: any) {
++    console.error("Error updating customer:", error);
++    toast.error(error.message || "Failed to update customer");
++  }
+ }
+ 
+-function updateImage(file) {
++function updateImage(file: any) {
+   customer.setValue.submit({
+     image: file?.file_url || null,
+   });
+-  emit("customer-updated");
+ }
+ </script>
++
+diff --git a/desk/src/pages/desk/customer/Customers.vue b/desk/src/pages/desk/customer/Customers.vue
+index ca7de67..9458d87 100644
+--- a/desk/src/pages/desk/customer/Customers.vue
++++ b/desk/src/pages/desk/customer/Customers.vue
+@@ -36,6 +36,7 @@
+     </span>
+   </div>
+ </template>
++
+ <script setup lang="ts">
+ import LayoutHeader from "@/components/LayoutHeader.vue";
+ import ListViewBuilder from "@/components/ListViewBuilder.vue";
+@@ -48,12 +49,12 @@ const isDialogVisible = ref(false);
+ const isCustomerDialogVisible = ref(false);
+ const selectedCustomer = ref(null);
+ const listViewRef = ref(null);
+-// const emptyMessage = "No Customers Found";
+ 
+ function openCustomer(id: string) {
+   selectedCustomer.value = id;
+   isCustomerDialogVisible.value = true;
+ }
++
+ function handleCustomer(updated = false) {
+   updated
+     ? (isCustomerDialogVisible.value = false)
+@@ -66,13 +67,21 @@ const options = computed(() => {
+     doctype: "HD Customer",
+     selectable: true,
+     showSelectBanner: true,
++    defaultFilters: {
++      // Add any default filters if needed
++    },
+     columnConfig: {
+       name: {
++        label: "Customer Name",
++        format: (value: any, row: any) => {
++          // Show customer_name if available, otherwise fall back to name (ID)
++          return row.customer_name || value;
++        },
+         prefix: ({ row }) => {
+           return h(Avatar, {
+             shape: "circle",
+             image: row.image,
+-            label: row.name,
++            label: row.customer_name || row.name,
+             size: "sm",
+           });
+         },
+@@ -89,4 +98,4 @@ usePageMeta(() => {
+     title: "Customers",
+   };
+ });
+-</script>
++</script>
+\ No newline at end of file
+diff --git a/desk/src/pages/ticket/MobileTicketAgent.vue b/desk/src/pages/ticket/MobileTicketAgent.vue
+index e3d2b56..cef9b4e 100644
+--- a/desk/src/pages/ticket/MobileTicketAgent.vue
++++ b/desk/src/pages/ticket/MobileTicketAgent.vue
+@@ -97,6 +97,7 @@
+                 :activities="filterActivities(tab.name)"
+                 :title="tab.label"
+                 :ticket-status="ticket.data?.status"
++                :ticket-name="ticket.data?.name"
+                 @update="
+                   () => {
+                     ticket.reload();
+@@ -222,6 +223,8 @@ import {
+ } from "@/components/icons";
+ import { TicketAgentActivities } from "@/components/ticket";
+ 
++import { TicketSymbol, ActivitiesSymbol } from "@/types"; // ✅ CHANGED: import symbols
++
+ import TicketAgentDetails from "@/components/ticket/TicketAgentDetails.vue";
+ import TicketAgentFields from "@/components/ticket/TicketAgentFields.vue";
+ import { setupCustomizations } from "@/composables/formCustomisation";
+@@ -245,7 +248,7 @@ const { getUser } = useUserStore();
+ const router = useRouter();
+ const ticketAgentActivitiesRef = ref(null);
+ const communicationAreaRef = ref(null);
+-const subjectInput = ref(null);
++const subjectInput = ref<string | null>(null);
+ const isLoading = ref(false);
+ const showPhoneModal = ref(false);
+ 
+@@ -256,18 +259,8 @@ const props = defineProps({
+   },
+ });
+ 
++// ✅ keep these provides – they don't depend on ticket/activities
+ provide("communicationArea", communicationAreaRef);
+-provide("makeCall", () => {
+-  if (!ticket.data?.contact?.mobile_no && !ticket.data?.contact?.phone) {
+-    showPhoneModal.value = true;
+-    return;
+-  }
+-  telephonyStore.makeCall({
+-    number: ticket.data?.contact?.phone || ticket.data?.contact?.mobile_no,
+-    doctype: "HD Ticket",
+-    docname: props.ticketId,
+-  });
+-});
+ provide("ticketId", props.ticketId);
+ 
+ const { isMobileView } = useScreenSize();
+@@ -308,8 +301,19 @@ const ticket = createResource({
+   },
+ });
+ 
+-provide("refreshTicket", () => ticket.reload());
+-provide("onCallEnded", () => ticket.reload());
++// ✅ makeCall uses ticket lazily (inside function body) – safe
++provide("makeCall", () => {
++  const contact = ticket.data?.contact;
++  if (!contact?.mobile_no && !contact?.phone) {
++    showPhoneModal.value = true;
++    return;
++  }
++  telephonyStore.makeCall({
++    number: contact.phone || contact.mobile_no,
++    doctype: "HD Ticket",
++    docname: props.ticketId,
++  });
++});
+ 
+ function updateField(name: string, value: string, callback = () => {}) {
+   updateTicket(name, value);
+@@ -439,11 +443,11 @@ const activities = computed(() => {
+     ...callProps,
+   ].sort((a, b) => new Date(a.creation) - new Date(b.creation));
+ 
+-  const data = [];
++  const data: any[] = [];
+   let i = 0;
+ 
+   while (i < sorted.length) {
+-    const currentActivity = sorted[i];
++    const currentActivity: any = sorted[i];
+     if (currentActivity.type === "history") {
+       currentActivity.relatedActivities = [currentActivity];
+       for (let j = i + 1; j < sorted.length + 1; j++) {
+@@ -465,6 +469,12 @@ const activities = computed(() => {
+   return data;
+ });
+ 
++// ✅ provide AFTER ticket & activities exist
++provide("refreshTicket", () => ticket.reload());
++provide("onCallEnded", () => ticket.reload());
++provide(TicketSymbol, ticket);
++provide(ActivitiesSymbol, activities);
++
+ function filterActivities(eventType: TicketTab) {
+   if (eventType === "activity") {
+     return activities.value;
+@@ -490,6 +500,7 @@ function updateTicket(fieldname: string, value: string) {
+     },
+   });
+ }
++
+ onMounted(() => {
+   document.title = props.ticketId;
+ });
+@@ -498,3 +509,4 @@ onUnmounted(() => {
+   document.title = "Helpdesk";
+ });
+ </script>
++
+diff --git a/desk/src/pages/ticket/TicketAgent.vue b/desk/src/pages/ticket/TicketAgent.vue
+index 757bd28..56a1d0d 100644
+--- a/desk/src/pages/ticket/TicketAgent.vue
++++ b/desk/src/pages/ticket/TicketAgent.vue
+@@ -31,9 +31,11 @@ import {
+   TicketContactSymbol,
+   TicketSymbol,
+ } from "@/types";
++import { ITicket } from "@/pages/ticket/symbols";
+ import { createResource, toast } from "frappe-ui";
+ import { computed, onBeforeUnmount, onMounted, provide, watch } from "vue";
+ import { useRoute } from "vue-router";
++
+ const { $socket } = globalStore();
+ 
+ const props = defineProps({
+@@ -42,6 +44,7 @@ const props = defineProps({
+     required: true,
+   },
+ });
++
+ const route = useRoute();
+ 
+ const ticketComposable = computed(() => useTicket(props.ticketId));
+@@ -52,24 +55,32 @@ const customizations: Resource<Customizations> = createResource({
+   auto: true,
+ });
+ 
++// Provide TicketSymbol for existing components
+ provide(TicketSymbol, ticket);
+ 
++// ✅ ADD THIS: Provide ITicket for TicketAgentFields component
++provide(ITicket, ticket);
++
+ provide(
+   AssigneeSymbol,
+   computed(() => ticketComposable.value.assignees)
+ );
++
+ provide(
+   TicketContactSymbol,
+   computed(() => ticketComposable.value.contact)
+ );
++
+ provide(
+   CustomizationSymbol,
+   computed(() => customizations)
+ );
++
+ provide(
+   RecentSimilarTicketsSymbol,
+   computed(() => ticketComposable.value.recentSimilarTickets)
+ );
++
+ provide(
+   ActivitiesSymbol,
+   computed(() => ticketComposable.value.activities)
+diff --git a/desk/src/pages/ticket/TicketCustomer.vue b/desk/src/pages/ticket/TicketCustomer.vue
+index 0a0cb09..4c6758f 100644
+--- a/desk/src/pages/ticket/TicketCustomer.vue
++++ b/desk/src/pages/ticket/TicketCustomer.vue
+@@ -9,17 +9,7 @@
+           v-if="ticket.data._customActions"
+           :actions="ticket.data._customActions"
+         />
+-        <Button
+-          v-if="ticket.data.status !== 'Closed'"
+-          label="Close"
+-          theme="gray"
+-          variant="solid"
+-          @click="handleClose()"
+-        >
+-          <template #prefix>
+-            <Icon icon="lucide:check" />
+-          </template>
+-        </Button>
++      
+       </template>
+     </LayoutHeader>
+     <div class="flex overflow-hidden h-full w-full">
+diff --git a/desk/src/pages/ticket/TicketNew.vue b/desk/src/pages/ticket/TicketNew.vue
+index 38bb0eb..1843ca1 100644
+--- a/desk/src/pages/ticket/TicketNew.vue
++++ b/desk/src/pages/ticket/TicketNew.vue
+@@ -11,7 +11,27 @@
+         />
+       </template>
+     </LayoutHeader>
+-    <!-- Container -->
++
++    <!-- Reusable License Details Popup -->
++    <LicenseDetailsPopup
++      v-model="showLicensePopup"
++      :customer-code="templateFields.custom_customercode || ''"
++      @licenseLoaded="handleLicenseLoaded"
++    />
++
++    <!-- Customer Search Popup Component -->
++    <CustomerSearchPopup
++      v-model="showCustomerSearchPopup"
++      @customerSelected="handleCustomerSelected"
++    />
++
++    <!-- Customer Alerts Popup -->
++    <CustomerAlertsPopup 
++      v-model:show="showAlertsPopup" :alerts="customerAlerts" 
++      :loading="alertsLoading" />
++
++
++    <!-- Main Container -->
+     <div
+       class="flex flex-col gap-5 py-6 h-full flex-1 self-center overflow-auto mx-auto w-full max-w-4xl px-5"
+     >
+@@ -19,21 +39,238 @@
+       <div v-if="Boolean(template.data?.about)" class="">
+         <div class="prose-f" v-html="sanitize(template.data.about)" />
+       </div>
+-      <!-- custom fields -->
+-      <div
+-        class="grid grid-cols-1 gap-4 sm:grid-cols-3"
+-        v-if="Boolean(visibleFields)"
+-      >
+-        <UniInput
+-          v-for="field in visibleFields"
+-          :key="field.fieldname"
+-          :field="field"
+-          :value="templateFields[field.fieldname]"
+-          @change="
+-            (e) => handleOnFieldChange(e, field.fieldname, field.fieldtype)
+-          "
+-        />
++
++      <!-- custom fields: aligned rows + AMC -->
++      <div v-if="Boolean(visibleFields)">
++        <!-- Row 1: Customer Code + Customer Name with buttons -->
++        <div class="flex flex-col sm:flex-row gap-4 mb-4">
++          <!-- Customer Code -->
++          <div style="width: 30%; min-width: 200px;">
++            <template v-for="field in visibleFields" :key="'row1_code_' + field.fieldname">
++              <UniInput 
++                v-if="field.fieldname === 'custom_customercode'"
++                :field="field" 
++                :value="templateFields[field.fieldname]"
++                @input="handleCustomerCodeInput"
++                @keydown.enter.prevent="handleCustomerCodeEnter"
++                @blur="handleCustomerCodeBlur"
++              />
++            </template>
++          </div>
++
++          <!-- Customer Name + buttons -->
++          <div class="flex-1">
++            <template v-for="field in visibleFields" :key="'row1_name_' + field.fieldname">
++              <div v-if="field.fieldname === 'custom_customer_name'" class="relative">
++                <div class="flex gap-2 items-start">
++                  <div class="flex-1 min-w-0">
++                    <UniInput 
++                      v-if="field.fieldname === 'custom_customer_name'"
++                      :field="field" 
++                      :value="templateFields[field.fieldname]"
++                      @change="(value) => handleOnFieldChange(value, field.fieldname, field.fieldtype)"
++                    />
++                  </div>
++
++                  <!-- Customer Search Button -->
++                  <div class="pt-[22px]">
++                    <button
++                      class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-blue-400 hover:bg-blue-500 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
++                      @click="openCustomerSearchPopup"
++                      title="Search Customer Details"
++                      type="button"
++                    >
++                      <svg
++                        xmlns="http://www.w3.org/2000/svg"
++                        width="10"
++                        height="10"
++                        viewBox="0 0 24 24"
++                        fill="none"
++                        stroke="currentColor"
++                        stroke-width="2"
++                        stroke-linecap="round"
++                        stroke-linejoin="round"
++                      >
++                        <circle cx="11" cy="11" r="8"></circle>
++                        <path d="m21 21-4.35-4.35"></path>
++                      </svg>
++                      <span class="hidden sm:inline">Customer</span>
++                    </button>
++                  </div>
++
++                  <!-- License Button -->
++                  <div class="pt-[22px]">
++                    <button
++                      class="inline-flex items-center gap-0.5 px-1.5 py-1 text-[10px] bg-green-500 hover:bg-green-600 text-white font-medium rounded transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
++                      @click="openLicensePopup"
++                      title="View License Details"
++                      type="button"
++                    >
++                      <svg
++                        xmlns="http://www.w3.org/2000/svg"
++                        width="10"
++                        height="10"
++                        viewBox="0 0 24 24"
++                        fill="none"
++                        stroke="currentColor"
++                        stroke-width="2"
++                        stroke-linecap="round"
++                        stroke-linejoin="round"
++                      >
++                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
++                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
++                      </svg>
++                      <span class="hidden sm:inline">License</span>
++                    </button>
++                  </div>
++                </div>
++              </div>
++            </template>
++          </div>
++        </div>
++
++        <!-- Row 2: Product + Phone + Contact -->
++        <div class="flex flex-col sm:flex-row gap-4 mb-4">
++          <!-- Product -->
++          <div style="width: 30%; min-width: 200px;">
++            <template v-for="field in visibleFields" :key="'prod_' + field.fieldname">
++              <template v-if="field.fieldname === 'custom_product'">
++                <UniInput
++                  :field="field"
++                  :value="templateFields[field.fieldname]"
++                  @input="(e) => safeSetField(field.fieldname, e)"
++                />
++              </template>
++            </template>
++          </div>
++
++          <!-- Phone - Clean (No special marking) -->
++          <div style="width: 25%; min-width: 180px;">
++            <template v-for="field in visibleFields" :key="'phone_' + field.fieldname">
++              <template v-if="field.fieldname === 'custom_phone_number' || field.fieldname.toLowerCase().includes('phone')">
++                <UniInput
++                  :field="field"
++                  :value="templateFields[field.fieldname]"
++                  @input="(e) => safeSetField(field.fieldname, e)"
++                />
++              </template>
++            </template>
++          </div>
++
++
++          <!-- Contact - Made wider -->
++          <div style="width: 45%; min-width: 250px;">
++            <template v-for="field in visibleFields" :key="'contact_' + field.fieldname">
++              <template v-if="field.fieldname === 'custom_contact_person' || field.fieldname.toLowerCase().includes('contact') || field.label?.toLowerCase().includes('contact')">
++                <UniInput
++                  :field="field"
++                  :value="templateFields[field.fieldname]"
++                  @input="(e) => safeSetField(field.fieldname, e)"
++                />
++              </template>
++            </template>
++          </div>
++        </div>
++        <!-- Row: AMC End Date + AMC Status + Priority + Remarks (above Pop up Messages) -->
++        <div class="flex flex-col sm:flex-row gap-4 mb-4">
++          <!-- AMC End Date - Read-only -->
++          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
++            <label class="block text-sm font-semibold text-gray-700 mb-2">
++              AMC End Date
++            </label>
++            <div
++              class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 cursor-not-allowed"
++            >
++              {{ formattedAmcEndDate }}
++            </div>
++          </div>
++
++          <!-- AMC Status - Read-only -->
++          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
++            <label class="block text-sm font-semibold text-gray-700 mb-2">
++              AMC Status
++            </label>
++            <div
++              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium cursor-not-allowed"
++              :class="amcStatusClass"
++            >
++              {{ amcStatusText }}
++            </div>
++          </div>
++
++
++          <!-- Priority (same logic as before) -->
++          <div class="flex flex-col" style="width: 180px; min-width: 150px;">
++            <template
++              v-for="field in visibleFields"
++              :key="'priority_' + field.fieldname"
++            >
++              <UniInput
++                v-if="field.fieldname === 'priority' || field.label === 'Priority'"
++                :field="field"
++                :value="templateFields[field.fieldname]"
++                @change="(value) =>
++                  handleOnFieldChange(value, field.fieldname, field.fieldtype)"
++                @input="(e) => safeSetField(field.fieldname, e)"
++              />
++            </template>
++          </div>
++
++          <!-- Remarks (read-only text container as you had) -->
++          <div class="flex flex-col flex-1" style="min-width: 200px;">
++            <label class="block text-sm text-gray-700 mb-1">Remarks</label>
++            <div
++              class="px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-900 cursor-not-allowed"
++              style="min-height: 42px; max-height: 80px; overflow-y: auto;"
++            >
++              {{ templateFields.custom_remarks || 'No remarks available' }}
++            </div>
++          </div>
++        </div>
++
++
++        <!-- Pop up Messages - Read-only text box -->
++        <div class="mb-6">
++          <label class="block text-sm font-semibold text-gray-700 mb-2">Pop up Messages</label>
++          <div 
++            class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 cursor-not-allowed" 
++            style="min-height: 100px; max-height: 150px; overflow-y: auto; white-space: pre-wrap;"
++          >
++            {{ popupMessagesText || 'No popup messages available' }}
++          </div>
++        </div>
++
++        <!-- Remaining fields -->
++        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
++          <template v-for="field in visibleFields" :key="'other_' + field.fieldname">
++            <UniInput
++              v-if="
++                ![
++                  'custom_customercode',
++                  'custom_customer_name',
++                  'custom_product',
++                  'custom_contact_person',
++                  'custom_phone_number',
++                  'custom_remarks',
++                  'custom_popupmessage',
++                  'priority',
++                  'custom_amc_end_date',
++                  'custom_amc_status'
++                ].includes(field.fieldname) &&
++                !field.fieldname.toLowerCase().includes('contact') &&
++                !field.fieldname.toLowerCase().includes('phone') &&
++                !field.fieldname.toLowerCase().includes('priority') &&
++                field.label?.toLowerCase() !== 'priority' &&
++                field.label?.toLowerCase() !== 'remarks'
++              "
++              :field="field"
++              :value="templateFields[field.fieldname]"
++              @input="(e) => safeSetField(field.fieldname, e)"
++            />
++          </template>
++        </div>
+       </div>
++
+       <!-- existing fields -->
+       <div
+         class="flex flex-col"
+@@ -79,7 +316,7 @@
+                 :disabled="
+                   $refs.editor.editor.isEmpty || ticket.loading || !subject
+                 "
+-                @click="() => ticket.submit()"
++                @click="() => handleTicketSubmit()"
+               />
+             </template>
+           </TicketTextEditor>
+@@ -103,7 +340,7 @@
+               :disabled="
+                 $refs.editor.editor.isEmpty || ticket.loading || !subject
+               "
+-              @click="() => ticket.submit()"
++              @click="() => handleTicketSubmit()"
+             />
+           </template>
+         </TicketTextEditor>
+@@ -114,6 +351,9 @@
+ 
+ <script setup lang="ts">
+ import { LayoutHeader, UniInput } from "@/components";
++import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
++import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
++import CustomerAlertsPopup from "@/components/CustomerAlertsPopup.vue";
+ import {
+   handleLinkFieldUpdate,
+   handleSelectFieldUpdate,
+@@ -136,7 +376,7 @@ import {
+ import { useOnboarding } from "frappe-ui/frappe";
+ import { isEmpty } from "lodash";
+ import sanitizeHtml from "sanitize-html";
+-import { computed, onMounted, reactive, ref } from "vue";
++import { computed, onMounted, reactive, ref, nextTick, watch } from "vue";
+ import { useRoute, useRouter } from "vue-router";
+ import SearchArticles from "../../components/SearchArticles.vue";
+ import TicketTextEditor from "./TicketTextEditor.vue";
+@@ -157,16 +397,892 @@ const { isManager, userId: userID } = useAuthStore();
+ 
+ const subject = ref("");
+ const description = ref("");
+-const attachments = ref([]);
+-const templateFields = reactive({});
++const attachments = ref<any[]>([]);
++const templateFields = reactive<Record<string, any>>({});
++const isFetchingCustomerName = ref(false);
++const isFetchingCustomerCode = ref(false);
++const isFetchingProductName = ref(false);
++const showLicensePopup = ref(false);
++const licenseLoading = ref(false);
++const licenseError = ref("");
++const licenseData = ref<any | null>(null);
++const lastValidatedCustomerCode = ref("");
++const MIN_CODE_LENGTH = 1;
++const MINCODELENGTH = 1; 
++const invalidCodeError = ref("");
++const customerCode = ref("");
++
++const showCustomerSearchPopup = ref(false);
++const showAlertsPopup = ref(false);
++const customerAlerts = ref<any[]>([]);
++const alertsLoading = ref(false);
++const popupMessagesText = ref('');
++
++
++const showDuplicateWarning = ref(false);
++const duplicateTickets = ref<any[]>([]);
++const pendingSubmission = ref(false);
++
++const showTicketDetailsPopup = ref(false);
++const selectedTicketId = ref("");
++const ticketDetails = ref<any | null>(null);
++const ticketDetailsLoading = ref(false);
++const ticketDetailsError = ref("");
++
++const isUpdatingInternally = ref(false);
++const isManuallySelectingCustomer = ref(false);
++
++const customCustomerNameDisplay = computed(() => {
++  const fieldValue = templateFields.custom_customer_name;
++  if (!fieldValue) return "";
++  
++  // If it's already a display name (long text, not hash), return as-is
++  if (fieldValue && fieldValue.length > 15 && !/^[a-z0-9]{6,10}$/i.test(fieldValue)) {
++    return fieldValue;
++  }
++  
++  // Otherwise, it's an ID - fetch from HD Customer (you may have this cached)
++  // For now, return the field value and it will be updated by the watch
++  return fieldValue;
++});
++
++// ✅ FIXED: Replace your existing handleCustomerCodeEnter function
++async function handleCustomerCodeEnter(event: any) {
++  const enteredCode = event.target.value?.trim();
++  
++  console.log("[TICKET CREATE] 🔍 Enter pressed for code:", enteredCode);
++  
++  // Clear previous data and flags
++  invalidCodeError.value = '';
++  const previousCode = lastValidatedCustomerCode.value?.trim();
++  
++  // ✅ KEY FIX: Handle EMPTY CODE case - CLEAR ALL DATA
++  if (!enteredCode || isUpdatingInternally.value) {
++    if (!enteredCode) {
++      console.log("[TICKET CREATE] 🧹 Clearing all customer data (empty code)");
++      // Clear ALL dependent fields when code is empty
++      safeSetField('custom_customer_name', '');
++      safeSetField('custom_product', '');
++      safeSetField('custom_remarks', '');
++      popupMessagesText.value = '';
++      licenseData.value = null;
++      showLicensePopup.value = false;
++      showAlertsPopup.value = false;
++      customerAlerts.value = [];
++      lastValidatedCustomerCode.value = '';
++    }
++    isUpdatingInternally.value = false;
++    return;
++  }
++
++  if (enteredCode.length < MIN_CODE_LENGTH) {
++    dialog.title = "Invalid Customer Code";
++    dialog.message = `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`;
++    return;
++  }
++
++  if (enteredCode === previousCode) {
++    return; // No change
++  }
++
++  // Clear all dependent fields BEFORE search
++  isUpdatingInternally.value = true;
++  safeSetField('custom_customer_name', '');
++  safeSetField('custom_product', '');
++  safeSetField('custom_remarks', '');
++  popupMessagesText.value = '';
++  licenseData.value = null;
++  showLicensePopup.value = false;
++  showAlertsPopup.value = false;
++  
++  try {
++    console.log("[TICKET CREATE] 🔍 Searching customer by code:", enteredCode);
++    
++    // Search logic (unchanged from your code)
++    let result = await call("frappe.client.get_list", {
++      doctype: "HD Customer",
++      filters: { custom_customercode: enteredCode },
++      fields: [
++        "name", 
++        "customer_name", 
++        "custom_customercode", 
++        "custom_productname", 
++        "custom_remarks"
++      ],
++      limit: 1
++    });
++
++    if (!result || result.length === 0) {
++      result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { custom_customercode: ["like", `%${enteredCode}%`] },
++        fields: [
++          "name", 
++          "customer_name", 
++          "custom_customercode", 
++          "custom_productname", 
++          "custom_remarks"
++        ],
++        limit: 3
++      });
++    }
++
++    if (!result || result.length === 0) {
++      result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { customer_name: enteredCode },
++        fields: [
++          "name", 
++          "customer_name", 
++          "custom_customercode", 
++          "custom_productname", 
++          "custom_remarks"
++        ],
++        limit: 1
++      });
++    }
++
++    if (result && result.length > 0) {
++      const customer = result[0];
++      safeSetField('custom_customer_name', customer.customer_name);
++      safeSetField('custom_customercode', customer.custom_customercode);
++      safeSetField('custom_product', customer.custom_productname);
++      safeSetField('custom_remarks', customer.custom_remarks || '');
++      
++      lastValidatedCustomerCode.value = customer.custom_customercode;
++      
++      if (customer.custom_customercode) {
++        await fetchLicenseDataInBackground(customer.custom_customercode);
++      }
++      
++      await fetchCustomerAlerts(customer.customer_name, customer.custom_customercode);
++      
++    } else {
++      dialog.title = "Customer Not Found";
++      dialog.message = `No customer found for code "${enteredCode}". Please check and try again.`;
++    }
++    
++  } catch (error) {
++    console.error("[TICKET CREATE] ❌ Error searching customer:", error);
++    dialog.title = "Search Error";
++    dialog.message = "Failed to search customer. Please try again.";
++  } finally {
++    isUpdatingInternally.value = false;
++  }
++}
++
++async function fetchAmcFromCustomer(customerName: string) {
++  if (!customerName) return null;
++  
++  try {
++    const result = await call("frappe.client.get_value", {
++      doctype: "HD Customer",
++      filters: { customer_name: customerName },
++      fieldname: ["custom_dateofamclastpaid"],
++    });
++    
++    const amcDate = result?.message?.custom_dateofamclastpaid || result?.custom_dateofamclastpaid;
++    return amcDate || null;
++  } catch (error) {
++    console.error("Error fetching AMC date from HD Customer:", error);
++    return null;
++  }
++}
++
++
++function handleCustomerCodeBlur() {
++  // optional blur logic
++}
++
++// ✅ REPLACE your existing fetchLicenseDataInBackground function with this
++async function fetchLicenseDataInBackground(code: string) {
++  if (!code || code.length < MIN_CODE_LENGTH) {
++    licenseData.value = null;
++    return;
++  }
++  
++  licenseLoading.value = true;
++  
++  try {
++    // Try to fetch from API first
++    const result = await call("test_app.api.license.get_customer_license_details", {
++      customer_code: code,
++    });
++    
++    licenseData.value = result || null;
++    
++    // ✅ If API doesn't have AMC End Date, fetch from HD Customer
++    if (!licenseData.value?.AMCEndDate || licenseData.value.AMCEndDate === "null") {
++      console.log("⚠️ No AMC End Date from API, fetching from HD Customer...");
++      
++      const customerName = templateFields.custom_customer_name;
++      if (customerName) {
++        const customerAmcDate = await fetchAmcFromCustomer(customerName);
++        
++        if (customerAmcDate) {
++          console.log("✅ Found AMC date from HD Customer:", customerAmcDate);
++          
++          // Create a license data object with the customer's AMC date
++          licenseData.value = {
++            ...licenseData.value,
++            AMCEndDate: customerAmcDate,
++            source: "HD Customer" // Mark the source for reference
++          };
++        }
++      }
++    } else {
++      console.log("✅ Using AMC End Date from API");
++      if (licenseData.value) {
++        licenseData.value.source = "API";
++      }
++    }
++  } catch (e) {
++    console.error("Error fetching license data:", e);
++    
++    // ✅ On API error, try HD Customer as fallback
++    console.log("⚠️ API error, trying HD Customer fallback...");
++    const customerName = templateFields.custom_customer_name;
++    
++    if (customerName) {
++      const customerAmcDate = await fetchAmcFromCustomer(customerName);
++      
++      if (customerAmcDate) {
++        console.log("✅ Using AMC date from HD Customer fallback");
++        licenseData.value = {
++          AMCEndDate: customerAmcDate,
++          source: "HD Customer"
++        };
++      } else {
++        licenseData.value = null;
++      }
++    } else {
++      licenseData.value = null;
++    }
++  } finally {
++    licenseLoading.value = false;
++  }
++}
++
++// ✅ REPLACE your existing formattedAmcEndDate computed with this
++const formattedAmcEndDate = computed(() => {
++  if (licenseLoading.value) return "Loading...";
++  
++  if (!licenseData.value?.AMCEndDate) return "N/A";
++  
++  try {
++    const raw = String(licenseData.value.AMCEndDate).trim();
++    
++    if (!raw || raw === "null" || raw === "undefined") return "N/A";
++
++    // Handle DD/MM/YYYY format
++    if (raw.includes("/")) {
++      const datePart = raw.split(" ")[0];
++      const parts = datePart.split("/");
++      
++      if (parts.length === 3) {
++        const day = parseInt(parts[0], 10);
++        const month = parseInt(parts[1], 10);
++        const year = parseInt(parts[2], 10);
++        
++        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
++          const d = new Date(year, month - 1, day);
++          
++          if (!isNaN(d.getTime())) {
++            return d.toLocaleDateString("en-US", {
++              year: "numeric",
++              month: "short",
++              day: "numeric",
++            });
++          }
++        }
++      }
++    }
++
++    // Handle YYYY-MM-DD format
++    if (raw.includes("-")) {
++      const d = new Date(raw);
++      
++      if (!isNaN(d.getTime())) {
++        return d.toLocaleDateString("en-US", {
++          year: "numeric",
++          month: "short",
++          day: "numeric",
++        });
++      }
++    }
++
++    // Try to parse as generic date
++    const d = new Date(raw);
++    
++    if (!isNaN(d.getTime())) {
++      return d.toLocaleDateString("en-US", {
++        year: "numeric",
++        month: "short",
++        day: "numeric",
++      });
++    }
++
++    return "Invalid Date";
++  } catch (e) {
++    console.error("Error parsing AMC End Date:", e);
++    return "Invalid Date";
++  }
++});
++
++// ✅ REPLACE your existing amcStatusText computed with this
++const amcStatusText = computed(() => {
++  if (licenseLoading.value) return "Loading...";
++  
++  if (!licenseData.value?.AMCEndDate) return "Unknown";
++  
++  try {
++    const raw = String(licenseData.value.AMCEndDate).trim();
++    
++    if (!raw || raw === "null" || raw === "undefined") return "Unknown";
++
++    let endDate: Date | undefined;
++
++    // Handle DD/MM/YYYY format
++    if (raw.includes("/")) {
++      const datePart = raw.split(" ")[0];
++      const parts = datePart.split("/");
++      
++      if (parts.length === 3) {
++        const day = parseInt(parts[0], 10);
++        const month = parseInt(parts[1], 10);
++        const year = parseInt(parts[2], 10);
++        
++        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
++          endDate = new Date(year, month - 1, day);
++        }
++      }
++    } else {
++      // Handle YYYY-MM-DD or other formats
++      endDate = new Date(raw);
++    }
++
++    if (!endDate || isNaN(endDate.getTime())) return "Unknown";
++
++    // Compare with today
++    const today = new Date();
++    endDate.setHours(0, 0, 0, 0);
++    today.setHours(0, 0, 0, 0);
++
++    return endDate < today ? "Expired" : "Active";
++  } catch (e) {
++    console.error("Error calculating AMC Status:", e);
++    return "Unknown";
++  }
++});
++
++// ✅ Keep your existing amcStatusClass computed (no changes needed)
++const amcStatusClass = computed(() => {
++  if (licenseLoading.value) {
++    return "bg-gray-100 text-gray-600 border border-gray-300";
++  }
++  
++  const status = amcStatusText.value;
++  
++  if (status === "Expired") return "bg-red-100 text-red-800 border border-red-300";
++  if (status === "Active") return "bg-green-100 text-green-800 border border-green-300";
++  
++  return "bg-gray-100 text-gray-800 border border-gray-300";
++});
++
++function extractValue(payload: any): string {
++  if (payload == null || payload === undefined) return "";
++  if (typeof payload === "string" || typeof payload === "number") {
++    return String(payload).trim();
++  }
++  if (typeof payload === "object" && "value" in payload) {
++    return String((payload as any).value || "").trim();
++  }
++  if (typeof payload === "object" && (payload as any).target && "value" in (payload as any).target) {
++    return String((payload as any).target.value || "").trim();
++  }
++  return "";
++}
++
++function safeSetField(fieldname: string, payload: any) {
++  const value = extractValue(payload);
++  if (templateFields[fieldname] !== value) {
++    templateFields[fieldname] = value;
++  }
++}
++
++function formatDate(dateString: string): string {
++  const date = new Date(dateString);
++  return date.toLocaleDateString("en-US", {
++    year: "numeric",
++    month: "short",
++    day: "numeric",
++    hour: "2-digit",
++    minute: "2-digit",
++  });
++}
++
++function getStatusClass(status: string): string {
++  const statusMap: Record<string, string> = {
++    Open: "bg-yellow-100 text-yellow-800",
++    Replied: "bg-blue-100 text-blue-800",
++    Resolved: "bg-green-100 text-green-800",
++    Closed: "bg-gray-100 text-gray-800",
++    Pending: "bg-orange-100 text-orange-800",
++  };
++  return statusMap[status] || "bg-gray-100 text-gray-800";
++}
++
++function closeDuplicateWarning() {
++  showDuplicateWarning.value = false;
++  duplicateTickets.value = [];
++}
++
++async function proceedWithSubmission() {
++  showDuplicateWarning.value = false;
++  duplicateTickets.value = [];
++  pendingSubmission.value = true;
++
++  try {
++    // 1️⃣ Create / submit the ticket
++    await ticket.submit();
++    // At this point ticket.doc should be the saved HD Ticket
++
++    const ticketName =
++      (ticket as any).doc?.name ||
++      (ticket as any).name ||
++      null;
++
++    console.log("[NEW TICKET] After submit, ticket name:", ticketName);
++
++    if (ticketName) {
++      const amcEndRaw = licenseData.value?.AMCEndDate || null;
++      const amcStatus = amcStatusText.value || "Unknown";
++
++      await call("frappe.client.set_value", {
++        doctype: "HD Ticket",
++        name: ticketName,
++        fieldname: {
++          custom_amc_end_date: amcEndRaw,
++          custom_amc_status: amcStatus,
++
++          __read_only: {
++            custom_amc_end_date: 1,
++            custom_amc_status: 1,
++          },
++        },
++      });
++
++      console.log("[NEW TICKET] AMC saved to HD Ticket:", {
++        ticketName,
++        custom_amc_end_date: amcEndRaw,
++        custom_amc_status: amcStatus,
++      });
++    } else {
++      console.error("[NEW TICKET] ticketName is missing after submit()");
++    }
++
++    pendingSubmission.value = false;
++    // your existing navigation / toast here
++  } catch (err: any) {
++    console.error("[NEW TICKET] submit or set_value error:", err);
++    pendingSubmission.value = false;
++  }
++}
++
++
++
++async function viewTicketDetails(ticketId: string) {
++  selectedTicketId.value = ticketId;
++  showTicketDetailsPopup.value = true;
++  ticketDetailsLoading.value = true;
++  ticketDetailsError.value = "";
++  ticketDetails.value = null;
++  try {
++    const result = await call("frappe.client.get", {
++      doctype: "HD Ticket",
++      name: ticketId,
++    });
++    if (result) {
++      ticketDetails.value = result;
++    } else {
++      ticketDetailsError.value = "Ticket not found";
++    }
++  } catch (e: any) {
++    console.error("Error fetching ticket details:", e);
++    ticketDetailsError.value = e.message || "Failed to load ticket details";
++  } finally {
++    ticketDetailsLoading.value = false;
++  }
++}
++
++async function fetchCustomerRemarks(customerName: string) {
++  if (!customerName || customerName.trim() === "") {
++    safeSetField("custom_remarks", "");
++    return;
++  }
++
++  try {
++    const result = await call("frappe.client.get_value", {
++      doctype: "HD Customer",
++      filters: { customer_name: customerName },
++      fieldname: ["custom_remarks"],
++    });
++
++    const remarks = result?.message?.custom_remarks || result?.custom_remarks || "";
++    safeSetField("custom_remarks", remarks);
++    
++  } catch (e) {
++    console.error("Error fetching customer remarks:", e);
++    safeSetField("custom_remarks", "");
++  }
++}
++
++
++async function fetchCustomerAlerts(customerName: string) {
++  if (!customerName?.trim()) {
++    customerAlerts.value = [];
++    popupMessagesText.value = '';
++    showAlertsPopup.value = false;
++    return;
++  }
++  
++  alertsLoading.value = true;
++  
++  try {
++    const customerCode = templateFields.custom_customercode || "";
++    let result: any[] = [];
++    
++    // Try by customer_code first
++    if (customerCode) {
++      result = await call('frappe.client.get_list', {
++        doctype: 'Customer Alert',
++        filters: { customer_code: customerCode },
++        fields: ['name', 'popupmessage', 'modified'],
++        order_by: 'modified desc',
++        limit: 10
++      });
++    }
++    
++    // Fallback to customer_name
++    if (!result || result.length === 0) {
++      result = await call('frappe.client.get_list', {
++        doctype: 'Customer Alert',
++        filters: { customer_name: customerName },
++        fields: ['name', 'popupmessage', 'modified'],
++        order_by: 'modified desc',
++        limit: 10
++      });
++    }
++    
++    customerAlerts.value = result || [];
++    
++    popupMessagesText.value = customerAlerts.value
++      .map(a => a.popupmessage)
++      .filter(msg => msg && msg.trim())  // ✅ Filters out null, undefined, AND empty strings
++      .join('\n\n') || '';
++
++    // ✅ Only show popup if there are actual popup messages
++    if (popupMessagesText.value.trim()) {
++      showAlertsPopup.value = true;
++    } else {
++      showAlertsPopup.value = false;
++    }
++    
++  } catch (e) {
++    console.error('Error fetching customer alerts:', e);
++    customerAlerts.value = [];
++    popupMessagesText.value = '';
++  } finally {
++    alertsLoading.value = false;
++  }
++}
++
++
++
++
++function closeTicketDetails() {
++  showTicketDetailsPopup.value = false;
++  selectedTicketId.value = "";
++  ticketDetails.value = null;
++  ticketDetailsError.value = "";
++}
++
++function backToDuplicateWarning() {
++  closeTicketDetails();
++  showDuplicateWarning.value = true;
++}
++
++function openCustomerSearchPopup() {
++  showCustomerSearchPopup.value = true;
++}
++
++async function handleCustomerSelected(customer: any) {
++  isManuallySelectingCustomer.value = true;
++  isUpdatingInternally.value = true;
++  
++  try {
++    safeSetField('custom_customer_name', customer.customer_name);
++    safeSetField('custom_customercode', customer.custom_customercode);
++    safeSetField('custom_product', customer.custom_productname);
++    lastValidatedCustomerCode.value = customer.custom_customercode;
++    
++    await nextTick();
++    
++    // Fetch license data for AMC fields only (no popup)
++    if (customer.custom_customercode) {
++      await fetchLicenseDataInBackground(customer.custom_customercode);
++    }
++    
++    await fetchCustomerRemarks(customer.customer_name);
++    await fetchCustomerAlerts(customer.customer_name);
++    
++    // Only show alerts popup if alerts exist, NO license popup
++    if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
++      showAlertsPopup.value = true;
++    }
++    
++  } finally {
++    isUpdatingInternally.value = false;
++    isManuallySelectingCustomer.value = false;
++  }
++}
++
++
++async function openLicensePopup() {
++  await nextTick();
++  const code =
++    extractValue(templateFields.custom_customercode)?.trim() ||
++    (document.querySelector('[name="custom_customercode"]') as HTMLInputElement | null)?.value?.trim() ||
++    "";
++  if (!code) {
++    $dialog({
++      title: "Customer Code Required",
++      message: "Please enter a valid Customer Code first.",
++    });
++    return;
++  }
++  if (code.length < MIN_CODE_LENGTH) {
++    $dialog({
++      title: "Invalid Customer Code",
++      message: `Customer Code must be at least ${MIN_CODE_LENGTH} characters.`,
++    });
++    return;
++  }
++  const found = await fetchCustomerName(code);
++  if (found) {
++    lastValidatedCustomerCode.value = code;
++    showLicensePopup.value = true;
++    await fetchLicenseDataInBackground(code);
++  } else {
++    $dialog({
++      title: "Invalid Customer Code",
++      message: "No customer found for this code. Please check and try again.",
++    });
++    isUpdatingInternally.value = true;
++    safeSetField("custom_customer_name", "");
++    safeSetField("custom_product", "");
++    licenseData.value = null;
++    isUpdatingInternally.value = false;
++    showLicensePopup.value = false;
++  }
++}
++
++function handleLicenseLoaded(data: any) {
++  licenseData.value = data;
++}
++
++watch(
++  () => templateFields.custom_customer_name,
++  (newVal, oldVal) => {
++    if (isUpdatingInternally.value || isManuallySelectingCustomer.value) return;
++    const clean = extractValue(newVal);
++    if (!clean) {
++      isUpdatingInternally.value = true;
++      safeSetField("custom_customercode", "");
++      safeSetField("custom_product", "");
++      safeSetField("custom_remarks", "");
++      safeSetField("custom_popup_messages", "");
++      popupMessagesText.value = '';
++      lastValidatedCustomerCode.value = "";
++      licenseData.value = null;
++      licenseError.value = "";
++      licenseLoading.value = false;
++      isUpdatingInternally.value = false;
++    }
++  }
++);
++
++watch(
++  () => licenseData.value?.AMCEndDate,
++  (newVal) => {
++    if (!newVal) return;
++    templateFields.custom_amc_end_date = String(newVal);
++    templateFields.custom_amc_status = amcStatusText.value;
++  }
++);
++
++watch(
++  () => templateFields.custom_customer_name,
++  async (newVal, oldVal) => {
++    console.log("[LINK FIELD] Watcher fired:", newVal);
++    
++    // âœ… ONLY skip if currently updating (prevent recursion)
++    if (isUpdatingInternally.value) {
++      console.log("[LINK FIELD] â­ï¸ Skipped - internal update in progress");
++      return;
++    }
++    
++    // Skip empty or unchanged
++    if (!newVal || newVal === oldVal) {
++      console.log("[LINK FIELD] â­ï¸ Skipped - no change");
++      return;
++    }
++    
++    console.log("[LINK FIELD] ðŸš€ Processing customer:", newVal);
++    
++    // âœ… Set flag to prevent recursion
++    isUpdatingInternally.value = true;
++    
++    try {
++      // âœ… Fetch customer by ID first
++      let result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { name: newVal },
++        fields: ["name", "customer_name", "custom_customercode", "custom_productname", "custom_remarks"],
++        limit: 1
++      });
++      
++      // âœ… Fallback: try by customer_name
++      if (!result || result.length === 0) {
++        console.log("[LINK FIELD] Trying by customer_name...");
++        result = await call("frappe.client.get_list", {
++          doctype: "HD Customer",
++          filters: { customer_name: newVal },
++          fields: ["name", "customer_name", "custom_customercode", "custom_productname", "custom_remarks"],
++          limit: 1
++        });
++      }
++      
++      if (result && result.length > 0) {
++        const customer = result[0];
++        console.log("[LINK FIELD] âœ… Found customer:", customer);
++        
++        // âœ… CRITICAL: Store product value and protect it
++        const productValue = customer.custom_productname || "";
++        const customerCode = customer.custom_customercode;
++        console.log("[FORCE] Product to set:", productValue);
++        
++        // âœ… Update non-product fields first
++        safeSetField('custom_customer_name', customer.customer_name);
++        safeSetField('custom_customercode', customerCode);
++        safeSetField('custom_remarks', customer.custom_remarks);
++        
++        lastValidatedCustomerCode.value = customerCode;
++        
++        // âœ… Wait for updates to settle
++        await nextTick();
++        await new Promise(resolve => setTimeout(resolve, 50));
++        
++        // âœ… SET PRODUCT - Keep flag HIGH during this critical operation
++        console.log("[FORCE] Setting product NOW...");
++        
++        // Use all methods simultaneously
++        templateFields.custom_product = productValue;
++        safeSetField('custom_product', productValue);
++        
++        // Force Vue reactivity
++        if (templateFields.hasOwnProperty('custom_product')) {
++          Object.defineProperty(templateFields, 'custom_product', {
++            value: productValue,
++            writable: true,
++            enumerable: true,
++            configurable: true
++          });
++        }
++        
++        console.log("[FORCE] Immediate check:", templateFields.custom_product);
++        
++        // âœ… Wait for Vue to process
++        await nextTick();
++        await nextTick();
++        
++        console.log("[FORCE] After nextTick:", templateFields.custom_product);
++        
++        // âœ… Background operations AFTER product is set
++        const fetchPromises = [];
++        
++        if (customerCode) {
++          console.log("[LINK FIELD] Fetching license data...");
++          fetchPromises.push(fetchLicenseDataInBackground(customerCode));
++        }
++        
++        console.log("[LINK FIELD] Fetching customer alerts...");
++        fetchPromises.push(fetchCustomerRemarks(customer.customer_name));
++        fetchPromises.push(fetchCustomerAlerts(customer.customer_name));
++        
++        // Wait for all background fetches
++        await Promise.all(fetchPromises);
++        
++        // âœ… FINAL VERIFICATION - Re-assert product if cleared
++        await new Promise(resolve => setTimeout(resolve, 100));
++        
++        if (templateFields.custom_product !== productValue) {
++          console.warn("[FORCE] âš ï¸ Product was cleared! Re-asserting...");
++          templateFields.custom_product = productValue;
++          safeSetField('custom_product', productValue);
++          await nextTick();
++        }
++        
++        console.log("[FORCE] âœ… FINAL Product value:", templateFields.custom_product);
++        
++        console.log("[LINK FIELD] ðŸ“¦ All fields confirmed:", {
++          name: templateFields.custom_customer_name,
++          code: templateFields.custom_customercode,
++          product: templateFields.custom_product,
++          remarks: templateFields.custom_remarks
++        });
++        
++        // âœ… Show alerts popup if alerts exist
++        if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
++          showAlertsPopup.value = true;
++        }
++        
++        console.log("[LINK FIELD] âœ… Complete - all data loaded");
++        
++      } else {
++        console.warn("[LINK FIELD] âŒ No customer found for:", newVal);
++        
++        // Clear fields if no customer found
++        safeSetField('custom_customercode', '');
++        safeSetField('custom_product', '');
++        safeSetField('custom_remarks', '');
++      }
++      
++    } catch (e) {
++      console.error("[LINK FIELD] âŒ Error:", e);
++      
++      // Clear fields on error
++      safeSetField('custom_customercode', '');
++      safeSetField('custom_product', '');
++      safeSetField('custom_remarks', '');
++      
++    } finally {
++      // âœ… Always reset flag AFTER a delay to ensure no race conditions
++      await new Promise(resolve => setTimeout(resolve, 150));
++      isUpdatingInternally.value = false;
++      console.log("[LINK FIELD] ðŸ Flag reset, watcher complete");
++    }
++  }
++);
++
++
++
+ 
+ const template = createResource({
+   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
+-  makeParams: () => ({
+-    name: props.templateId || "Default",
+-  }),
++  makeParams: () => ({ name: props.templateId || "Default" }),
+   auto: true,
+-  onSuccess: (data) => {
++  onSuccess: (data: any) => {
+     description.value = data.description_template || "";
+     oldFields = window.structuredClone(data.fields || []);
+     setupCustomizations(template, {
+@@ -180,16 +1296,20 @@ const template = createResource({
+   },
+ });
+ 
+-function setupTemplateFields(fields) {
++function setupTemplateFields(fields: Field[]) {
+   fields.forEach((field: Field) => {
+     templateFields[field.fieldname] = "";
+   });
++  // ensure our custom display-only field exists in the reactive object
++  if (!("custom_popupmessage" in templateFields)) {
++    templateFields.custom_popupmessage = "";
++  }
+ }
+ 
+-let oldFields = [];
++let oldFields: Field[] = [];
+ 
+ function applyFilters(fieldname: string, filters: any = null) {
+-  const f: Field = template.data.fields.find((f) => f.fieldname === fieldname);
++  const f: Field = template.data.fields.find((ff: Field) => ff.fieldname === fieldname);
+   if (!f) return;
+   if (f.fieldtype === "Select") {
+     handleSelectFieldUpdate(f, fieldname, filters, templateFields, oldFields);
+@@ -201,104 +1321,259 @@ function applyFilters(fieldname: string, filters: any = null) {
+ const customOnChange = computed(() => template.data?._customOnChange);
+ 
+ const visibleFields = computed(() => {
+-  let _fields = template.data?.fields?.filter(
+-    (f) => !isCustomerPortal.value || !f.hide_from_customer
++  const _fields = template.data?.fields?.filter(
++    (f: any) => !isCustomerPortal.value || !f.hide_from_customer
+   );
+-  if (!_fields) return [];
+-  return _fields.map((field) => parseField(field, templateFields));
++  return _fields?.map((f: Field) => parseField(f, templateFields)) || [];
+ });
+ 
+-function handleOnFieldChange(e: any, fieldname: string, fieldtype: string) {
+-  templateFields[fieldname] = e.value;
+-  const fieldDependentFns = customOnChange.value?.[fieldname];
+-  if (fieldDependentFns) {
+-    fieldDependentFns.forEach((fn: Function) => {
+-      fn(e.value, fieldtype);
++function handleCustomerCodeInput(event: any) {
++  const value = event.target?.value?.trim() || "";
++  safeSetField("custom_customercode", value);
++}
++
++// ✅ FIXED: Replace your existing fetchCustomerName function
++async function fetchCustomerName(customerCode: string): Promise<boolean> {
++  if (!customerCode || isFetchingCustomerName.value) return false;
++  
++  isFetchingCustomerName.value = true;
++  
++  try {
++    console.log("[TICKET CREATE] 🔍 fetchCustomerName called:", customerCode);
++    
++    // Same robust search logic as handleCustomerCodeEnter
++    let result = await call("frappe.client.get_list", {
++      doctype: "HD Customer",
++      filters: { custom_customercode: customerCode },
++      fields: ["name", "customer_name", "custom_customercode"],
++      limit: 1
++    });
++
++    if (!result || result.length === 0) {
++      result = await call("frappe.client.get_list", {
++        doctype: "HD Customer",
++        filters: { custom_customercode: ["like", `%${customerCode}%`] },
++        fields: ["name", "customer_name", "custom_customercode"],
++        limit: 1
++      });
++    }
++
++    if (result && result.length > 0) {
++      const customer = result[0];
++      console.log("[TICKET CREATE] ✅ Setting customer name:", customer.customer_name);
++      
++      isUpdatingInternally.value = true;
++      safeSetField('custom_customer_name', customer.customer_name); // ✅ DISPLAY NAME
++      await nextTick();
++      isUpdatingInternally.value = false;
++      
++      return true;
++    }
++    
++    return false;
++    
++  } catch (error) {
++    console.error("[TICKET CREATE] ❌ fetchCustomerName error:", error);
++    return false;
++  } finally {
++    isFetchingCustomerName.value = false;
++  }
++}
++
++async function fetchCustomerCode(customerName: string) {
++  if (!customerName || isFetchingCustomerCode.value) return;
++  isFetchingCustomerCode.value = true;
++  try {
++    const result = await call("frappe.client.get_value", {
++      doctype: "HD Customer",
++      filters: { customer_name: customerName },
++      fieldname: ["custom_customercode"],
++    });
++    const code = result?.message?.custom_customercode || result?.custom_customercode;
++    if (code) {
++      isUpdatingInternally.value = true;
++      await nextTick();
++      safeSetField("custom_customercode", code);
++      lastValidatedCustomerCode.value = code;
++      await fetchLicenseDataInBackground(code);
++      await nextTick();
++      isUpdatingInternally.value = false;
++    }
++  } catch (e) {
++    console.error("Error fetching customer code:", e);
++  } finally {
++    isFetchingCustomerCode.value = false;
++  }
++}
++
++async function fetchProductName(customerName: string) {
++  if (!customerName || isFetchingProductName.value) return;
++  isFetchingProductName.value = true;
++  try {
++    const result = await call("frappe.client.get_value", {
++      doctype: "HD Customer",
++      filters: { customer_name: customerName },
++      fieldname: ["custom_productname"],
++    });
++    const product = result?.message?.custom_productname || result?.custom_productname;
++    safeSetField("custom_product", product || "");
++  } catch (e) {
++    console.error("Error fetching product name:", e);
++  } finally {
++    isFetchingProductName.value = false;
++  }
++}
++
++async function handleOnFieldChange(payload: any, fieldname: string, fieldtype: string) {
++  if (isUpdatingInternally.value) return;
++  
++  const newValue = extractValue(payload);
++  safeSetField(fieldname, newValue);
++  
++  if (fieldname === "custom_customer_name" && newValue) {
++    isManuallySelectingCustomer.value = true;
++    await fetchCustomerCode(newValue);
++    await fetchProductName(newValue);
++    await fetchCustomerRemarks(newValue);
++    await fetchCustomerAlerts(newValue);
++    
++    // Only show alerts popup if alerts exist, NO license popup
++    if (customerAlerts.value.length > 0 && popupMessagesText.value.trim()) {
++      showAlertsPopup.value = true;
++    }
++    
++    isManuallySelectingCustomer.value = false;
++  }
++  
++  const fieldFns = customOnChange.value?.[fieldname];
++  if (fieldFns) {
++    fieldFns.forEach((fn: Function) => {
++      try {
++        fn(newValue, fieldtype);
++      } catch (e) {
++        console.error("Error in custom onChange:", e);
++      }
++    });
++  }
++}
++
++
++async function checkForDuplicates() {
++  if (!templateFields.custom_customer_name || !subject.value || subject.value.length < 3) {
++    return true;
++  }
++  try {
++    const result = await call("frappe.client.get_list", {
++      doctype: "HD Ticket",
++      filters: {
++        custom_customer_name: templateFields.custom_customer_name,
++        status: ["not in", ["Closed", "Resolved"]],
++      },
++      fields: ["name", "subject", "status", "priority", "creation"],
++      order_by: "creation desc",
++      limit: 10,
+     });
++    if (result && result.length > 0) {
++      duplicateTickets.value = result;
++      showDuplicateWarning.value = true;
++      return false;
++    }
++    return true;
++  } catch (e) {
++    console.error("Error checking for duplicates:", e);
++    return true;
+   }
+ }
+ 
+ const ticket = createResource({
+   url: "helpdesk.helpdesk.doctype.hd_ticket.api.new",
+   debounce: 300,
+-  makeParams: () => ({
+-    doc: {
+-      description: description.value,
+-      subject: subject.value,
+-      template: props.templateId,
+-      ...templateFields,
+-    },
+-    attachments: attachments.value,
+-  }),
+-  validate: (params) => {
+-    const fields = visibleFields.value?.filter((f) => f.required) || [];
+-    const toVerify = [...fields, "subject", "description"];
+-    for (const field of toVerify) {
+-      if (isEmpty(params.doc[field.fieldname || field])) {
+-        return `${field.label || field} is required`;
++  makeParams: () => {
++    // ✅ Use stored ID for backend, display name for UI
++    const fieldsToSave = { ...templateFields };
++    if (templateFields._customer_id) {
++      fieldsToSave.custom_customer_name = templateFields._customer_id; 
++    }
++    
++    return {
++      doc: {
++        description: description.value,
++        subject: subject.value,
++        template: props.templateId,
++        ...fieldsToSave,
++      },
++      attachments: attachments.value,
++    };
++  },
++  validate(params: any) {
++    const fields = visibleFields.value?.filter((f: any) => f.required);
++
++    // Add phone field explicitly to required list
++    const extraRequiredFields = [
++      { fieldname: "subject", label: "Subject" },
++      { fieldname: "description", label: "Description" },
++      { fieldname: "custom_phone_number", label: "Phone Number" }, // ✅ mandatory phone
++    ];
++
++    for (const field of [...fields, ...extraRequiredFields] as any) {
++      const value = params.doc[field.fieldname];
++      if (isEmpty(value)) {
++        return `${field.label || field.fieldname} is required`;
+       }
+     }
+   },
+-  onSuccess: (data) => {
++  onSuccess(data: any) {
++    // ✅ ADD THESE 4 LINES HERE - Store popup messages in localStorage
++    if (popupMessagesText.value) {
++      localStorage.setItem(`ticket_popup_${data.name}`, popupMessagesText.value);
++    }
++    
++    // Keep existing code below
+     router.push({
+       name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
+-      params: {
+-        ticketId: data.name,
+-      },
++      params: { ticketId: data.name },
+     });
+     if (isManager) {
+-      updateOnboardingStep("create_first_ticket", true, false, () =>
+-        localStorage.setItem("firstTicket", data.name)
+-      );
++      updateOnboardingStep("create_first_ticket", true, false);
+     }
+-    // only capture telemetry for customer portal
++    localStorage.setItem("firstTicket", data.name);
+     if (isCustomerPortal.value) {
+       capture("new_ticket_submitted", {
+-        data: {
+-          user: userID,
+-          ticketID: data.name,
+-          subject: subject.value,
+-          description: description.value,
+-          customFields: templateFields,
+-        },
++        data: { user: userID, ticketID: data.name, subject: subject.value },
+       });
+     }
+   },
+ });
+ 
++async function handleTicketSubmit() {
++  if (pendingSubmission.value) return;
++
++  pendingSubmission.value = true;
++  try {
++    await ticket.submit();
++  } finally {
++    pendingSubmission.value = false;
++  }
++}
++
+ function sanitize(html: string) {
+   return sanitizeHtml(html, {
+     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+   });
+ }
+ 
+-const breadcrumbs = computed(() => {
+-  const items = [
+-    {
+-      label: "Tickets",
+-      route: {
+-        name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
+-      },
+-    },
+-    {
+-      label: "New Ticket",
+-      route: {
+-        name: "TicketNew",
+-      },
+-    },
+-  ];
+-  return items;
+-});
++const breadcrumbs = computed(() => [
++  {
++    label: "Tickets",
++    route: { name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent" },
++  },
++  { label: "New Ticket", route: { name: "TicketNew" } },
++]);
+ 
+-usePageMeta(() => ({
+-  title: "New Ticket",
+-}));
++usePageMeta(() => ({ title: "New Ticket" }));
+ 
+ onMounted(() => {
+-  capture("new_ticket_page", {
+-    data: {
+-      user: userID,
+-    },
+-  });
++  capture("new_ticket_page", { data: { user: userID } });
+ });
+ </script>
++
+diff --git a/desk/src/pages/ticket/Tickets.vue b/desk/src/pages/ticket/Tickets.vue
+index 7a7c9b4..7d068f9 100644
+--- a/desk/src/pages/ticket/Tickets.vue
++++ b/desk/src/pages/ticket/Tickets.vue
+@@ -22,34 +22,45 @@
+         </RouterLink>
+       </template>
+     </LayoutHeader>
++
++    <!-- Update notification banner -->
++    <transition name="slide-down">
++      <div
++        v-if="showUpdateBanner"
++        class="mx-4 mt-4 mb-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between shadow-sm"
++      >
++        <div class="flex items-center gap-2">
++          <FeatherIcon name="refresh-cw" class="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
++          <span class="text-sm font-medium text-blue-800 dark:text-blue-200">
++            {{ updateMessage }}
++          </span>
++        </div>
++        <button
++          @click="dismissBanner"
++          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
++        >
++          <FeatherIcon name="x" class="h-4 w-4" />
++        </button>
++      </div>
++    </transition>
++
+     <ListViewBuilder
+       ref="listViewRef"
+       :options="options"
+-      @empty-state-action="
+-        () =>
+-          $router.push({
+-            name: isCustomerPortal ? 'TicketNew' : 'TicketAgentNew',
+-          })
+-      "
+-      @row-click="
+-        (row) =>
+-          $router.push({
+-            name: isCustomerPortal ? 'TicketCustomer' : 'TicketAgent',
+-            params: { ticketId: row },
+-          })
+-      "
++      @empty-state-action="handleEmptyStateAction"
++      @row-click="handleRowClick"
+     />
++
+     <ExportModal
+       v-model="showExportModal"
+       :rowCount="$refs.listViewRef?.list?.data?.total_count ?? 0"
+-      @update="
+-        ({ export_type, export_all }) => exportRows(export_type, export_all)
+-      "
++      @update="handleExport"
+     />
++
+     <ViewModal
+       v-if="viewDialog.show"
+       v-model="viewDialog"
+-      @update="(view, action) => handleView(view, action)"
++      @update="handleView"
+     />
+   </div>
+ </template>
+@@ -61,7 +72,7 @@ import {
+   IndicatorIcon,
+   PinIcon,
+   TicketIcon,
+-  UnpinIcon,
++  UnpinIcon
+ } from "@/components/icons";
+ import ExportModal from "@/components/ticket/ExportModal.vue";
+ import ViewBreadcrumbs from "@/components/ViewBreadcrumbs.vue";
+@@ -73,12 +84,14 @@ import { globalStore } from "@/stores/globalStore";
+ import { useTicketStatusStore } from "@/stores/ticketStatus";
+ import { View } from "@/types";
+ import { getIcon, isCustomerPortal } from "@/utils";
+-import { Badge, FeatherIcon, toast, Tooltip, usePageMeta } from "frappe-ui";
+-import { computed, h, onMounted, reactive, ref } from "vue";
++import { Badge, FeatherIcon, toast, Tooltip, usePageMeta, FormControl, Button} from "frappe-ui";
++import { computed, h, onMounted, onBeforeUnmount, reactive, ref, nextTick, watch } from "vue";
+ import { useRoute, useRouter } from "vue-router";
+ 
+ const router = useRouter();
+ const route = useRoute();
++const showUpdateBanner = ref(false);
++const updateMessage = ref("");
+ 
+ const {
+   getCurrentUserViews,
+@@ -99,19 +112,223 @@ const showExportModal = ref(false);
+ const { getStatus } = useTicketStatusStore();
+ 
+ const listSelections = ref(new Set());
++
++const todayDate = ref(dayjs().format('YYYY-MM-DD'));
++
++const updateTodayDate = () => {
++  todayDate.value = dayjs().format('YYYY-MM-DD');
++};
++
++const getMillisecondsUntilMidnight = () => {
++  const now = dayjs();
++  const midnight = now.add(1, 'day').startOf('day');
++  return midnight.diff(now);
++};
++
++let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
++let bannerTimeout: ReturnType<typeof setTimeout> | null = null;
++
++const debouncedReload = (message: string = "Tickets updated") => {
++  if (reloadTimeout) {
++    clearTimeout(reloadTimeout);
++  }
++
++  reloadTimeout = setTimeout(() => {
++    if (listViewRef.value?.reload) {
++      listViewRef.value.reload();
++      updateMessage.value = message;
++      showUpdateBanner.value = true;
++
++      playNotificationSound();
++
++      if (bannerTimeout) {
++        clearTimeout(bannerTimeout);
++      }
++      bannerTimeout = setTimeout(() => {
++        showUpdateBanner.value = false;
++      }, 4000);
++    }
++  }, 500);
++};
++
++const dismissBanner = () => {
++  showUpdateBanner.value = false;
++  if (bannerTimeout) {
++    clearTimeout(bannerTimeout);
++  }
++};
++
++const playNotificationSound = () => {
++  try {
++    const audio = new Audio(
++      "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE="
++    );
++    audio.volume = 0.3;
++    audio.play().catch(() => {});
++  } catch (error) {}
++};
++
++const getListSafely = () => {
++  return listViewRef.value?.list;
++};
++
++const hasDateFilter = () => {
++  const list = getListSafely();
++  if (!list || !list.params) return false;
++  
++  const filters = list.params.filters || {};
++  return filters.hasOwnProperty('creation') || filters.hasOwnProperty('opening_date');
++};
++
++const getDateFilterField = () => {
++  const list = getListSafely();
++  if (!list || !list.params) return null;
++  
++  const filters = list.params.filters || {};
++  if (filters.hasOwnProperty('creation')) return 'creation';
++  if (filters.hasOwnProperty('opening_date')) return 'opening_date';
++  return null;
++};
++
++const updateDateFilterToToday = () => {
++  const list = getListSafely();
++  if (!list || !list.params) return false;
++  
++  const dateField = getDateFilterField();
++  if (!dateField) return false;
++  
++  const today = dayjs().format('YYYY-MM-DD');
++  
++  if (!list.params.filters) {
++    list.params.filters = {};
++  }
++  
++  list.params.filters[dateField] = ['=', today];
++  
++  console.log(`📅 Updated ${dateField} filter to: ${today}`);
++  return true;
++};
++
++const saveDateFilterConfig = () => {
++  const dateField = getDateFilterField();
++  if (dateField) {
++    localStorage.setItem('tickets_auto_date_filter', JSON.stringify({
++      enabled: true,
++      field: dateField
++    }));
++    console.log(`💾 Saved auto-update for field: ${dateField}`);
++  } else {
++    localStorage.removeItem('tickets_auto_date_filter');
++    console.log(`🗑️ Removed auto-update (no date filter found)`);
++  }
++};
++
++const loadAndApplyDateFilter = () => {
++  if (route.query.filters) {
++    console.log('✅ URL has live filters, skipping localStorage date filter');
++    return;
++  }
++
++  const saved = localStorage.getItem('tickets_auto_date_filter');
++  if (!saved) return;
++  
++  try {
++    const { enabled, field } = JSON.parse(saved);
++    if (enabled && field) {
++      const today = dayjs().format('YYYY-MM-DD');
++      const list = getListSafely();
++      if (list && list.params) {
++        if (!list.params.filters) list.params.filters = {};
++        list.params.filters[field] = ['=', today];
++        console.log(`📅 Applied saved filter: ${field} = ${today}`);
++      }
++    }
++  } catch (e) {
++    console.error('Error loading date filter:', e);
++  }
++};
++
++// ⭐ NEW: Customer Name filter query with proper search
++const getCustomerQuery = (txt: string) => {
++  return {
++    doctype: "HD Customer",
++    filters: txt ? { customer_name: ['like', `%${txt}%`] } : {},
++    fields: ["name", "customer_name"],
++    page_length: 20
++  };
++};
++
++const getRowClass = (row: any) => {
++  const status = getStatus(row.status);
++  if (!status) return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
++
++  const statusColor = status?.color || status?.parsed_color;
++
++  const colorMap = {
++    red: "!bg-red-100 hover:!bg-red-200 dark:!bg-red-900/30 dark:hover:!bg-red-900/40",
++    "light-red":
++      "!bg-red-50 hover:!bg-red-100 dark:!bg-red-900/20 dark:hover:!bg-red-900/30",
++    orange:
++      "!bg-orange-100 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:hover:!bg-orange-900/40",
++    "light-orange":
++      "!bg-orange-50 hover:!bg-orange-100 dark:!bg-orange-900/20 dark:hover:!bg-orange-900/30",
++    yellow:
++      "!bg-yellow-100 hover:!bg-yellow-200 dark:!bg-yellow-900/30 dark:hover:!bg-yellow-900/40",
++    "light-yellow":
++      "!bg-yellow-50 hover:!bg-yellow-100 dark:!bg-yellow-900/20 dark:hover:!bg-yellow-900/30",
++    green:
++      "!bg-green-100 hover:!bg-green-200 dark:!bg-green-900/30 dark:hover:!bg-green-900/40",
++    "light-green":
++      "!bg-green-50 hover:!bg-green-100 dark:!bg-green-900/20 dark:hover:!bg-green-900/30",
++    blue: "!bg-blue-100 hover:!bg-blue-200 dark:!bg-blue-900/30 dark:hover:!bg-blue-900/40",
++    "light-blue":
++      "!bg-blue-50 hover:!bg-blue-100 dark:!bg-blue-900/20 dark:hover:!bg-blue-900/30",
++    purple:
++      "!bg-purple-100 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:hover:!bg-purple-900/40",
++    "light-purple":
++      "!bg-purple-50 hover:!bg-purple-100 dark:!bg-purple-900/20 dark:hover:!bg-purple-900/30",
++    pink:
++      "!bg-pink-100 hover:!bg-pink-200 dark:!bg-pink-900/30 dark:hover:!bg-pink-900/40",
++    "light-pink":
++      "!bg-pink-50 hover:!bg-pink-100 dark:!bg-pink-900/20 dark:hover:!bg-pink-900/30",
++    gray: "!bg-gray-100 hover:!bg-gray-200 dark:!bg-gray-700 dark:hover:!bg-gray-600",
++    "light-gray":
++      "!bg-gray-50 hover:!bg-gray-100 dark:!bg-gray-800 dark:hover:!bg-gray-700",
++  };
++
++  if (statusColor) {
++    const colorKey = statusColor.toLowerCase().replace(/\s+/g, "-");
++    if (colorMap[colorKey]) {
++      return colorMap[colorKey];
++    }
++  }
++
++  return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
++};
++
+ const selectBannerActions = [
+   {
+-    label: "Export",
++    label: "Export Selected",
+     icon: "download",
+-    onClick: (selections: Set<string>) => {
+-      listSelections.value = new Set(selections);
++    onClick: (selections) => {
+       showExportModal.value = true;
+     },
+   },
++  {
++    label: "Clear Selection",
++    icon: "x",
++    onClick: (selections) => {
++      reset();
++    },
++  },
+ ];
+ 
++// ⭐ UPDATED: Options with Customer Name filter properly configured
+ const options = {
+   doctype: "HD Ticket",
++  filters: {},
++  pageLength: 100,
++
+   columnConfig: {
+     status: {
+       custom: ({ item }) => {
+@@ -139,30 +356,33 @@ const options = {
+       },
+     },
+     response_by: {
+-      custom: ({ row, item }) => handle_response_by_field(row, item),
++      custom: ({ row, item }) => handleResponseByField(row, item),
+     },
+     resolution_by: {
+-      custom: ({ row, item }) => handle_resolution_by_field(row, item),
++      custom: ({ row, item }) => handleResolutionByField(row, item),
+     },
+   },
+-  isCustomerPortal: isCustomerPortal.value,
++  rowClass: getRowClass,
++  get isCustomerPortal() {
++    return isCustomerPortal.value;
++  },
+   selectable: true,
+   showSelectBanner: true,
+   selectBannerActions,
+   emptyState: {
+     title: "No Tickets Found",
+-    icon: h(TicketIcon, {
+-      class: "h-10 w-10",
+-    }),
++    icon: h(TicketIcon, { class: "h-10 w-10" }),
+   },
+-  rowRoute: {
+-    name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
+-    prop: "ticketId",
++  get rowRoute() {
++    return {
++      name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
++      prop: "ticketId",
++    };
+   },
+   hideColumnSetting: false,
+ };
+ 
+-function handle_response_by_field(row: any, item: string) {
++function handleResponseByField(row: any, item: string) {
+   if (!row.first_responded_on && dayjs(item).isBefore(new Date())) {
+     return h(Badge, {
+       label: "Failed",
+@@ -185,15 +405,13 @@ function handle_response_by_field(row: any, item: string) {
+   } else {
+     return h(
+       Tooltip,
+-      {
+-        text: dayjs(item).long(),
+-      },
++      { text: dayjs(item).long() },
+       () => dayjs.tz(item).fromNow()
+     );
+   }
+ }
+ 
+-function handle_resolution_by_field(row: any, item: string) {
++function handleResolutionByField(row: any, item: string) {
+   const status = getStatus(row.status) || {};
+   if (status.category === "Paused") {
+     return h(Badge, {
+@@ -216,18 +434,19 @@ function handle_resolution_by_field(row: any, item: string) {
+   } else {
+     return h(
+       Tooltip,
+-      {
+-        text: dayjs(item).long(),
+-      },
++      { text: dayjs(item).long() },
+       () => dayjs.tz(item).fromNow()
+     );
+   }
+ }
+ 
+-async function exportRows(
+-  export_type: "CSV" | "Excel" = "Excel",
+-  export_all: boolean = false
+-) {
++async function handleExport({
++  export_type,
++  export_all,
++}: {
++  export_type: "CSV" | "Excel";
++  export_all: boolean;
++}) {
+   const list = listViewRef.value?.list;
+   if (!list) return;
+ 
+@@ -285,14 +504,13 @@ const dropdownOptions = computed(() => {
+           icon: "align-justify",
+           onClick: () =>
+             router.push({
+-              name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent",
++              name: isCustomerPortal.value ? "TicketsCustomer" : "TicketsAgent"
+             }),
+         },
+       ],
+     },
+   ];
+ 
+-  // Saved Views
+   if (getCurrentUserViews.value?.length !== 0) {
+     items.push({
+       group: "Saved Views",
+@@ -440,7 +658,7 @@ const viewActions = (view) => {
+                       router.push({
+                         name: isCustomerPortal.value
+                           ? "TicketsCustomer"
+-                          : "TicketsAgent",
++                          : "TicketAgent",
+                       });
+                     }
+                     deleteView(_view.name);
+@@ -515,7 +733,6 @@ function handleView(viewInfo, action) {
+     };
+   }
+ 
+-  // createView
+   createView(view, (d) => {
+     currentView.value = {
+       label: d.label || "List",
+@@ -536,6 +753,7 @@ function handleSuccess(msg = "created") {
+   toast.success(`View ${msg}`);
+   resetState();
+ }
++
+ function resetState() {
+   viewDialog.show = false;
+   viewDialog.view.label = "";
+@@ -545,6 +763,68 @@ function resetState() {
+   selectedView = null;
+ }
+ 
++function handleEmptyStateAction() {
++  router.push({
++    name: isCustomerPortal.value ? "TicketNew" : "TicketAgentNew",
++  });
++}
++
++function handleRowClick(row) {
++  router.push({
++    name: isCustomerPortal.value ? "TicketCustomer" : "TicketAgent",
++    params: { ticketId: row },
++  });
++}
++
++watch(() => listViewRef.value?.list?.params?.filters, (newFilters) => {
++  if (newFilters) {
++    saveDateFilterConfig();
++  }
++}, { deep: true });
++
++let midnightInterval: ReturnType<typeof setTimeout> | null = null;
++
++const scheduleMidnightUpdate = () => {
++  if (midnightInterval) {
++    clearTimeout(midnightInterval);
++  }
++  
++  const msUntilMidnight = getMillisecondsUntilMidnight();
++  
++  midnightInterval = setTimeout(() => {
++    console.log("🌅 Midnight reached - checking date filter");
++    updateTodayDate();
++    
++    const saved = localStorage.getItem('tickets_auto_date_filter');
++    if (saved) {
++      try {
++        const { enabled } = JSON.parse(saved);
++        if (enabled && updateDateFilterToToday()) {
++          if (listViewRef.value?.reload) {
++            listViewRef.value.reload();
++            const newDate = dayjs().format('MMM DD, YYYY');
++            updateMessage.value = `🌅 New day! Showing tickets from ${newDate}`;
++            showUpdateBanner.value = true;
++            
++            if (bannerTimeout) clearTimeout(bannerTimeout);
++            bannerTimeout = setTimeout(() => {
++              showUpdateBanner.value = false;
++            }, 5000);
++          }
++        }
++      } catch (e) {
++        console.error('Error updating date filter at midnight:', e);
++      }
++    }
++    
++    scheduleMidnightUpdate();
++  }, msUntilMidnight);
++  
++  console.log(`⏰ Next midnight update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
++};
++
++let pollInterval: ReturnType<typeof setInterval> | null = null;
++
+ onMounted(() => {
+   if (!route.query.view) {
+     currentView.value = {
+@@ -552,13 +832,128 @@ onMounted(() => {
+       icon: "lucide:align-justify",
+     };
+   }
+-  $socket.on("helpdesk:new-ticket", () => {
+-    listViewRef.value?.reload();
++  
++  let initAttempts = 0;
++  const initDateFilter = () => {
++    initAttempts++;
++    
++    if (initAttempts <= 5 && (!listViewRef.value?.list || !listViewRef.value.list.params)) {
++      setTimeout(initDateFilter, 300);
++      return;
++    }
++    
++    if (listViewRef.value?.list) {
++      const existingFilters = listViewRef.value.list.params?.filters;
++      if (!existingFilters || Object.keys(existingFilters).length === 0) {
++        loadAndApplyDateFilter();
++      } else {
++        console.log('✅ Skipping date filter - live filters exist:', existingFilters);
++      }
++      
++      if (hasDateFilter()) {
++        saveDateFilterConfig();
++      }
++    }
++  };
++  
++  nextTick(() => {
++    initDateFilter();
+   });
++  
++  console.log("✅ Setting up real-time ticket updates...");
++  
++  scheduleMidnightUpdate();
++  
++  $socket.on("helpdesk:new-ticket", (data) => {
++    console.log("🎫 New ticket created:", data);
++    debouncedReload("🎫 New ticket created");
++  });
++  
++  $socket.on("ticket_updated", (data) => {
++    console.log("✏️ Ticket updated:", data);
++    debouncedReload("✏️ Ticket updated");
++  });
++  
++  $socket.on("helpdesk:ticket-update", (data) => {
++    console.log("🔄 Ticket status changed:", data);
++    debouncedReload("🔄 Ticket status changed");
++  });
++  
++  $socket.on("helpdesk:ticket-assignee-update", (data) => {
++    console.log("👤 Ticket assigned:", data);
++    debouncedReload("👤 Ticket assignment changed");
++  });
++  
++  $socket.on("ticket_deleted", (data) => {
++    console.log("🗑️ Ticket deleted:", data);
++    debouncedReload("🗑️ Ticket deleted");
++  });
++  
++  $socket.on("ticket_assigned", (data) => {
++    console.log("✅ Ticket assigned:", data);
++    debouncedReload("✅ Ticket assigned");
++  });
++  
++  pollInterval = setInterval(() => {
++    if (listViewRef.value?.reload) {
++      console.log("🔄 Polling for updates...");
++      listViewRef.value.reload();
++    }
++  }, 30000);
++  
++  console.log("✅ Real-time updates initialized");
+ });
++
++onBeforeUnmount(() => {
++  console.log("🧹 Cleaning up real-time updates...");
++  
++  if (reloadTimeout) clearTimeout(reloadTimeout);
++  if (bannerTimeout) clearTimeout(bannerTimeout);
++  if (midnightInterval) clearTimeout(midnightInterval);
++  
++  if (pollInterval) clearInterval(pollInterval);
++  
++  $socket.off("helpdesk:new-ticket");
++  $socket.off("ticket_updated");
++  $socket.off("helpdesk:ticket-update");
++  $socket.off("helpdesk:ticket-assignee-update");
++  $socket.off("ticket_deleted");
++  $socket.off("ticket_assigned");
++  
++  console.log("✅ Cleanup complete");
++});
++
+ usePageMeta(() => {
+   return {
+     title: "Tickets",
+   };
+ });
+ </script>
++
++<style scoped>
++.slide-down-enter-active,
++.slide-down-leave-active {
++  transition: all 0.3s ease;
++}
++
++.slide-down-enter-from {
++  opacity: 0;
++  transform: translateY(-20px);
++}
++
++.slide-down-leave-to {
++  opacity: 0;
++  transform: translateY(-20px);
++}
++
++:deep(.column-settings-dropdown),
++:deep(.frappe-dropdown-menu),
++:deep([data-testid="column-settings"]) {
++  z-index: 9999 !important;
++}
++
++:deep(.list-view-builder .dropdown-menu),
++:deep(.list-view-builder [role="menu"]) {
++  z-index: 10000 !important;
++}
++</style>
+\ No newline at end of file
+diff --git a/desk/src/router/index.ts b/desk/src/router/index.ts
+index 1260d60..991bf21 100644
+--- a/desk/src/router/index.ts
++++ b/desk/src/router/index.ts
+@@ -3,6 +3,7 @@ import { useAuthStore } from "@/stores/auth";
+ import { useUserStore } from "@/stores/user";
+ import { isCustomerPortal } from "@/utils";
+ import { createRouter, createWebHistory } from "vue-router";
++import ProductList from '@/pages/ProductList.vue'
+ const { isMobileView } = useScreenSize();
+ 
+ export const LOGIN_PAGE = "/login?redirect-to=/helpdesk";
+@@ -81,6 +82,52 @@ const routes = [
+     name: "ContactList",
+     component: () => import("@/pages/desk/contact/Contacts.vue"),
+   },
++  { path: "/products", 
++    name: "ProductList", 
++    component: ProductList, 
++  },
++  {
++    path: "/customer-alerts",
++    name: "CustomerAlertList",
++    component: () => import("@/pages/CustomerAlertList.vue"),
++  },
++  {
++    path: "/customer-alerts/new",
++    name: "CustomerAlertNew",
++    component: () => import("@/pages/CustomerAlertNew.vue"),
++  },
++  {
++    path: "/payment-tasks",
++    name: "PaymentCollectionTaskList",
++    component: () => import("@/pages/PaymentCollectionTaskList.vue"),
++  },
++  {
++    path: "/call-management",
++    name: "CallManagementTaskList",
++    component: () => import("@/pages/CallManagementTaskList.vue"),
++  },
++  {
++    path: "/call-management/:taskId",
++    name: "CallManagementTaskDetail",
++    component: () => import("@/pages/CallManagementTaskDetail.vue"),
++    props: true,
++  },
++  {
++    path: "/payment-tasks/new",
++    name: "PaymentCollectionTaskNew",
++    component: () => import("@/pages/PaymentCollectionTaskNew.vue"),
++  },
++  {
++    path: "/payment-tasks/:taskId",
++    name: "PaymentCollectionTaskDetail",
++    component: () => import("@/pages/PaymentCollectionTaskDetail.vue"),
++    props: true,
++  },
++  {
++    path: "/payment-dashboard",
++    name: "PaymentCollectionDashboard",
++    component: () => import("@/pages/PaymentCollectionDashboard.vue"),
++  },
+   {
+     path: "/agents",
+     name: "AgentList",
+@@ -180,6 +216,54 @@ const routes = [
+     name: "Invalid Page",
+     component: () => import("@/pages/InvalidPage.vue"),
+   },
++  {
++  path: '/products/:productId',
++  name: 'ProductDetail',
++  component: () => import('@/pages/ProductDetail.vue'), // create this component
++  props: true,
++  meta: {
++    auth: true, // or whatever access control needed
++    }
++  },
++  {
++    path: "/customer-alerts/:alertId",
++    name: "CustomerAlertDetail",
++    component: () => import("@/pages/CustomerAlertDetail.vue"),
++    props: true,
++  },
++  {
++    path: "/show-summary",
++    name: "ShowSummary",
++    // small component that redirects to the Frappe report URL
++    component: {
++      setup() {
++        if (typeof window !== "undefined") {
++          window.location.href = "/app/query-report/Custom Ticket Report";
++        }
++        return () => null;
++      },
++    },
++    meta: {
++      auth: true,
++    },
++  },
++  {
++    path: "/customer-amc-details",
++    name: "CustomerAMCDetails",
++    component: {
++      setup() {
++        if (typeof window !== "undefined") {
++          window.location.href =
++            "/app/query-report/Customer - AMC Details?amc_status=All";
++        }
++        return () => null;
++      },
++    },
++    meta: {
++      auth: true,
++    },
++  },
++
+ ];
+ 
+ const handleMobileView = (componentName) => {

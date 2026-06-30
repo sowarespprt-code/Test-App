@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2026-06-24 15:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "call_date_and_time",
+  "staff_member",
+  "customer_response",
+  "call_outcome",
+  "promised_amount",
+  "promised_payment_date",
+  "next_follow_up_date",
+  "discussion_summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "call_date_and_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Call Date & Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "staff_member",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Staff Member",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer_response",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Customer Response",
+   "reqd": 1
+  },
+  {
+   "fieldname": "call_outcome",
+   "fieldtype": "Data",
+   "label": "Call Outcome"
+  },
+  {
+   "fieldname": "promised_amount",
+   "fieldtype": "Currency",
+   "label": "Promised Amount"
+  },
+  {
+   "fieldname": "promised_payment_date",
+   "fieldtype": "Date",
+   "label": "Promised Payment Date"
+  },
+  {
+   "fieldname": "next_follow_up_date",
+   "fieldtype": "Date",
+   "label": "Next Follow-up Date"
+  },
+  {
+   "fieldname": "discussion_summary",
+   "fieldtype": "Long Text",
+   "label": "Discussion Summary",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "modified": "2026-06-24 15:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Test App",
+ "name": "Payment Collection Call History",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

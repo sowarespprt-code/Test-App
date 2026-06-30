@@ -86,6 +86,38 @@ def add_assigned_to_full_name(data: list[dict]) -> list[dict]:
 
     return data
 
+def add_customer_display_name(data):
+    if not data:
+        return data
+
+    customer_ids = set()
+
+    for row in data:
+        if row.get("customer"):
+            customer_ids.add(row.get("customer"))
+        elif row.get("custom_customer_name") and frappe.db.exists("HD Customer", row.get("custom_customer_name")):
+            customer_ids.add(row.get("custom_customer_name"))
+
+    if not customer_ids:
+        for row in data:
+            row["customer_display_name"] = row.get("custom_customer_name") or ""
+        return data
+
+    customers = frappe.get_all(
+        "HD Customer",
+        filters={"name": ["in", list(customer_ids)]},
+        fields=["name", "customer_name"],
+        limit_page_length=0,
+    )
+
+    customer_map = {d.name: d.customer_name for d in customers}
+
+    for row in data:
+        customer_id = row.get("customer") or row.get("custom_customer_name")
+        row["customer_display_name"] = customer_map.get(customer_id) or row.get("custom_customer_name") or ""
+
+    return data
+
 @frappe.whitelist()
 def get_list_data(
     doctype: str,
@@ -203,10 +235,12 @@ def get_list_data(
     # NEW: add full name for HD Ticket
     if doctype == "HD Ticket":
         data = add_assigned_to_full_name(data)
+        data = add_customer_display_name(data)
 
     # ===== ADD CUSTOMER FILTER LOGIC HERE =====
     if doctype == "HD Ticket":
-        # Ensure customer_name field is available for filtering/display
+        if "customer" not in rows:
+            rows.append("customer")
         if "custom_customer_name" not in rows:
             rows.append("custom_customer_name")
             
@@ -249,7 +283,7 @@ def get_list_data(
         std_fields.append({
             "label": "Customer Name",
             "type": "Data", 
-            "value": "custom_customer_name"
+            "value": "customer_display_name"
         })
 
     for field in std_fields:

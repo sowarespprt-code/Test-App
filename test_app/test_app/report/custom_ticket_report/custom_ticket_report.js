@@ -14,6 +14,16 @@ frappe.query_reports["Custom Ticket Report"] = {
 
     initial_depth: 1,
 
+    onload: function(report) {
+        frappe.call({
+            method: "test_app.test_app.report.custom_ticket_report.custom_ticket_report.reset_prepared_report",
+            args: {
+                report_name: "Custom Ticket Report"
+            },
+            freeze: false
+        });
+    },
+
     get_datatable_options(options) {
         // Hide rows on first load
         if (!frappe.query_report.filters_set) {
@@ -27,12 +37,13 @@ frappe.query_reports["Custom Ticket Report"] = {
     filters: [
         {
             fieldname: "from_date",
-            label: "From Date",
+            label: __("From Date"),
             fieldtype: "Date",
+            
         },
         {
             fieldname: "to_date",
-            label: "To Date",
+            label: __("To Date"),
             fieldtype: "Date",
         },
         {
@@ -88,8 +99,6 @@ frappe.query_reports["Custom Ticket Report"] = {
 
         // NEW: Reset filters AFTER render (1500ms)
         setTimeout(() => {
-            report.set_filter_value("from_date", "");
-            report.set_filter_value("to_date", "");
             report.set_filter_value("custom_customer_name", "");
             report.set_filter_value("priority", "");
             report.set_filter_value("status", "");

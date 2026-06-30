@@ -155,11 +155,25 @@ doc_events = {
     # "HD Ticket": {
     #     "before_save": "test_app.ticket_location.capture_agent_location"
     # }
+    # "HD Ticket": {
+    #     "on_update": [
+    #         "test_app.utils.clear_ticket_todo_on_unassign",
+    #         "test_app.utils.notify_ticket_status_change",
+    #         # "test_app.utils.auto_assign_on_status_change",
+    #         "test_app.utils.handle_start_ticket_assignment",
+    #         "test_app.utils.prevent_frappe_auto_assignment",
+    #         # "test_app.utils.auto_assign_on_start",
+    #         # "test_app.utils._force_clear_all_assignments"
+    #     ]
+    # }
     "HD Ticket": {
+        "after_insert":[
+            "test_app.test_app.doctype.help_desk_dup.help_desk_dup.hd_to_hdd"
+        ],
         "on_update": [
             "test_app.utils.clear_ticket_todo_on_unassign",
             "test_app.utils.notify_ticket_status_change",
-            # "test_app.utils.auto_assign_on_status_change",
+            "test_app.utils.auto_assign_on_status_change",
             "test_app.utils.handle_start_ticket_assignment",
             "test_app.utils.prevent_frappe_auto_assignment",
             # "test_app.utils.auto_assign_on_start"
@@ -172,10 +186,11 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
+scheduler_events = {
+	"all": [
+        
 # 		"test_app.tasks.all"
-# 	],
+	],
 # 	"daily": [
 # 		"test_app.tasks.daily"
 # 	],
@@ -188,7 +203,7 @@ doc_events = {
 # 	"monthly": [
 # 		"test_app.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------
@@ -311,8 +326,14 @@ fixtures = [
     {
         "dt": "Report",
         "filters": {
-            "name": ["in", ["Custom Ticket Report"]]
+            "name": ["in", ["Custom Ticket Report", "Ticket Report"]]
         }
+    },
+    {
+        "dt": "Role Permission for Page and Report",
+        "filters": [
+            ["report", "in", ["Custom Ticket Report", "Ticket Report"]]
+        ]
     }
 ]
 

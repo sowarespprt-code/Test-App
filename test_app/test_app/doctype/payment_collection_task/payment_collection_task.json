@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PCT-.#####",
+ "creation": "2026-06-24 15:30:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "purpose_type",
+  "priority",
+  "status",
+  "assigned_to",
+  "next_follow_up_date",
+  "contact_person",
+  "mobile_number",
+  "alternate_mobile",
+  "payment_amount",
+  "collected_amount",
+  "outstanding_amount",
+  "task_description",
+  "call_history_section",
+  "call_history",
+  "commitments_section",
+  "payment_commitments",
+  "receipts_section",
+  "payment_receipts"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "HD Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Purpose Type",
+   "options": "Software Payment\nAMC\nNew Feature\nCustomization\nSupport\nOther",
+   "reqd": 1
+  },
+  {
+   "default": "Medium",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "Low\nMedium\nHigh\nUrgent"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Open\nIn Progress\nPartially Paid\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned To",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "next_follow_up_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Next Follow-up Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Data",
+   "label": "Contact Person",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mobile_number",
+   "fieldtype": "Data",
+   "label": "Mobile Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "alternate_mobile",
+   "fieldtype": "Data",
+   "label": "Alternate Mobile"
+  },
+  {
+   "fieldname": "payment_amount",
+   "fieldtype": "Currency",
+   "label": "Payment Amount",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "collected_amount",
+   "fieldtype": "Currency",
+   "label": "Collected Amount",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "outstanding_amount",
+   "fieldtype": "Currency",
+   "label": "Outstanding Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "task_description",
+   "fieldtype": "Long Text",
+   "label": "Task Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "call_history_section",
+   "fieldtype": "Section Break",
+   "label": "Call History"
+  },
+  {
+   "fieldname": "call_history",
+   "fieldtype": "Table",
+   "label": "Call History",
+   "options": "Payment Collection Call History"
+  },
+  {
+   "fieldname": "commitments_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Commitments"
+  },
+  {
+   "fieldname": "payment_commitments",
+   "fieldtype": "Table",
+   "label": "Payment Commitments",
+   "options": "Payment Collection Commitment"
+  },
+  {
+   "fieldname": "receipts_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Receipts"
+  },
+  {
+   "fieldname": "payment_receipts",
+   "fieldtype": "Table",
+   "label": "Payment Receipts",
+   "options": "Payment Collection Receipt"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-24 15:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Test App",
+ "name": "Payment Collection Task",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Desk User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

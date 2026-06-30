@@ -335,6 +335,14 @@ const list = createResource({
     return data;
   },
   onSuccess: (data) => {
+    data.columns.forEach((column) => {
+      if (column.key === "custom_customer_name") {
+        column.key = "customer_display_name";
+      }
+      handleFetchFromField(column);
+      handleColumnConfig(column);
+    });
+
     list.params = defaultParams;
     columns.value = data.columns;
   },

@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2026-06-24 15:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "commitment_date",
+  "promised_amount",
+  "promised_payment_date",
+  "status",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "commitment_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Commitment Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "promised_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Promised Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "promised_payment_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Promised Payment Date",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nReceived\nNot Received\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "modified": "2026-06-24 15:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Test App",
+ "name": "Payment Collection Commitment",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
