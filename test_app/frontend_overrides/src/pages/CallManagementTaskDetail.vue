@@ -16,12 +16,38 @@
             <Badge :variant="'subtle'" :theme="getStatusTheme(task.status)" :label="task.status" />
             <Badge :variant="'outline'" :theme="getPriorityTheme(task.priority)" :label="task.priority + ' Priority'" />
           </div>
-          <p class="text-sm text-gray-500 mt-1">Customer: <span class="font-semibold text-gray-700">{{ customerName }}</span></p>
+          <div class="flex items-center gap-2 mt-1">
+            <p class="text-sm text-gray-500">Customer: <span class="font-semibold text-gray-700">{{ customerName }}</span></p>
+            <button v-if="isManager" @click="openCustomerSearch" class="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded transition" title="Change Customer">
+              <LucideEdit class="w-3.5 h-3.5" /> Edit
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
-        
+        <Button v-if="isManager" variant="subtle" class="text-red-600 bg-red-50 hover:bg-red-100" @click="deleteTask">
+          <template #prefix><LucideTrash2 class="w-4 h-4" /></template>
+          Delete
+        </Button>
+        <select
+          v-model="task.status"
+          @change="updateStatus"
+          class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
+        >
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Partially Paid">Partially Paid</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+
+        <Button variant="solid" @click="openLogCallModal" class="bg-blue-600 hover:bg-blue-700 text-white">
+          <template #prefix>
+            <LucidePhoneCall class="w-4 h-4" />
+          </template>
+          Log Call
+        </Button>
       </div>
     </div>
 
@@ -51,13 +77,25 @@
 
         <!-- Tabs Container -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="border-b bg-gray-50 px-6 py-4 font-semibold text-gray-900">
-            Call History ({{ standaloneLogs.length || 0 }})
+          <!-- Tab Headers -->
+          <div class="border-b bg-gray-50 flex">
+            <button
+              v-for="tab in ['calls', 'commitments', 'receipts']"
+              :key="tab"
+              @click="activeTab = tab"
+              class="px-6 py-4 text-sm font-semibold border-b-2 transition-all duration-150 capitalize"
+              :class="activeTab === tab
+                ? 'border-blue-600 text-blue-600 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'"
+            >
+              {{ tab === 'calls' ? 'Call History (' + (task.call_history?.length || 0) + ')' : tab === 'commitments' ? 'Payment Commitments (' + (task.payment_commitments?.length || 0) + ')' : 'Receipts & Payments (' + (task.payment_receipts?.length || 0) + ')' }}
+            </button>
           </div>
+
           <!-- Tab Contents -->
           <div class="p-6">
             <!-- TAB 1: CALL HISTORY -->
-            <div class="space-y-4">
+            <div v-if="activeTab === 'calls'" class="space-y-4">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="font-bold text-gray-800">Call Logs</h3>
                 <Button variant="subtle" @click="openLogCallModal">
@@ -66,7 +104,7 @@
                 </Button>
               </div>
 
-              <div v-if="standaloneLogs && standaloneLogs.length" class="space-y-4">
+              <div v-if="task.call_history && task.call_history.length" class="space-y-4">
                 <div
                   v-for="(call, idx) in sortedCalls"
                   :key="idx"
@@ -110,7 +148,104 @@
               </div>
             </div>
 
-                      </div>
+            <!-- TAB 2: COMMITMENTS -->
+            <div v-if="activeTab === 'commitments'" class="space-y-4">
+              <h3 class="font-bold text-gray-800 mb-2">Customer Payment Promises</h3>
+
+              <div v-if="task.payment_commitments && task.payment_commitments.length" class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                      <th class="py-3 px-4 font-semibold text-gray-600">Promise Date</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Amount Promised</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Expected Date</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Status</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr v-for="c in task.payment_commitments" :key="c.name" class="hover:bg-gray-50/50">
+                      <td class="py-3 px-4 text-gray-600">{{ formatDate(c.commitment_date) }}</td>
+                      <td class="py-3 px-4 font-semibold text-gray-900">{{ formatCurrency(c.promised_amount) }}</td>
+                      <td class="py-3 px-4 text-gray-900 font-medium">{{ formatDate(c.promised_payment_date) }}</td>
+                      <td class="py-3 px-4">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" :class="getCommitmentStatusClass(c.status)">
+                          {{ c.status }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-4 text-gray-500 max-w-xs truncate" :title="c.remarks">{{ c.remarks || '—' }}</td>
+                      <td class="py-3 px-4 text-right">
+                        <div v-if="c.status === 'Pending'" class="inline-flex gap-2">
+                          <button
+                            @click="updateCommitment(c.name, 'Received')"
+                            class="text-xs bg-green-50 hover:bg-green-100 text-green-700 px-2 py-1 rounded font-medium border border-green-200 transition"
+                          >
+                            Received
+                          </button>
+                          <button
+                            @click="updateCommitment(c.name, 'Not Received')"
+                            class="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1 rounded font-medium border border-red-200 transition"
+                          >
+                            Not Paid
+                          </button>
+                          <button
+                            @click="updateCommitment(c.name, 'Cancelled')"
+                            class="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 px-2 py-1 rounded font-medium border border-gray-200 transition"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <span v-else class="text-xs text-gray-400">Locked</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="text-center py-10 text-gray-500 border border-dashed rounded-lg">
+                No payment commitments recorded.
+              </div>
+            </div>
+
+            <!-- TAB 3: RECEIPTS -->
+            <div v-if="activeTab === 'receipts'" class="space-y-4">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold text-gray-800">Payment Collection Receipts</h3>
+                <Button variant="solid" @click="openReceiptModal" class="bg-green-600 hover:bg-green-700 text-white">
+                  <template #prefix><LucideCheck class="h-4 w-4" /></template>
+                  Record Receipt
+                </Button>
+              </div>
+
+              <div v-if="task.payment_receipts && task.payment_receipts.length" class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                      <th class="py-3 px-4 font-semibold text-gray-600">Receipt Date</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Amount Received</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Mode</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Ref No.</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Received By</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr v-for="(r, idx) in task.payment_receipts" :key="idx" class="hover:bg-gray-50/50">
+                      <td class="py-3 px-4 text-gray-600">{{ formatDate(r.receipt_date) }}</td>
+                      <td class="py-3 px-4 font-bold text-green-700">{{ formatCurrency(r.amount_received) }}</td>
+                      <td class="py-3 px-4 text-gray-800">{{ r.payment_mode }}</td>
+                      <td class="py-3 px-4 text-gray-500 font-mono text-xs">{{ r.transaction_reference || '—' }}</td>
+                      <td class="py-3 px-4 text-gray-600">{{ getUserFullName(r.received_by) }}</td>
+                      <td class="py-3 px-4 text-gray-500">{{ r.remarks || '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="text-center py-10 text-gray-500 border border-dashed rounded-lg">
+                No payments recorded yet. Click "Record Receipt" to register a payment.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -120,13 +255,34 @@
         <div class="space-y-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Assignment Details</h4>
           <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <span class="text-gray-500">Purpose:</span>
-              <span class="font-medium text-gray-900">{{ task.purpose_type }}</span>
+              <select
+                v-if="isManager"
+                v-model="task.purpose_type"
+                @change="updateField('purpose_type', task.purpose_type)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-900 bg-gray-50 max-w-[150px]"
+              >
+                <option value="Software Payment">Software Payment</option>
+                <option value="AMC">AMC</option>
+                <option value="New Feature">New Feature</option>
+                <option value="Customization">Customization</option>
+                <option value="Support">Support</option>
+                <option value="Other">Other</option>
+              </select>
+              <span v-else class="font-medium text-gray-900">{{ task.purpose_type }}</span>
             </div>
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <span class="text-gray-500">Assignee:</span>
-              <span class="font-medium text-gray-900">{{ getUserFullName(task.assigned_to) }}</span>
+              <select
+                v-if="isManager"
+                v-model="task.assigned_to"
+                @change="updateField('assigned_to', task.assigned_to)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-900 bg-gray-50"
+              >
+                <option v-for="(name, email) in userMap" :key="email" :value="email">{{ name }}</option>
+              </select>
+              <span v-else class="font-medium text-gray-900">{{ getUserFullName(task.assigned_to) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500">Created:</span>
@@ -141,30 +297,48 @@
 
         <!-- Contact Info -->
         <div class="space-y-4 border-t pt-4">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Customer Contact Details</h4>
-            <Button variant="solid" @click="openLogCallModal" class="bg-blue-600 hover:bg-blue-700 text-white !py-1 !px-3 text-xs">
-              <template #prefix><LucidePhoneCall class="w-3.5 h-3.5" /></template>
-              Call Now
-            </Button>
-          </div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Customer Contact Details</h4>
           <div class="space-y-3 text-sm">
             <div>
-              <span class="text-gray-500 block text-xs">Primary Contact:</span>
-              <span class="font-semibold text-gray-900">{{ task.contact_person }}</span>
+              <span class="text-gray-500 block text-xs mb-1">Primary Contact:</span>
+              <input
+                v-if="isManager"
+                v-model="task.contact_person"
+                @blur="updateField('contact_person', task.contact_person)"
+                type="text"
+                class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-gray-900 bg-gray-50"
+              />
+              <span v-else class="font-semibold text-gray-900">{{ task.contact_person }}</span>
             </div>
 
             <div>
-              <span class="text-gray-500 block text-xs">Primary Mobile:</span>
-              <a :href="'tel:' + task.mobile_number" class="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline">
+              <span class="text-gray-500 block text-xs mb-1">Primary Mobile:</span>
+              <div v-if="isManager" class="flex gap-2">
+                <input
+                  v-model="task.mobile_number"
+                  @blur="updateField('mobile_number', task.mobile_number)"
+                  type="text"
+                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-blue-600 bg-gray-50"
+                />
+              </div>
+              <a v-else :href="'tel:' + task.mobile_number" class="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline">
                 <LucidePhone class="w-3.5 h-3.5 text-blue-500" />
                 {{ task.mobile_number }}
               </a>
             </div>
 
-            <div v-if="task.alternate_mobile">
-              <span class="text-gray-500 block text-xs">Alternate Mobile:</span>
-              <a :href="'tel:' + task.alternate_mobile" class="inline-flex items-center gap-1 font-medium text-gray-700 hover:underline">
+            <div v-if="task.alternate_mobile || isManager">
+              <span class="text-gray-500 block text-xs mb-1">Alternate Mobile:</span>
+              <div v-if="isManager" class="flex gap-2">
+                <input
+                  v-model="task.alternate_mobile"
+                  @blur="updateField('alternate_mobile', task.alternate_mobile)"
+                  type="text"
+                  placeholder="Optional"
+                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-700 bg-gray-50"
+                />
+              </div>
+              <a v-else-if="task.alternate_mobile" :href="'tel:' + task.alternate_mobile" class="inline-flex items-center gap-1 font-medium text-gray-700 hover:underline">
                 <LucidePhone class="w-3.5 h-3.5 text-gray-400" />
                 {{ task.alternate_mobile }}
               </a>
@@ -175,7 +349,14 @@
         <!-- Description -->
         <div class="space-y-4 border-t pt-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Purpose Description</h4>
-          <p class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <textarea
+            v-if="isManager"
+            v-model="task.task_description"
+            @blur="updateField('task_description', task.task_description)"
+            rows="4"
+            class="w-full text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          ></textarea>
+          <p v-else class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
             {{ task.task_description }}
           </p>
         </div>
@@ -274,7 +455,88 @@
       </template>
     </Dialog>
 
-    
+    <!-- DIALOG MODAL: RECORD RECEIPT -->
+    <Dialog
+      v-model="receiptModalOpen"
+      :options="{
+        title: 'Record Payment Collection Receipt',
+        size: 'xl'
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4 p-1">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Amount Received -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Amount Received (INR) <span class="text-red-500">*</span></label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                <input
+                  v-model="receiptForm.amount_received"
+                  type="number"
+                  placeholder="0"
+                  class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-green-500 focus:outline-none font-bold"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Payment Mode -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode <span class="text-red-500">*</span></label>
+              <select
+                v-model="receiptForm.payment_mode"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+                required
+              >
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Online">Online</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <!-- Reference Number -->
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Transaction Reference (e.g. UTR / Cheque No.)</label>
+              <input
+                v-model="receiptForm.transaction_reference"
+                type="text"
+                placeholder="UTR transaction hash, bank reference, or cheque number"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+              />
+            </div>
+
+            <!-- Remarks -->
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Remarks</label>
+              <textarea
+                v-model="receiptForm.remarks"
+                rows="2"
+                placeholder="Remarks about the payment receipt"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="subtle" @click="receiptModalOpen = false">Close</Button>
+          <Button variant="solid" :loading="isReceiptSaving" @click="saveReceipt" class="bg-green-600 text-white hover:bg-green-700">Record Payment</Button>
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Customer Search Popup Modal -->
+    <Teleport to="body">
+      <CustomerSearchPopup
+        v-if="showCustomerSearch"
+        v-model="showCustomerSearch"
+        @customerSelected="handleCustomerSelected"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -285,8 +547,13 @@ import { call, Button, Badge, Dialog } from "frappe-ui";
 import LucideArrowLeft from "~icons/lucide/arrow-left";
 import LucidePhoneCall from "~icons/lucide/phone-call";
 import LucidePlus from "~icons/lucide/plus";
+import LucideCheck from "~icons/lucide/check";
 import LucidePhone from "~icons/lucide/phone";
 import LucideCalendar from "~icons/lucide/calendar";
+import LucideTrash2 from "~icons/lucide/trash-2";
+import LucideEdit from "~icons/lucide/edit";
+import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   taskId: {
@@ -296,14 +563,16 @@ const props = defineProps({
 });
 
 const router = useRouter();
+const { isManager } = useAuthStore();
 const task = ref<any>(null);
 const customerName = ref("");
-const standaloneLogs = ref<any[]>([]);
+const activeTab = ref("calls");
 
 // Cache maps
 const userMap = ref<Record<string, string>>({});
 
 // Modals
+const showCustomerSearch = ref(false);
 const callModalOpen = ref(false);
 const isCallSaving = ref(false);
 const callForm = ref({
@@ -346,11 +615,6 @@ async function fetchTaskDetails() {
       });
       customerName.value = cust?.customer_name || doc.customer;
     }
-
-    const logs = await call("test_app.api.get_call_management_logs", {
-      task_id: props.taskId
-    });
-    standaloneLogs.value = logs || [];
   } catch (err) {
     console.error("Failed to load task details:", err);
     alert("Failed to load payment collection task details.");
@@ -373,12 +637,71 @@ async function fetchUsers() {
 }
 
 const sortedCalls = computed(() => {
-  if (!standaloneLogs.value) return [];
-  return [...standaloneLogs.value];
+  if (!task.value?.call_history) return [];
+  return [...task.value.call_history].sort(
+    (a, b) => new Date(b.call_date_and_time).getTime() - new Date(a.call_date_and_time).getTime()
+  );
 });
 
 function getUserFullName(email: string) {
   return userMap.value[email] || email;
+}
+
+// Actions
+async function deleteTask() {
+  if (!confirm("Are you sure you want to permanently delete this Payment Collection Task?")) return;
+  try {
+    await call("frappe.client.delete", { doctype: "Payment Collection Task", name: props.taskId });
+    router.push({ name: 'PaymentCollectionTaskList' });
+  } catch (err: any) {
+    console.error("Failed to delete task:", err);
+    alert(err.message || "Failed to delete task.");
+  }
+}
+
+async function updateStatus() {
+  try {
+    const doc = await call("frappe.client.set_value", {
+      doctype: "Payment Collection Task",
+      name: props.taskId,
+      fieldname: "status",
+      value: task.value.status
+    });
+    if (doc) {
+      // Reload task details to sync amounts and check for status
+      await fetchTaskDetails();
+    }
+  } catch (err: any) {
+    console.error("Failed to update status:", err);
+    alert(err.message || "Failed to update status. Outstanding balance constraint might apply.");
+    // Revert status on UI
+    await fetchTaskDetails();
+  }
+}
+
+async function updateField(fieldname: string, value: any) {
+  try {
+    await call("frappe.client.set_value", {
+      doctype: "Payment Collection Task",
+      name: props.taskId,
+      fieldname,
+      value
+    });
+    await fetchTaskDetails();
+  } catch (err: any) {
+    console.error(`Failed to update ${fieldname}:`, err);
+    alert(err.message || `Failed to update ${fieldname}.`);
+    await fetchTaskDetails();
+  }
+}
+
+function openCustomerSearch() {
+  if (isManager) showCustomerSearch.value = true;
+}
+
+async function handleCustomerSelected(customer: any) {
+  await updateField("customer", customer.name);
+  showCustomerSearch.value = false;
 }
 
 // Log Call Modal actions
@@ -412,6 +735,61 @@ async function saveCallLog() {
     alert(err.message || "Failed to log call.");
   } finally {
     isCallSaving.value = false;
+  }
+}
+
+// Record Receipt Modal actions
+function openReceiptModal() {
+  receiptForm.value = {
+    amount_received: task.value.outstanding_amount || 0,
+    payment_mode: "Bank Transfer",
+    transaction_reference: "",
+    remarks: ""
+  };
+  receiptModalOpen.value = true;
+}
+
+async function saveReceipt() {
+  if (!receiptForm.value.amount_received || receiptForm.value.amount_received <= 0) {
+    alert("Please enter a valid amount received.");
+    return;
+  }
+  isReceiptSaving.value = true;
+  try {
+    const updatedDoc = await call("test_app.api.record_payment_receipt", {
+      task_id: props.taskId,
+      ...receiptForm.value
+    });
+    if (updatedDoc) {
+      task.value = updatedDoc;
+      receiptModalOpen.value = false;
+      await fetchTaskDetails(); // Full sync
+    }
+  } catch (err: any) {
+    console.error("Failed to record receipt:", err);
+    alert(err.message || "Failed to record receipt.");
+  } finally {
+    isReceiptSaving.value = false;
+  }
+}
+
+// Update commitment status
+async function updateCommitment(commitmentId: string, status: string) {
+  const remarks = prompt(`Enter optional remarks/feedback for marking this promise as ${status}:`);
+  try {
+    const updatedDoc = await call("test_app.api.update_commitment_status", {
+      task_id: props.taskId,
+      commitment_row_id: commitmentId,
+      status,
+      remarks: remarks || ""
+    });
+    if (updatedDoc) {
+      task.value = updatedDoc;
+      await fetchTaskDetails(); // Full sync
+    }
+  } catch (err: any) {
+    console.error("Failed to update commitment:", err);
+    alert(err.message || "Failed to update commitment status.");
   }
 }
 
@@ -474,6 +852,21 @@ function getPriorityTheme(priority: string) {
       return "gray";
     default:
       return "blue";
+  }
+}
+
+function getCommitmentStatusClass(status: string) {
+  switch (status) {
+    case "Pending":
+      return "bg-yellow-100 text-yellow-800 border border-yellow-200";
+    case "Received":
+      return "bg-green-100 text-green-800 border border-green-200";
+    case "Not Received":
+      return "bg-red-100 text-red-800 border border-red-200";
+    case "Cancelled":
+      return "bg-gray-100 text-gray-800 border border-gray-200";
+    default:
+      return "bg-gray-100 text-gray-800";
   }
 }
 </script>
