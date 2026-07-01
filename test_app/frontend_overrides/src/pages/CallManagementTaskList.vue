@@ -177,12 +177,12 @@ onMounted(async () => {
 async function fetchTasks() {
   isLoading.value = true;
   try {
-    const user = await call("test_app.api.get_current_user");
-    const { isManager } = useAuthStore();
+    const authStore = useAuthStore();
+    const { isManager, userId } = authStore;
     
     let queryFilters: Record<string, any> = {};
     if (!isManager) {
-      queryFilters.assigned_to = user;
+      queryFilters.assigned_to = userId;
     }
 
     const list = await call("frappe.client.get_list", {

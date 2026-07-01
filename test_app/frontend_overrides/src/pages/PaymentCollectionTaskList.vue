@@ -184,8 +184,8 @@ import LucideFileText from "~icons/lucide/file-text";
 import LucideTrash2 from "~icons/lucide/trash-2";
 import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter();
-const { isManager } = useAuthStore();
+const authStore = useAuthStore();
+const { isManager, userId } = authStore;
 const tasks = ref<any[]>([]);
 const isLoading = ref(false);
 
@@ -202,8 +202,14 @@ onMounted(async () => {
 async function fetchTasks() {
   isLoading.value = true;
   try {
+    let queryFilters: Record<string, any> = {};
+    if (!isManager) {
+      queryFilters.assigned_to = userId;
+    }
+
     const list = await call("frappe.client.get_list", {
       doctype: "Payment Collection Task",
+      filters: queryFilters,
       fields: [
         "name",
         "customer",
