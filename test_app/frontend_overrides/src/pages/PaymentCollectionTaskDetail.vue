@@ -18,6 +18,8 @@
           </div>
           <div class="flex items-center gap-2 mt-1">
             <p class="text-sm text-gray-500">Customer: <span class="font-semibold text-gray-700">{{ customerName }}</span></p>
+            <span class="text-gray-300">|</span>
+            <p class="text-sm text-gray-500">Code: <span class="font-mono font-semibold text-gray-700">{{ task.customer_code }}</span></p>
             <button v-if="isManager" @click="openCustomerSearch" class="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded transition" title="Change Customer">
               <LucideEdit class="w-3.5 h-3.5" /> Edit
             </button>

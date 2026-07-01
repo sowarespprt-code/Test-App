@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "customer",
+  "customer_code",
   "purpose_type",
   "priority",
   "status",
@@ -34,6 +35,14 @@
    "label": "Customer",
    "options": "HD Customer",
    "reqd": 1
+  },
+  {
+   "fieldname": "customer_code",
+   "fieldtype": "Data",
+   "label": "Customer Code",
+   "reqd": 1,
+   "fetch_from": "customer.custom_customercode",
+   "in_list_view": 1
   },
   {
    "fieldname": "purpose_type",

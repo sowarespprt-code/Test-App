@@ -25,6 +25,34 @@
           <div>
             <h2 class="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">1. Customer Information</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Customer Code -->
+              <div class="col-span-1 md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Code <span class="text-red-500">*</span>
+                </label>
+                <div class="flex gap-3">
+                  <input
+                    v-model="task.customer_code"
+                    @keyup.enter="fetchCustomerByCode"
+                    type="text"
+                    placeholder="Enter Customer Code and press Enter..."
+                    class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    @click="fetchCustomerByCode"
+                    class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors duration-200 border border-blue-200 whitespace-nowrap flex-shrink-0"
+                    :disabled="isFetchingCustomer"
+                  >
+                    <LucideSearch v-if="!isFetchingCustomer" class="w-4 h-4" />
+                    <div v-else class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                    Fetch
+                  </button>
+                </div>
+                <p v-if="fetchError" class="mt-1 text-sm text-red-500">{{ fetchError }}</p>
+              </div>
+
               <!-- Customer Selection -->
               <div class="col-span-1 md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -218,7 +246,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { call, Button, Autocomplete } from "frappe-ui";
+import { call, Button, Autocomplete, Dialog } from "frappe-ui";
 import LucideArrowLeft from "~icons/lucide/arrow-left";
 import LucideCheck from "~icons/lucide/check";
 import LucideSearch from "~icons/lucide/search";
@@ -230,6 +258,7 @@ const showSearchPopup = ref(false);
 
 const task = ref({
   customer: "",
+  customer_code: "",
   purpose_type: "Software Payment",
   task_description: "",
   assigned_to: "",
@@ -247,6 +276,8 @@ const selectedAssignee = ref<any>('');
 
 const customerOptions = ref<any[]>([]);
 const userOptions = ref<any[]>([]);
+const isFetchingCustomer = ref(false);
+const fetchError = ref("");
 
 onMounted(async () => {
   await fetchUsers();
@@ -284,6 +315,47 @@ async function searchCustomers(query: string) {
     }));
   } catch (err) {
     console.error("Failed to fetch customers:", err);
+  }
+}
+
+async function fetchCustomerByCode() {
+  if (!task.value.customer_code) return;
+  
+  isFetchingCustomer.value = true;
+  fetchError.value = "";
+  
+  try {
+    const list = await call("frappe.client.get_list", {
+      doctype: "HD Customer",
+      filters: { custom_customercode: task.value.customer_code },
+      fields: ["name", "customer_name"],
+      limit_page_length: 1
+    });
+
+    if (list && list.length > 0) {
+      const cust = list[0];
+      const opt = { label: cust.customer_name, value: cust.name };
+      
+      // Ensure it's in our options
+      if (!customerOptions.value.find((c: any) => c.value === cust.name)) {
+        customerOptions.value.push(opt);
+      }
+      
+      selectedCustomer.value = opt;
+      handleCustomerChange(opt);
+    } else {
+      fetchError.value = "No customer found with that code.";
+      selectedCustomer.value = null;
+      task.value.customer = "";
+      task.value.contact_person = "";
+      task.value.mobile_number = "";
+      task.value.alternate_mobile = "";
+    }
+  } catch (err) {
+    console.error(err);
+    fetchError.value = "Failed to fetch customer.";
+  } finally {
+    isFetchingCustomer.value = false;
   }
 }
 

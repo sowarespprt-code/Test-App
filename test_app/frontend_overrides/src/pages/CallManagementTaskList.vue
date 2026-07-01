@@ -80,7 +80,8 @@
             <thead class="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Task Number</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer Code</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer Name</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Purpose</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned To</th>
                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Payment Due</th>
@@ -101,6 +102,11 @@
                   <span class="text-sm font-semibold text-blue-600 hover:underline">
                     {{ task.name }}
                   </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm font-mono font-medium text-gray-700">
+                    {{ task.customer_code || '—' }}
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm font-medium text-gray-900">
@@ -191,6 +197,7 @@ async function fetchTasks() {
       fields: [
         "name",
         "customer",
+        "customer_code",
         "purpose_type",
         "payment_amount",
         "outstanding_amount",
