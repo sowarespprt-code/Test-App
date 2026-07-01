@@ -16,7 +16,12 @@
             <Badge :variant="'subtle'" :theme="getStatusTheme(task.status)" :label="task.status" />
             <Badge :variant="'outline'" :theme="getPriorityTheme(task.priority)" :label="task.priority + ' Priority'" />
           </div>
-          <p class="text-sm text-gray-500 mt-1">Customer: <span class="font-semibold text-gray-700">{{ customerName }}</span></p>
+          <div class="flex items-center gap-2 mt-1">
+            <p class="text-sm text-gray-500">Customer: <span class="font-semibold text-gray-700">{{ customerName }}</span></p>
+            <button v-if="isManager" @click="openCustomerSearch" class="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded transition" title="Change Customer">
+              <LucideEdit class="w-3.5 h-3.5" /> Edit
+            </button>
+          </div>
         </div>
       </div>
 
@@ -254,9 +259,17 @@
               <span class="text-gray-500">Purpose:</span>
               <span class="font-medium text-gray-900">{{ task.purpose_type }}</span>
             </div>
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <span class="text-gray-500">Assignee:</span>
-              <span class="font-medium text-gray-900">{{ getUserFullName(task.assigned_to) }}</span>
+              <select
+                v-if="isManager"
+                v-model="task.assigned_to"
+                @change="updateField('assigned_to', task.assigned_to)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-900 bg-gray-50"
+              >
+                <option v-for="(name, email) in userMap" :key="email" :value="email">{{ name }}</option>
+              </select>
+              <span v-else class="font-medium text-gray-900">{{ getUserFullName(task.assigned_to) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500">Created:</span>
@@ -471,6 +484,15 @@
         </div>
       </template>
     </Dialog>
+
+    <!-- Customer Search Popup Modal -->
+    <Teleport to="body">
+      <CustomerSearchPopup
+        v-if="showCustomerSearch"
+        v-model="showCustomerSearch"
+        @customerSelected="handleCustomerSelected"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -485,6 +507,8 @@ import LucideCheck from "~icons/lucide/check";
 import LucidePhone from "~icons/lucide/phone";
 import LucideCalendar from "~icons/lucide/calendar";
 import LucideTrash2 from "~icons/lucide/trash-2";
+import LucideEdit from "~icons/lucide/edit";
+import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
@@ -504,6 +528,7 @@ const activeTab = ref("calls");
 const userMap = ref<Record<string, string>>({});
 
 // Modals
+const showCustomerSearch = ref(false);
 const callModalOpen = ref(false);
 const isCallSaving = ref(false);
 const callForm = ref({
@@ -608,6 +633,31 @@ async function updateStatus() {
     // Revert status on UI
     await fetchTaskDetails();
   }
+}
+
+async function updateField(fieldname: string, value: any) {
+  try {
+    await call("frappe.client.set_value", {
+      doctype: "Payment Collection Task",
+      name: props.taskId,
+      fieldname,
+      value
+    });
+    await fetchTaskDetails();
+  } catch (err: any) {
+    console.error(`Failed to update ${fieldname}:`, err);
+    alert(err.message || `Failed to update ${fieldname}.`);
+    await fetchTaskDetails();
+  }
+}
+
+function openCustomerSearch() {
+  if (isManager) showCustomerSearch.value = true;
+}
+
+async function handleCustomerSelected(customer: any) {
+  await updateField("customer", customer.name);
+  showCustomerSearch.value = false;
 }
 
 // Log Call Modal actions

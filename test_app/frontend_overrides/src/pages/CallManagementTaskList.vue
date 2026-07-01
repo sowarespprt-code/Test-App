@@ -168,7 +168,7 @@ const isLoading = ref(false);
 const searchQuery = ref("");
 const statusFilter = ref("Pending");
 const priorityFilter = ref("All");
-const dateFilter = ref("Today");
+const dateFilter = ref("All");
 
 onMounted(async () => {
   await fetchTasks();

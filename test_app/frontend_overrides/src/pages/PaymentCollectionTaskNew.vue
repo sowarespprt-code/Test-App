@@ -15,15 +15,6 @@
           <p class="text-sm text-gray-500 mt-1">Assign a new payment collection assignment to a staff member.</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <Button variant="subtle" @click="router.back()">Cancel</Button>
-        <Button variant="solid" :loading="isSaving" @click="saveTask">
-          <template #prefix>
-            <LucideCheck class="w-4 h-4" />
-          </template>
-          Create Task
-        </Button>
-      </div>
     </div>
 
     <!-- Form Content -->
@@ -196,6 +187,17 @@
                   required
                 ></textarea>
               </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-3 pt-6 border-t mt-4">
+              <Button variant="subtle" @click="router.back()">Cancel</Button>
+              <Button variant="solid" :loading="isSaving" @click="saveTask">
+                <template #prefix>
+                  <LucideCheck class="w-4 h-4" />
+                </template>
+                Create Task
+              </Button>
             </div>
           </div>
         </div>
