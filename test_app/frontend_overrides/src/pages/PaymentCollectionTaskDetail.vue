@@ -255,9 +255,22 @@
         <div class="space-y-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Assignment Details</h4>
           <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <span class="text-gray-500">Purpose:</span>
-              <span class="font-medium text-gray-900">{{ task.purpose_type }}</span>
+              <select
+                v-if="isManager"
+                v-model="task.purpose_type"
+                @change="updateField('purpose_type', task.purpose_type)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-900 bg-gray-50 max-w-[150px]"
+              >
+                <option value="Software Payment">Software Payment</option>
+                <option value="AMC">AMC</option>
+                <option value="New Feature">New Feature</option>
+                <option value="Customization">Customization</option>
+                <option value="Support">Support</option>
+                <option value="Other">Other</option>
+              </select>
+              <span v-else class="font-medium text-gray-900">{{ task.purpose_type }}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-gray-500">Assignee:</span>
@@ -287,21 +300,45 @@
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Customer Contact Details</h4>
           <div class="space-y-3 text-sm">
             <div>
-              <span class="text-gray-500 block text-xs">Primary Contact:</span>
-              <span class="font-semibold text-gray-900">{{ task.contact_person }}</span>
+              <span class="text-gray-500 block text-xs mb-1">Primary Contact:</span>
+              <input
+                v-if="isManager"
+                v-model="task.contact_person"
+                @blur="updateField('contact_person', task.contact_person)"
+                type="text"
+                class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-gray-900 bg-gray-50"
+              />
+              <span v-else class="font-semibold text-gray-900">{{ task.contact_person }}</span>
             </div>
 
             <div>
-              <span class="text-gray-500 block text-xs">Primary Mobile:</span>
-              <a :href="'tel:' + task.mobile_number" class="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline">
+              <span class="text-gray-500 block text-xs mb-1">Primary Mobile:</span>
+              <div v-if="isManager" class="flex gap-2">
+                <input
+                  v-model="task.mobile_number"
+                  @blur="updateField('mobile_number', task.mobile_number)"
+                  type="text"
+                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-blue-600 bg-gray-50"
+                />
+              </div>
+              <a v-else :href="'tel:' + task.mobile_number" class="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline">
                 <LucidePhone class="w-3.5 h-3.5 text-blue-500" />
                 {{ task.mobile_number }}
               </a>
             </div>
 
-            <div v-if="task.alternate_mobile">
-              <span class="text-gray-500 block text-xs">Alternate Mobile:</span>
-              <a :href="'tel:' + task.alternate_mobile" class="inline-flex items-center gap-1 font-medium text-gray-700 hover:underline">
+            <div v-if="task.alternate_mobile || isManager">
+              <span class="text-gray-500 block text-xs mb-1">Alternate Mobile:</span>
+              <div v-if="isManager" class="flex gap-2">
+                <input
+                  v-model="task.alternate_mobile"
+                  @blur="updateField('alternate_mobile', task.alternate_mobile)"
+                  type="text"
+                  placeholder="Optional"
+                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-700 bg-gray-50"
+                />
+              </div>
+              <a v-else-if="task.alternate_mobile" :href="'tel:' + task.alternate_mobile" class="inline-flex items-center gap-1 font-medium text-gray-700 hover:underline">
                 <LucidePhone class="w-3.5 h-3.5 text-gray-400" />
                 {{ task.alternate_mobile }}
               </a>
@@ -312,7 +349,14 @@
         <!-- Description -->
         <div class="space-y-4 border-t pt-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Purpose Description</h4>
-          <p class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <textarea
+            v-if="isManager"
+            v-model="task.task_description"
+            @blur="updateField('task_description', task.task_description)"
+            rows="4"
+            class="w-full text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          ></textarea>
+          <p v-else class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
             {{ task.task_description }}
           </p>
         </div>
