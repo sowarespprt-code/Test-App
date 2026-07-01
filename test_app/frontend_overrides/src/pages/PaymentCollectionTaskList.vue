@@ -183,7 +183,7 @@ import LucideSearch from "~icons/lucide/search";
 import LucideFileText from "~icons/lucide/file-text";
 import LucideTrash2 from "~icons/lucide/trash-2";
 import { useAuthStore } from "@/stores/auth";
-
+const router = useRouter();
 const authStore = useAuthStore();
 const { isManager, userId } = authStore;
 const tasks = ref<any[]>([]);
