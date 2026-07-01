@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:CML-{####}",
+ "creation": "2026-06-29 16:30:22.083625",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_collection_task",
+  "call_date_and_time",
+  "staff_member",
+  "customer_response",
+  "call_outcome",
+  "discussion_summary",
+  "promised_amount",
+  "promised_payment_date",
+  "next_follow_up_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "payment_collection_task",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment Collection Task",
+   "options": "Payment Collection Task",
+   "reqd": 1
+  },
+  {
+   "fieldname": "call_date_and_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Call Date and Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "staff_member",
+   "fieldtype": "Link",
+   "label": "Staff Member",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer_response",
+   "fieldtype": "Data",
+   "label": "Customer Response",
+   "reqd": 1
+  },
+  {
+   "fieldname": "call_outcome",
+   "fieldtype": "Data",
+   "label": "Call Outcome"
+  },
+  {
+   "fieldname": "discussion_summary",
+   "fieldtype": "Small Text",
+   "label": "Discussion Summary"
+  },
+  {
+   "fieldname": "promised_amount",
+   "fieldtype": "Currency",
+   "label": "Promised Amount"
+  },
+  {
+   "fieldname": "promised_payment_date",
+   "fieldtype": "Date",
+   "label": "Promised Payment Date"
+  },
+  {
+   "fieldname": "next_follow_up_date",
+   "fieldtype": "Date",
+   "label": "Next Follow Up Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-01 12:38:42.913212",
+ "modified_by": "Administrator",
+ "module": "Test App",
+ "name": "Call Management Log",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Desk User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
