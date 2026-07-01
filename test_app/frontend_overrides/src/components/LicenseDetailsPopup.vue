@@ -270,6 +270,7 @@ interface LicenseData {
 interface Props {
   modelValue: boolean;
   customerCode: string;
+  customerName?: string;
 }
 
 const props = defineProps<Props>();
@@ -322,7 +323,7 @@ async function fetchDetails() {
   licenseData.value = null;
 
   try {
-    const data = await call('test_app.api.license.get_customer_license_details', {
+    const data = await call('helpdesk.api.license.get_customer_license_details', {
       customer_code: props.customerCode,
     });
 
@@ -330,9 +331,48 @@ async function fetchDetails() {
       throw new Error('No license details found for this customer');
     }
 
+    if (!data.AMCEndDate || data.AMCEndDate === "null") {
+      if (props.customerName) {
+         try {
+           const amcResult = await call("frappe.client.get_value", {
+             doctype: "HD Customer",
+             filters: { customer_name: props.customerName },
+             fieldname: ["custom_dateofamclastpaid"]
+           });
+           const amcDate = amcResult?.message?.custom_dateofamclastpaid || amcResult?.custom_dateofamclastpaid;
+           if (amcDate) {
+             data.AMCEndDate = amcDate;
+             (data as any).source = "HD Customer";
+           }
+         } catch(e) {}
+      }
+    }
+
     licenseData.value = data;
     emit('licenseLoaded', data);
   } catch (err: any) {
+    if (props.customerName) {
+      try {
+           const amcResult = await call("frappe.client.get_value", {
+             doctype: "HD Customer",
+             filters: { customer_name: props.customerName },
+             fieldname: ["custom_dateofamclastpaid"]
+           });
+           const amcDate = amcResult?.message?.custom_dateofamclastpaid || amcResult?.custom_dateofamclastpaid;
+           if (amcDate) {
+             licenseData.value = {
+                CustomerCode: props.customerCode,
+                CustomerName: props.customerName,
+                AMCEndDate: amcDate,
+                source: "HD Customer"
+             } as any;
+             emit('licenseLoaded', licenseData.value!);
+             loading.value = false;
+             return;
+           }
+      } catch(e) {}
+    }
+
     error.value = err?.message || String(err);
     licenseData.value = null;
   } finally {

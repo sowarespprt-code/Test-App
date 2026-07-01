@@ -19,6 +19,14 @@
 
     <!-- Form Content -->
     <div class="flex-1 overflow-y-auto bg-gray-50">
+      <!-- Reusable License Details Popup -->
+      <LicenseDetailsPopup
+        v-model="showLicensePopup"
+        :customer-code="task.customer_code || ''"
+        :customer-name="selectedCustomer?.customer_name || ''"
+        @licenseLoaded="handleLicenseLoaded"
+      />
+
       <div class="max-w-4xl mx-auto p-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 space-y-6">
           <!-- Step 1: Customer Details -->
@@ -48,6 +56,15 @@
                     <LucideSearch v-if="!isFetchingCustomer" class="w-4 h-4" />
                     <div v-else class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
                     Fetch
+                  </button>
+                  <button
+                    type="button"
+                    @click="openLicensePopup"
+                    class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200 shadow-sm whitespace-nowrap flex-shrink-0"
+                    title="View License Details"
+                  >
+                    <LucideLock class="w-4 h-4" />
+                    License
                   </button>
                 </div>
                 <p v-if="fetchError" class="mt-1 text-sm text-red-500">{{ fetchError }}</p>
@@ -250,7 +267,9 @@ import { call, Button, Autocomplete, Dialog } from "frappe-ui";
 import LucideArrowLeft from "~icons/lucide/arrow-left";
 import LucideCheck from "~icons/lucide/check";
 import LucideSearch from "~icons/lucide/search";
+import LucideLock from "~icons/lucide/lock";
 import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
+import LicenseDetailsPopup from "@/components/LicenseDetailsPopup.vue";
 
 const router = useRouter();
 const isSaving = ref(false);
@@ -278,6 +297,27 @@ const customerOptions = ref<any[]>([]);
 const userOptions = ref<any[]>([]);
 const isFetchingCustomer = ref(false);
 const fetchError = ref("");
+const showLicensePopup = ref(false);
+const licenseData = ref<any | null>(null);
+
+function handleLicenseLoaded(data: any) {
+  licenseData.value = data;
+}
+
+async function openLicensePopup() {
+  if (!task.value.customer_code) {
+    fetchError.value = "Please enter a customer code first.";
+    return;
+  }
+  
+  if (!selectedCustomer.value || selectedCustomer.value.custom_customercode !== task.value.customer_code) {
+    await fetchCustomerByCode();
+  }
+  
+  if (selectedCustomer.value) {
+    showLicensePopup.value = true;
+  }
+}
 
 onMounted(async () => {
   await fetchUsers();
