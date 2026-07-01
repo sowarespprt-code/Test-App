@@ -375,7 +375,7 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "promised_payment_date": promised_payment_date,
             "next_follow_up_date": next_follow_up_date
         })
-        doc.insert()
+        doc.insert(ignore_permissions=True)
         
         # Also mirror to Payment Collection Task child tables
         task_doc = frappe.get_doc("Payment Collection Task", task_id)
