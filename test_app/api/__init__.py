@@ -176,7 +176,7 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
         frappe.throw(f"Failed to log call: {str(e)}")
 
 @frappe.whitelist()
-def record_payment_receipt(task_id, amount_received, payment_mode, transaction_reference=None, remarks=None):
+def record_payment_receipt(task_id, amount_received, payment_mode, transaction_reference=None, remarks=None, next_follow_up_date=None, commitment_row_id=None, commitment_status=None):
     """Record a receipt of payment under a Payment Collection Task"""
     try:
         task = frappe.get_doc("Payment Collection Task", task_id)
@@ -191,6 +191,21 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
             "remarks": remarks
         })
         
+        if next_follow_up_date:
+            task.next_follow_up_date = next_follow_up_date
+            
+        if commitment_row_id and commitment_status:
+            for c in task.payment_commitments:
+                if c.name == commitment_row_id:
+                    c.status = commitment_status
+                    if remarks:
+                        c.remarks = remarks
+                    if amount_received:
+                        c.amount_paid = amount_received
+                    if next_follow_up_date:
+                        c.next_follow_up_date = next_follow_up_date
+                    break
+                    
         task.save()
         frappe.db.commit()
         return task.as_dict()

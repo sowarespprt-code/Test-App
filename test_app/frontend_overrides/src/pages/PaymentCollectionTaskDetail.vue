@@ -11,6 +11,7 @@
           <LucideArrowLeft class="w-5 h-5 text-gray-600" />
         </button>
         <div>
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Payment Task</div>
           <div class="flex items-center gap-3">
             <h1 class="text-2xl font-bold text-gray-900">{{ task.name }}</h1>
             <Badge :variant="'subtle'" :theme="getStatusTheme(task.status)" :label="task.status" />
