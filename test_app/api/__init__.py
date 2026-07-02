@@ -196,7 +196,7 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
         frappe.throw(f"Failed to record receipt: {str(e)}")
 
 @frappe.whitelist()
-def update_commitment_status(task_id, commitment_row_id, status, remarks=None):
+def update_commitment_status(task_id, commitment_row_id, status, remarks=None, amount_paid=None, next_follow_up_date=None):
     """Update status of a Payment Commitment"""
     try:
         task = frappe.get_doc("Payment Collection Task", task_id)
@@ -207,6 +207,10 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None):
                 c.status = status
                 if remarks:
                     c.remarks = remarks
+                if amount_paid:
+                    c.amount_paid = amount_paid
+                if next_follow_up_date:
+                    c.next_follow_up_date = next_follow_up_date
                 found = True
                 break
                 

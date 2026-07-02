@@ -202,6 +202,12 @@
                           >
                             Cancel
                           </button>
+                          <button
+                            @click="openPartialPaymentModal(c.name, c.promised_amount)"
+                            class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium border border-blue-200 transition"
+                          >
+                            Partially Paid
+                          </button>
                         </div>
                         <span v-else class="text-xs text-gray-400">Locked</span>
                       </td>
@@ -536,6 +542,52 @@
       </template>
     </Dialog>
 
+    <!-- Partial Payment Modal -->
+    <Dialog v-model="partialPaymentModalOpen">
+      <template #body-title>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Record Partial Payment</h3>
+      </template>
+      <template #body-content>
+        <div class="space-y-4 p-1">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Amount Paid (INR) <span class="text-red-500">*</span></label>
+            <input
+              v-model="partialPaymentForm.amount_paid"
+              type="number"
+              placeholder="Enter amount paid"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
+              required
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date <span class="text-red-500">*</span></label>
+            <input
+              v-model="partialPaymentForm.next_follow_up_date"
+              type="date"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Customer Remarks <span class="text-red-500">*</span></label>
+            <textarea
+              v-model="partialPaymentForm.customer_remarks"
+              rows="3"
+              placeholder="What did the customer say about the next payment?"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            ></textarea>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="subtle" @click="partialPaymentModalOpen = false">Close</Button>
+          <Button variant="solid" :loading="isPartialPaymentSaving" @click="savePartialPayment" class="bg-blue-600 text-white hover:bg-blue-700">Save Partial Payment</Button>
+        </div>
+      </template>
+    </Dialog>
+
     <!-- Customer Search Popup Modal -->
     <Teleport to="body">
       <CustomerSearchPopup
@@ -599,6 +651,15 @@ const receiptForm = ref({
   payment_mode: "Bank Transfer",
   transaction_reference: "",
   remarks: ""
+});
+
+const partialPaymentModalOpen = ref(false);
+const isPartialPaymentSaving = ref(false);
+const currentCommitmentName = ref("");
+const partialPaymentForm = ref({
+  amount_paid: 0,
+  next_follow_up_date: "",
+  customer_remarks: ""
 });
 
 onMounted(async () => {
@@ -768,6 +829,10 @@ async function saveReceipt() {
     alert("Please enter a valid amount received.");
     return;
   }
+  if (receiptForm.value.amount_received > task.value.outstanding_amount) {
+    alert("Amount received cannot be greater than the outstanding payable amount.");
+    return;
+  }
   isReceiptSaving.value = true;
   try {
     const updatedDoc = await call("test_app.api.record_payment_receipt", {
@@ -804,6 +869,48 @@ async function updateCommitment(commitmentId: string, status: string) {
   } catch (err: any) {
     console.error("Failed to update commitment:", err);
     alert(err.message || "Failed to update commitment status.");
+  }
+}
+
+function openPartialPaymentModal(commitmentId: string, promisedAmount: number) {
+  currentCommitmentName.value = commitmentId;
+  partialPaymentForm.value = {
+    amount_paid: promisedAmount || 0,
+    next_follow_up_date: "",
+    customer_remarks: ""
+  };
+  partialPaymentModalOpen.value = true;
+}
+
+async function savePartialPayment() {
+  if (!partialPaymentForm.value.amount_paid || partialPaymentForm.value.amount_paid <= 0) {
+    alert("Please enter a valid amount paid.");
+    return;
+  }
+  if (!partialPaymentForm.value.next_follow_up_date) {
+    alert("Please enter the next follow-up date.");
+    return;
+  }
+  isPartialPaymentSaving.value = true;
+  try {
+    const updatedDoc = await call("test_app.api.update_commitment_status", {
+      task_id: props.taskId,
+      commitment_row_id: currentCommitmentName.value,
+      status: "Partially Paid",
+      remarks: partialPaymentForm.value.customer_remarks,
+      amount_paid: partialPaymentForm.value.amount_paid,
+      next_follow_up_date: partialPaymentForm.value.next_follow_up_date
+    });
+    if (updatedDoc) {
+      task.value = updatedDoc;
+      partialPaymentModalOpen.value = false;
+      await fetchTaskDetails(); // Full sync
+    }
+  } catch (err: any) {
+    console.error("Failed to record partial payment:", err);
+    alert(err.message || "Failed to record partial payment.");
+  } finally {
+    isPartialPaymentSaving.value = false;
   }
 }
 

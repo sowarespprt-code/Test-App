@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "autoincrement",
- "creation": "2026-06-24 15:30:00.000000",
+ "creation": "2026-06-24 15:30:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -40,7 +40,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Pending\nReceived\nNot Received\nCancelled",
+   "options": "Pending\nReceived\nPartially Paid\nNot Received\nPartially Paid\nCancelled",
    "reqd": 1
   },
   {
@@ -51,13 +51,15 @@
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
- "modified": "2026-06-24 15:30:00.000000",
+ "links": [],
+ "modified": "2026-07-02 12:44:37.007983",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Payment Collection Commitment",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
