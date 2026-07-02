@@ -488,7 +488,8 @@
                   v-model="receiptForm.amount_received"
                   type="number"
                   placeholder="0"
-                  class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-green-500 focus:outline-none font-bold"
+                  :readonly="isReceiptAmountReadonly"
+                  :class="['w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-green-500 focus:outline-none font-bold', isReceiptAmountReadonly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '']"
                   required
                 />
               </div>
