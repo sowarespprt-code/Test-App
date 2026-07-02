@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "PCT-.#####",
- "creation": "2026-06-24 15:30:00.000000",
+ "creation": "2026-06-24 15:30:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -37,12 +37,12 @@
    "reqd": 1
   },
   {
+   "fetch_from": "customer.custom_customercode",
    "fieldname": "customer_code",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Customer Code",
-   "reqd": 1,
-   "fetch_from": "customer.custom_customercode",
-   "in_list_view": 1
+   "reqd": 1
   },
   {
    "fieldname": "purpose_type",
@@ -163,7 +163,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-24 15:30:00.000000",
+ "modified": "2026-07-02 10:37:04.835073",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Payment Collection Task",
@@ -198,5 +198,7 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1,
+ "track_views": 1
 }

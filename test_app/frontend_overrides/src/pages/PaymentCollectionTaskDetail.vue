@@ -78,11 +78,11 @@
         </div>
 
         <!-- Tabs Container -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col min-h-[400px]">
           <!-- Tab Headers -->
           <div class="border-b bg-gray-50 flex">
             <button
-              v-for="tab in ['calls', 'commitments', 'receipts']"
+              v-for="tab in ['activity', 'calls', 'commitments', 'receipts']"
               :key="tab"
               @click="activeTab = tab"
               class="px-6 py-4 text-sm font-semibold border-b-2 transition-all duration-150 capitalize"
@@ -90,12 +90,17 @@
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'"
             >
-              {{ tab === 'calls' ? 'Call History (' + (task.call_history?.length || 0) + ')' : tab === 'commitments' ? 'Payment Commitments (' + (task.payment_commitments?.length || 0) + ')' : 'Receipts & Payments (' + (task.payment_receipts?.length || 0) + ')' }}
+              {{ tab === 'calls' ? 'Call History (' + (task.call_history?.length || 0) + ')' : tab === 'commitments' ? 'Payment Commitments (' + (task.payment_commitments?.length || 0) + ')' : tab === 'receipts' ? 'Receipts & Payments (' + (task.payment_receipts?.length || 0) + ')' : 'Activity' }}
             </button>
           </div>
 
           <!-- Tab Contents -->
-          <div class="p-6">
+          <div class="p-6 flex-1 overflow-y-auto">
+            <!-- TAB 0: ACTIVITY LOG -->
+            <div v-if="activeTab === 'activity'" class="h-full">
+              <TaskActivityPanel doctype="Payment Collection Task" :docname="task.name" />
+            </div>
+
             <!-- TAB 1: CALL HISTORY -->
             <div v-if="activeTab === 'calls'" class="space-y-4">
               <div class="flex items-center justify-between mb-2">
@@ -555,6 +560,7 @@ import LucideCalendar from "~icons/lucide/calendar";
 import LucideTrash2 from "~icons/lucide/trash-2";
 import LucideEdit from "~icons/lucide/edit";
 import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
+import TaskActivityPanel from "@/components/TaskActivityPanel.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
