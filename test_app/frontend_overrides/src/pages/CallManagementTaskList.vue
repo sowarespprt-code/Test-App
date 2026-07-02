@@ -184,11 +184,10 @@ async function fetchTasks() {
   isLoading.value = true;
   try {
     const authStore = useAuthStore();
-    const { isManager, userId } = authStore;
     
     let queryFilters: Record<string, any> = {};
-    if (!isManager) {
-      queryFilters.assigned_to = userId;
+    if (!authStore.isManager) {
+      queryFilters["assigned_to"] = authStore.userId;
     }
 
     const list = await call("frappe.client.get_list", {

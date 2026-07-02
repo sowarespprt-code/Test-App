@@ -135,7 +135,6 @@ async function fetchTasks() {
   isLoading.value = true;
   try {
     const authStore = useAuthStore();
-    const { isManager, userId } = authStore;
     
     // Frappe requires an array of filters if we want to use operators
     let filters: any[] = [
@@ -143,8 +142,8 @@ async function fetchTasks() {
       ["Payment Collection Task", "status", "not in", ["Completed", "Cancelled"]]
     ];
 
-    if (!isManager) {
-      filters.push(["Payment Collection Task", "assigned_to", "=", userId]);
+    if (!authStore.isManager) {
+      filters.push(["Payment Collection Task", "assigned_to", "=", authStore.userId]);
     }
 
     const list = await call("frappe.client.get_list", {
