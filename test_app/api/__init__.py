@@ -165,6 +165,9 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
                 "remarks": f"Auto-created from call log: {discussion_summary[:100]}"
             })
             
+        if task.status == "Open":
+            task.status = "In Progress"
+            
         task.save()
         frappe.db.commit()
         return task.as_dict()
@@ -402,6 +405,9 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             
         if next_follow_up_date:
             task_doc.next_follow_up_date = next_follow_up_date
+            
+        if task_doc.status == "Open":
+            task_doc.status = "In Progress"
             
         task_doc.save(ignore_permissions=True)
         frappe.db.commit()
