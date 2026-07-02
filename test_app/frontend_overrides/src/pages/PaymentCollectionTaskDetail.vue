@@ -604,6 +604,12 @@ const receiptForm = ref({
 onMounted(async () => {
   await fetchTaskDetails();
   await fetchUsers();
+  
+  // Log the view for activity tracker
+  call("test_app.api.timeline.log_view", {
+    doctype: "Payment Collection Task",
+    docname: props.taskId
+  }).catch(() => {});
 });
 
 async function fetchTaskDetails() {

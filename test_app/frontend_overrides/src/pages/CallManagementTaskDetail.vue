@@ -98,7 +98,7 @@
           <div class="p-6 flex-1 overflow-y-auto">
             <!-- TAB 0: ACTIVITY LOG -->
             <div v-if="activeTab === 'activity'" class="h-full">
-              <TaskActivityPanel doctype="Call Management Log" :docname="task.name" />
+              <TaskActivityPanel doctype="Payment Collection Task" :docname="task.name" />
             </div>
 
             <!-- TAB 1: CALL HISTORY -->
@@ -610,6 +610,12 @@ const receiptForm = ref({
 onMounted(async () => {
   await fetchTaskDetails();
   await fetchUsers();
+
+  // Log the view for activity tracker
+  call("test_app.api.timeline.log_view", {
+    doctype: "Payment Collection Task",
+    docname: props.taskId
+  }).catch(() => {});
 });
 
 async function fetchTaskDetails() {

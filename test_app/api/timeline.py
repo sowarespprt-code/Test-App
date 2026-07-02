@@ -90,3 +90,11 @@ def get_views(doctype: str, docname: str):
         v.user = get_user_info_for_avatar(v.owner)
     return views
 
+
+@frappe.whitelist()
+def log_view(doctype: str, docname: str):
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        doc.add_viewed(unique_views=True, force=True)
+    except Exception:
+        pass
