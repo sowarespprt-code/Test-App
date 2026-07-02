@@ -61,7 +61,25 @@ def get_history(doctype: str, docname: str):
                     changes.append(f"set {label} to {change[2]}")
                 action = ", ".join(changes)
             elif "added" in data:
-                action = "added row"
+                added_tables = []
+                for row in data["added"]:
+                    if not isinstance(row, list) or len(row) == 0:
+                        continue
+                    table_name = row[0]
+                    if table_name == "call_history":
+                        added_tables.append("a Call Log")
+                    elif table_name == "payment_commitments":
+                        added_tables.append("a Payment Commitment")
+                    elif table_name == "payment_receipts":
+                        added_tables.append("a Receipt")
+                    else:
+                        label = frappe.get_meta(doctype).get_field(table_name).label if frappe.get_meta(doctype).get_field(table_name) else table_name
+                        added_tables.append(f"a {label}")
+                if added_tables:
+                    # Remove duplicates and join
+                    action = f"added {', '.join(list(dict.fromkeys(added_tables)))}"
+                else:
+                    action = "added a row"
             elif "removed" in data:
                 action = "removed row"
             
@@ -95,6 +113,8 @@ def get_views(doctype: str, docname: str):
 def log_view(doctype: str, docname: str):
     try:
         doc = frappe.get_doc(doctype, docname)
-        doc.add_viewed(unique_views=True, force=True)
+        
+        # Don't use unique_views=True so that every view gets logged separately
+        doc.add_viewed(unique_views=False, force=True)
     except Exception:
         pass
