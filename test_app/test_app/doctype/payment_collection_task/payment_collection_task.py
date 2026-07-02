@@ -14,19 +14,6 @@ class PaymentCollectionTask(Document):
 		total_due = float(self.payment_amount or 0.0)
 		self.outstanding_amount = max(0.0, total_due - self.collected_amount)
 
-		# 3. Auto-update Next Follow-up Date from the latest call in Call History
-		self.next_follow_up_date = None
-		if self.call_history:
-			# Sort calls by call date/time descending to get the latest call
-			sorted_calls = sorted(
-				self.call_history,
-				key=lambda x: x.call_date_and_time or "",
-				reverse=True
-			)
-			for call in sorted_calls:
-				if call.next_follow_up_date:
-					self.next_follow_up_date = call.next_follow_up_date
-					break
 
 		# 4. Status validation
 		# Prevent marking as Completed if there is still outstanding balance

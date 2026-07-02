@@ -168,6 +168,9 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
         if task.status == "Open":
             task.status = "In Progress"
             
+        if next_follow_up_date:
+            task.next_follow_up_date = next_follow_up_date
+            
         task.save()
         frappe.db.commit()
         return task.as_dict()
@@ -234,6 +237,9 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None, a
                 
         if not found:
             frappe.throw(f"Commitment row {commitment_row_id} not found in task {task_id}")
+            
+        if next_follow_up_date:
+            task.next_follow_up_date = next_follow_up_date
             
         task.save()
         frappe.db.commit()
@@ -406,7 +412,8 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "staff_member": doc.staff_member,
             "customer_response": doc.customer_response,
             "call_outcome": doc.call_outcome,
-            "discussion_summary": doc.discussion_summary
+            "discussion_summary": doc.discussion_summary,
+            "next_follow_up_date": doc.next_follow_up_date
         })
         
         if promised_amount or promised_payment_date:
