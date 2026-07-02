@@ -810,6 +810,11 @@ async function saveCallLog() {
       ...callForm.value
     });
     callModalOpen.value = false;
+    
+    if (task.value && task.value.status === 'Open') {
+      task.value.status = 'In Progress';
+    }
+    
     await fetchTaskDetails(); // Full sync
   } catch (err: any) {
     console.error("Failed to log call:", err);
