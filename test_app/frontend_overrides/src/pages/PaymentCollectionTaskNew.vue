@@ -428,6 +428,16 @@ async function autofillCustomerDetails(customerName: string) {
       task.value.contact_person = details.custom_contactperson || "";
       task.value.mobile_number = details.custom_phone001 || "";
       task.value.alternate_mobile = details.custom_phone002 || "";
+      task.value.customer_code = details.custom_customercode || "";
+      
+      if (selectedCustomer.value) {
+        selectedCustomer.value.custom_customercode = details.custom_customercode || "";
+        selectedCustomer.value.customer_name = details.customer_name || "";
+      }
+      
+      if (task.value.customer_code) {
+        showLicensePopup.value = true;
+      }
     }
   } catch (err) {
     console.error("Failed to auto-fill customer details:", err);
