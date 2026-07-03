@@ -28,3 +28,9 @@ class PaymentCollectionTask(Document):
 			if self.status in ["Open", "In Progress"]:
 				self.status = "Partially Paid"
 				frappe.msgprint("Status updated to 'Partially Paid' as payment is received.")
+				
+		# Auto-transition to Completed if fully paid
+		if self.collected_amount > 0.0 and self.outstanding_amount == 0.0:
+			if self.status != "Completed":
+				self.status = "Completed"
+				frappe.msgprint("Status updated to 'Completed' as the full amount is collected.")
