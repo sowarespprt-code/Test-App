@@ -285,7 +285,10 @@ override_vue_components = {
 # }
 
 override_doctype_class = {}
-override_whitelisted_methods = {}
+override_whitelisted_methods = {
+    "helpdesk.api.doc.get_list_data": "test_app.overrides.doc.get_list_data",
+    "helpdesk.helpdesk.doctype.hd_ticket.api.get_list_data": "test_app.overrides.doc.get_list_data"
+}
 # Override helpdesk API methods
 # override_whitelisted_methods = {
 #     "helpdesk.helpdesk.doctype.hd_ticket.api.get_one": "test_app.test_app.overrides.api.get_one"

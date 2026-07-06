@@ -355,6 +355,11 @@ def get_list_data(
                     "type": field.get("type"),
                     "options": options,
                 }
+    if doctype == "HD Ticket":
+        for field in fields:
+            if field.get("value") == "custom_customer_name":
+                field["type"] = "Data"
+
     return {
         "data": data,
         "columns": columns,

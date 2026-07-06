@@ -177,9 +177,11 @@
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
                   <input
                     v-model="task.payment_amount"
-                    type="number"
+                    type="text"
+                    inputmode="decimal"
                     min="0"
                     placeholder="0"
+                    @input="task.payment_amount = $event.target.value.replace(/[^0-9.]/g, '')"
                     class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
                     required
                   />

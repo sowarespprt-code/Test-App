@@ -16,21 +16,20 @@ class PaymentCollectionTask(Document):
 
 
 		# 4. Status validation
-		# Prevent marking as Completed if there is still outstanding balance
+		# Auto-transition back from Completed if amount is edited
 		if self.status == "Completed" and self.outstanding_amount > 0.0:
-			frappe.throw(
-				f"Cannot mark task as Completed because there is an outstanding balance of "
-				f"{frappe.utils.fmt_money(self.outstanding_amount)}"
-			)
+			if not self.is_new() and getattr(self, "flags", {}).get("is_api_update"):
+				self.status = "Partially Paid" if self.collected_amount > 0.0 else "Open"
+			else:
+				# If not from API, we still revert it to avoid breaking when amounts change
+				self.status = "Partially Paid" if self.collected_amount > 0.0 else "Open"
 
 		# Auto-transition Open/In Progress status to Partially Paid if payment is received but outstanding exists
-		if self.collected_amount > 0.0 and self.outstanding_amount > 0.0:
+		if self.collected_amount > 0.0 and frappe.utils.flt(self.outstanding_amount) > 0.0:
 			if self.status in ["Open", "In Progress"]:
 				self.status = "Partially Paid"
-				frappe.msgprint("Status updated to 'Partially Paid' as payment is received.")
 				
 		# Auto-transition to Completed if fully paid
-		if self.collected_amount > 0.0 and self.outstanding_amount == 0.0:
+		if self.collected_amount > 0.0 and frappe.utils.flt(self.outstanding_amount) <= 0.0:
 			if self.status != "Completed":
 				self.status = "Completed"
-				frappe.msgprint("Status updated to 'Completed' as the full amount is collected.")

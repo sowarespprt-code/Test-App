@@ -29,10 +29,6 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <Button v-if="isManager" variant="subtle" class="bg-gray-100 hover:bg-gray-200" @click="openEditTaskModal">
-          <template #prefix><LucideEdit class="w-4 h-4" /></template>
-          Edit Task
-        </Button>
         <Button v-if="isManager" variant="subtle" class="text-red-600 bg-red-50 hover:bg-red-100" @click="deleteTask">
           <template #prefix><LucideTrash2 class="w-4 h-4" /></template>
           Delete
@@ -48,13 +44,6 @@
           <option value="Completed">Completed</option>
           <option value="Cancelled">Cancelled</option>
         </select>
-
-        <Button variant="solid" @click="openLogCallModal" class="bg-blue-600 hover:bg-blue-700 text-white">
-          <template #prefix>
-            <LucidePhoneCall class="w-4 h-4" />
-          </template>
-          Log Call
-        </Button>
       </div>
     </div>
 
@@ -65,7 +54,12 @@
         <!-- Stat Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between">
-            <span class="text-sm font-medium text-gray-500">Total Receivable</span>
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-500">Total Receivable</span>
+              <button v-if="isManager" @click="openEditTaskModal" class="text-gray-400 hover:text-blue-500 transition" title="Edit Amount">
+                <LucideEdit class="w-4 h-4" />
+              </button>
+            </div>
             <span class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(task.payment_amount) }}</span>
           </div>
 
@@ -85,18 +79,47 @@
         <!-- Tabs Container -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col min-h-[400px]">
           <!-- Tab Headers -->
-          <div class="border-b bg-gray-50 flex">
-            <button
-              v-for="tab in ['activity', 'calls', 'commitments', 'receipts']"
-              :key="tab"
-              @click="activeTab = tab"
-              class="px-6 py-4 text-sm font-semibold border-b-2 transition-all duration-150 capitalize"
-              :class="activeTab === tab
-                ? 'border-blue-600 text-blue-600 bg-white'
-                : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'"
-            >
-              {{ tab === 'calls' ? 'Call History (' + (task.call_history?.length || 0) + ')' : tab === 'commitments' ? 'Payment Commitments (' + (task.payment_commitments?.length || 0) + ')' : tab === 'receipts' ? 'Receipts & Payments (' + (task.payment_receipts?.length || 0) + ')' : 'Activity' }}
-            </button>
+          <div class="bg-white p-4 border-b border-gray-100 flex overflow-x-auto">
+            <div class="flex gap-3">
+              <!-- Activity Tab -->
+              <button
+                @click="activeTab = 'activity'"
+                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
+                :class="activeTab === 'activity' ? 'bg-purple-500 text-white border-purple-600 shadow-md' : 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100 hover:border-purple-200 hover:text-purple-700'"
+              >
+                <LucideActivity class="w-4 h-4" /> Activity
+              </button>
+
+              <!-- Call History Tab -->
+              <button
+                @click="activeTab = 'calls'"
+                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
+                :class="activeTab === 'calls' ? 'bg-blue-500 text-white border-blue-600 shadow-md' : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 hover:border-blue-200 hover:text-blue-700'"
+              >
+                <LucidePhone class="w-4 h-4" /> Call History 
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'calls' ? 'bg-white/20 text-white' : 'bg-blue-200 text-blue-800'">{{ task.call_history?.length || 0 }}</span>
+              </button>
+
+              <!-- Commitments Tab -->
+              <button
+                @click="activeTab = 'commitments'"
+                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
+                :class="activeTab === 'commitments' ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100 hover:border-red-200 hover:text-red-700'"
+              >
+                <LucideCalendarClock class="w-4 h-4" /> Payment Commitments
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'commitments' ? 'bg-white/20 text-white' : 'bg-red-200 text-red-800'">{{ task.payment_commitments?.length || 0 }}</span>
+              </button>
+
+              <!-- Receipts Tab -->
+              <button
+                @click="activeTab = 'receipts'"
+                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
+                :class="activeTab === 'receipts' ? 'bg-orange-500 text-white border-orange-600 shadow-md' : 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 hover:border-orange-200 hover:text-orange-700'"
+              >
+                <LucideReceipt class="w-4 h-4" /> Receipts & Payments
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'receipts' ? 'bg-white/20 text-white' : 'bg-orange-200 text-orange-800'">{{ task.payment_receipts?.length || 0 }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Tab Contents -->
@@ -110,9 +133,9 @@
             <div v-if="activeTab === 'calls'" class="space-y-4">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="font-bold text-gray-800">Call Logs</h3>
-                <Button variant="subtle" @click="openLogCallModal">
-                  <template #prefix><LucidePlus class="h-4 w-4" /></template>
-                  Log New Call
+                <Button variant="solid" class="bg-gray-900 text-white hover:bg-gray-800" @click="openLogCallModal">
+                  <template #prefix><LucidePhone class="w-4 h-4" /></template>
+                  Log Call
                 </Button>
               </div>
 
@@ -274,7 +297,11 @@
       </div>
 
       <!-- Right side: Sidebar Info -->
-      <div class="w-full md:w-80 border-t md:border-t-0 md:border-l border-gray-200 bg-white p-6 space-y-6 overflow-y-auto">
+      <div 
+        class="border-t md:border-t-0 md:border-l border-gray-200 bg-white transition-all duration-300 flex flex-col relative h-full"
+        :class="isRightSidebarCollapsed ? 'w-12' : 'w-full md:w-80'"
+      >
+        <div v-show="!isRightSidebarCollapsed" class="p-6 space-y-6 overflow-y-auto flex-1">
         <!-- Task Details -->
         <div class="space-y-4">
           <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Assignment Details</h4>
@@ -323,10 +350,6 @@
         <div class="space-y-4 border-t pt-4">
           <div class="flex items-center justify-between">
             <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Customer Contact Details</h4>
-            <Button variant="solid" @click="openLogCallModal" class="bg-blue-600 hover:bg-blue-700 text-white !py-1 !px-3 text-xs">
-              <template #prefix><LucidePhoneCall class="w-3.5 h-3.5" /></template>
-              Call Now
-            </Button>
           </div>
           <div class="space-y-3 text-sm">
             <div>
@@ -390,6 +413,20 @@
             {{ task.task_description }}
           </p>
         </div>
+        </div>
+        
+        <!-- Toggle Button Container -->
+        <div class="border-t border-gray-200 p-3 mt-auto bg-gray-50/50 flex" :class="isRightSidebarCollapsed ? 'justify-center' : 'justify-start'">
+          <button 
+            @click="isRightSidebarCollapsed = !isRightSidebarCollapsed"
+            class="flex items-center gap-2 p-1.5 hover:bg-gray-200 rounded text-gray-600 text-sm font-medium transition-colors"
+            title="Toggle Sidebar"
+          >
+            <LucideChevronRight v-if="!isRightSidebarCollapsed" class="w-4 h-4" />
+            <LucideChevronLeft v-else class="w-4 h-4" />
+            <span v-if="!isRightSidebarCollapsed">Collapse</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -446,9 +483,11 @@
                 <label class="block text-xs font-semibold text-green-800 mb-1">Promised Amount (INR)</label>
                 <input
                   v-model="callForm.promised_amount"
-                  type="number"
+                  type="text"
+                  inputmode="decimal"
                   placeholder="0"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none bg-white font-semibold"
+                  @input="callForm.promised_amount = $event.target.value.replace(/[^0-9.]/g, '')"
                 />
               </div>
 
@@ -503,10 +542,12 @@
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
                 <input
                   v-model="receiptForm.amount_received"
-                  type="number"
-                  placeholder="0"
+                  type="text"
+                  inputmode="decimal"
+                  class="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-green-500 focus:outline-none font-bold"
+                  :class="{'bg-gray-100 text-gray-500': isReceiptAmountReadonly}"
                   :readonly="isReceiptAmountReadonly"
-                  :class="['w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:border-green-500 focus:outline-none font-bold', isReceiptAmountReadonly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '']"
+                  @input="receiptForm.amount_received = $event.target.value.replace(/[^0-9.]/g, '')"
                   required
                 />
               </div>
@@ -536,6 +577,8 @@
                 type="text"
                 placeholder="UTR transaction hash, bank reference, or cheque number"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+                :class="{'bg-gray-100 text-gray-400': receiptForm.payment_mode === 'Cash'}"
+                :disabled="receiptForm.payment_mode === 'Cash'"
               />
             </div>
 
@@ -582,17 +625,8 @@
         <div class="space-y-4 p-1">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Purpose Type</label>
-              <select v-model="editTaskForm.purpose_type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
-                <option value="Software Payment">Software Payment</option>
-                <option value="Hardware Payment">Hardware Payment</option>
-                <option value="AMC Collection">AMC Collection</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Amount (INR)</label>
-              <input v-model="editTaskForm.payment_amount" type="number" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+              <input v-model="editTaskForm.payment_amount" type="text" inputmode="decimal" @input="editTaskForm.payment_amount = $event.target.value.replace(/[^0-9.]/g, '')" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
@@ -603,16 +637,6 @@
                 <option value="Urgent">Urgent</option>
               </select>
             </div>
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Assigned To</label>
-              <select v-model="editTaskForm.assigned_to" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
-                <option v-for="(name, email) in userMap" :key="email" :value="email">{{ name }}</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Task Description / Notes</label>
-            <textarea v-model="editTaskForm.task_description" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"></textarea>
           </div>
         </div>
       </template>
@@ -637,7 +661,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1">Amount Received (INR)</label>
-              <input v-model="editReceiptForm.amount_received" type="number" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+              <input v-model="editReceiptForm.amount_received" type="text" inputmode="decimal" @input="editReceiptForm.amount_received = $event.target.value.replace(/[^0-9.]/g, '')" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
@@ -651,7 +675,7 @@
             </div>
             <div class="col-span-1 md:col-span-2">
               <label class="block text-sm font-semibold text-gray-700 mb-1">Transaction Reference</label>
-              <input v-model="editReceiptForm.transaction_reference" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+              <input v-model="editReceiptForm.transaction_reference" type="text" :class="{'bg-gray-100 text-gray-400': editReceiptForm.payment_mode === 'Cash'}" :disabled="editReceiptForm.payment_mode === 'Cash'" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
             </div>
             <div class="col-span-1 md:col-span-2">
               <label class="block text-sm font-semibold text-gray-700 mb-1">Remarks</label>
@@ -680,6 +704,11 @@
 </template>
 
 <script setup lang="ts">
+import LucideActivity from "~icons/lucide/activity";
+import LucideCalendarClock from "~icons/lucide/calendar-clock";
+import LucideReceipt from "~icons/lucide/receipt";
+import LucideChevronLeft from "~icons/lucide/chevron-left";
+import LucideChevronRight from "~icons/lucide/chevron-right";
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { call, Button, Badge, Dialog } from "frappe-ui";
@@ -707,6 +736,7 @@ const { isManager } = useAuthStore();
 const task = ref<any>(null);
 const customerName = ref("");
 const activeTab = ref("calls");
+const isRightSidebarCollapsed = ref(false);
 
 // Cache maps
 const userMap = ref<Record<string, string>>({});

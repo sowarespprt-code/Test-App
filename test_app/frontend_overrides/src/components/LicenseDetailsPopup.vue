@@ -225,18 +225,10 @@
       <!-- Popup Footer -->
       <div class="flex items-center justify-end gap-2 px-5 py-3 border-t bg-gray-50">
         <Button
-          label="Close"
-          theme="gray"
-          variant="subtle"
-          @click="closePopup"
-        />
-        <Button
-          v-if="licenseData"
-          label="Refresh"
+          label="OK"
           theme="gray"
           variant="solid"
-          :loading="loading"
-          @click="fetchDetails"
+          @click="closePopup"
         />
       </div>
     </div>
