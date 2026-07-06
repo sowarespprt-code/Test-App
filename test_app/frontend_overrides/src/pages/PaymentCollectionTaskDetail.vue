@@ -29,6 +29,10 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <Button v-if="isManager" variant="subtle" class="bg-gray-100 hover:bg-gray-200" @click="openEditTaskModal">
+          <template #prefix><LucideEdit class="w-4 h-4" /></template>
+          Edit Task
+        </Button>
         <Button v-if="isManager" variant="subtle" class="text-red-600 bg-red-50 hover:bg-red-100" @click="deleteTask">
           <template #prefix><LucideTrash2 class="w-4 h-4" /></template>
           Delete
@@ -241,6 +245,7 @@
                       <th class="py-3 px-4 font-semibold text-gray-600">Ref No.</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Received By</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200">
@@ -251,6 +256,11 @@
                       <td class="py-3 px-4 text-gray-500 font-mono text-xs">{{ r.transaction_reference || '—' }}</td>
                       <td class="py-3 px-4 text-gray-600">{{ getUserFullName(r.received_by) }}</td>
                       <td class="py-3 px-4 text-gray-500">{{ r.remarks || '—' }}</td>
+                      <td class="py-3 px-4 text-right">
+                        <button @click="openEditReceiptModal(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition" title="Edit Receipt">
+                          <LucideEdit class="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -554,6 +564,104 @@
       </template>
     </Dialog>
 
+    <!-- DIALOG MODAL: EDIT TASK -->
+    <Dialog
+      v-model="editTaskModalOpen"
+      :options="{
+        title: 'Edit Task Details',
+        size: 'xl'
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4 p-1">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Purpose Type</label>
+              <select v-model="editTaskForm.purpose_type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
+                <option value="Software Payment">Software Payment</option>
+                <option value="Hardware Payment">Hardware Payment</option>
+                <option value="AMC Collection">AMC Collection</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Amount (INR)</label>
+              <input v-model="editTaskForm.payment_amount" type="number" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
+              <select v-model="editTaskForm.priority" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Assigned To</label>
+              <select v-model="editTaskForm.assigned_to" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
+                <option v-for="(name, email) in userMap" :key="email" :value="email">{{ name }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Task Description / Notes</label>
+            <textarea v-model="editTaskForm.task_description" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"></textarea>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="subtle" @click="editTaskModalOpen = false">Cancel</Button>
+          <Button variant="solid" :loading="isTaskSaving" @click="saveEditTask" class="bg-blue-600 text-white hover:bg-blue-700">Save Changes</Button>
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- DIALOG MODAL: EDIT RECEIPT -->
+    <Dialog
+      v-model="editReceiptModalOpen"
+      :options="{
+        title: 'Edit Payment Receipt',
+        size: 'xl'
+      }"
+    >
+      <template #body-content>
+        <div class="space-y-4 p-1">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Amount Received (INR)</label>
+              <input v-model="editReceiptForm.amount_received" type="number" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
+              <select v-model="editReceiptForm.payment_mode" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Online">Online</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Transaction Reference</label>
+              <input v-model="editReceiptForm.transaction_reference" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Remarks</label>
+              <textarea v-model="editReceiptForm.remarks" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"></textarea>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="subtle" @click="editReceiptModalOpen = false">Cancel</Button>
+          <Button variant="solid" :loading="isReceiptEditing" @click="saveEditReceipt" class="bg-blue-600 text-white hover:bg-blue-700">Save Changes</Button>
+        </div>
+      </template>
+    </Dialog>
+
     <!-- Customer Search Popup Modal -->
     <Teleport to="body">
       <CustomerSearchPopup
@@ -621,6 +729,26 @@ const receiptForm = ref({
   next_follow_up_date: "",
   commitment_row_id: "",
   commitment_status: ""
+});
+
+const editTaskModalOpen = ref(false);
+const isTaskSaving = ref(false);
+const editTaskForm = ref({
+  purpose_type: "",
+  payment_amount: 0,
+  priority: "",
+  assigned_to: "",
+  task_description: ""
+});
+
+const editReceiptModalOpen = ref(false);
+const isReceiptEditing = ref(false);
+const editReceiptForm = ref({
+  receipt_row_id: "",
+  amount_received: 0 as number | string,
+  payment_mode: "",
+  transaction_reference: "",
+  remarks: ""
 });
 
 onMounted(async () => {
@@ -930,6 +1058,74 @@ function getCommitmentStatusClass(status: string) {
       return "bg-gray-100 text-gray-800 border border-gray-200";
     default:
       return "bg-gray-100 text-gray-800";
+  }
+}
+
+function openEditTaskModal() {
+  if (!task.value) return;
+  editTaskForm.value = {
+    purpose_type: task.value.purpose_type || "Software Payment",
+    payment_amount: task.value.payment_amount || 0,
+    priority: task.value.priority || "Medium",
+    assigned_to: task.value.assigned_to || "",
+    task_description: task.value.task_description || ""
+  };
+  editTaskModalOpen.value = true;
+}
+
+async function saveEditTask() {
+  isTaskSaving.value = true;
+  try {
+    const updatedDoc = await call("test_app.api.update_task_details", {
+      task_id: props.taskId,
+      updates: JSON.stringify(editTaskForm.value)
+    });
+    if (updatedDoc) {
+      task.value = updatedDoc;
+      editTaskModalOpen.value = false;
+    }
+  } catch (error) {
+    console.error("Failed to update task details:", error);
+    alert("Failed to update task details. Check console for error.");
+  } finally {
+    isTaskSaving.value = false;
+  }
+}
+
+function openEditReceiptModal(receipt: any) {
+  editReceiptForm.value = {
+    receipt_row_id: receipt.name,
+    amount_received: receipt.amount_received || 0,
+    payment_mode: receipt.payment_mode || "Bank Transfer",
+    transaction_reference: receipt.transaction_reference || "",
+    remarks: receipt.remarks || ""
+  };
+  editReceiptModalOpen.value = true;
+}
+
+async function saveEditReceipt() {
+  isReceiptEditing.value = true;
+  try {
+    const updatedDoc = await call("test_app.api.update_receipt_details", {
+      task_id: props.taskId,
+      receipt_row_id: editReceiptForm.value.receipt_row_id,
+      updates: JSON.stringify({
+        amount_received: editReceiptForm.value.amount_received,
+        payment_mode: editReceiptForm.value.payment_mode,
+        transaction_reference: editReceiptForm.value.transaction_reference,
+        remarks: editReceiptForm.value.remarks
+      })
+    });
+    if (updatedDoc) {
+      task.value = updatedDoc;
+      editReceiptModalOpen.value = false;
+      await fetchTaskDetails(); // Re-fetch to ensure all properties sync correctly
+    }
+  } catch (error) {
+    console.error("Failed to update receipt details:", error);
+    alert("Failed to update receipt details. Check console for error.");
+  } finally {
+    isReceiptEditing.value = false;
   }
 }
 </script>

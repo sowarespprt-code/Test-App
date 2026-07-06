@@ -249,6 +249,56 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None, a
         frappe.throw(f"Failed to update commitment: {str(e)}")
 
 @frappe.whitelist()
+def update_task_details(task_id, updates):
+    """Update main task details like purpose, amount, etc."""
+    try:
+        if isinstance(updates, str):
+            import json
+            updates = json.loads(updates)
+            
+        task = frappe.get_doc("Payment Collection Task", task_id)
+        
+        for field, value in updates.items():
+            if hasattr(task, field):
+                setattr(task, field, value)
+                
+        task.save()
+        frappe.db.commit()
+        return task.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error updating task: {str(e)}")
+        frappe.throw(f"Failed to update task: {str(e)}")
+
+@frappe.whitelist()
+def update_receipt_details(task_id, receipt_row_id, updates):
+    """Update details of a specific payment receipt row"""
+    try:
+        if isinstance(updates, str):
+            import json
+            updates = json.loads(updates)
+            
+        task = frappe.get_doc("Payment Collection Task", task_id)
+        
+        found = False
+        for receipt in task.payment_receipts:
+            if receipt.name == receipt_row_id:
+                for field, value in updates.items():
+                    if hasattr(receipt, field):
+                        setattr(receipt, field, value)
+                found = True
+                break
+                
+        if not found:
+            frappe.throw(f"Receipt row {receipt_row_id} not found in task {task_id}")
+            
+        task.save()
+        frappe.db.commit()
+        return task.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error updating receipt: {str(e)}")
+        frappe.throw(f"Failed to update receipt: {str(e)}")
+
+@frappe.whitelist()
 def run_verification_test():
     """Programmatic test runner to verify Payment Collection Task flow"""
     import frappe.utils
