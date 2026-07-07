@@ -682,7 +682,7 @@
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode</label>
-              <select v-model="editReceiptForm.payment_mode" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
+              <select v-model="editReceiptForm.payment_mode" @change="handleEditPaymentModeChange" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none bg-white">
                 <option value="Cash">Cash</option>
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="Cheque">Cheque</option>
@@ -997,14 +997,22 @@ function openReceiptModalForCommitment(commitmentId: string, promisedAmount: num
 function handlePaymentModeChange() {
   if (receiptForm.value.payment_mode === 'Cash') {
     receiptForm.value.transaction_reference = "";
-    receiptForm.value.next_follow_up_date = "";
-    receiptForm.value.remarks = "";
+  }
+}
+
+function handleEditPaymentModeChange() {
+  if (editReceiptForm.value.payment_mode === 'Cash') {
+    editReceiptForm.value.transaction_reference = "";
   }
 }
 
 async function saveReceipt() {
   if (!receiptForm.value.amount_received || Number(receiptForm.value.amount_received) <= 0) {
     alert("Please enter a valid amount received.");
+    return;
+  }
+  if (receiptForm.value.payment_mode !== 'Cash' && (!receiptForm.value.transaction_reference || !receiptForm.value.transaction_reference.trim())) {
+    alert(`Transaction Reference is mandatory for ${receiptForm.value.payment_mode} payments.`);
     return;
   }
   if (Number(receiptForm.value.amount_received) > task.value.outstanding_amount) {
@@ -1024,7 +1032,8 @@ async function saveReceipt() {
     }
   } catch (err: any) {
     console.error("Failed to record receipt:", err);
-    alert(err.message || "Failed to record receipt.");
+    const errorMsg = (err.messages && err.messages.length > 0 && err.messages[0] !== err.message) ? err.messages[0] : (err.message || "Failed to record receipt.");
+    alert(errorMsg);
   } finally {
     isReceiptSaving.value = false;
   }
@@ -1178,6 +1187,10 @@ async function saveEditReceipt() {
     alert("Amount received cannot make the total collected greater than the total receivable.");
     return;
   }
+  if (editReceiptForm.value.payment_mode !== 'Cash' && (!editReceiptForm.value.transaction_reference || !editReceiptForm.value.transaction_reference.trim())) {
+    alert(`Transaction Reference is mandatory for ${editReceiptForm.value.payment_mode} payments.`);
+    return;
+  }
 
   isReceiptEditing.value = true;
   try {
@@ -1196,9 +1209,10 @@ async function saveEditReceipt() {
       editReceiptModalOpen.value = false;
       await fetchTaskDetails(); // Re-fetch to ensure all properties sync correctly
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to update receipt details:", error);
-    alert("Failed to update receipt details. Check console for error.");
+    const errorMsg = (error.messages && error.messages.length > 0 && error.messages[0] !== error.message) ? error.messages[0] : (error.message || "Failed to update receipt details.");
+    alert(errorMsg);
   } finally {
     isReceiptEditing.value = false;
   }

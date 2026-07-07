@@ -211,6 +211,11 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
 def record_payment_receipt(task_id, amount_received, payment_mode, transaction_reference=None, remarks=None, next_follow_up_date=None, commitment_row_id=None, commitment_status=None):
     """Record a receipt of payment under a Payment Collection Task"""
     try:
+        if payment_mode != "Cash" and not (transaction_reference and str(transaction_reference).strip()):
+            msg = "Transaction Reference is mandatory for non-Cash payments."
+            frappe.local.response['_error_message'] = msg
+            frappe.throw(msg)
+            
         task = frappe.get_doc("Payment Collection Task", task_id)
         
         # Add to Payment Receipts
@@ -349,6 +354,12 @@ def update_receipt_details(task_id, receipt_row_id, updates):
                 for field, value in updates.items():
                     if hasattr(receipt, field):
                         setattr(receipt, field, value)
+                        
+                if receipt.payment_mode != "Cash" and not (receipt.transaction_reference and str(receipt.transaction_reference).strip()):
+                    msg = "Transaction Reference is mandatory for non-Cash payments."
+                    frappe.local.response['_error_message'] = msg
+                    frappe.throw(msg)
+                    
                 found = True
                 break
                 
