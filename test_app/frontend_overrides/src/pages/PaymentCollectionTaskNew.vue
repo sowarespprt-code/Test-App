@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-white">
+  <div class="flex flex-col h-full bg-white" @keydown.enter="handleGlobalEnter">
     <!-- Header -->
     <div class="border-b px-5 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
@@ -300,6 +300,27 @@ const userOptions = ref<any[]>([]);
 const isFetchingCustomer = ref(false);
 const fetchError = ref("");
 const showLicensePopup = ref(false);
+
+function handleGlobalEnter(e: KeyboardEvent) {
+  const target = e.target as HTMLElement;
+  
+  if (target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+  if (document.querySelector('[role="dialog"]')) return;
+  
+  if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+     if (target.getAttribute('aria-expanded') === 'true') return;
+     if (target.getAttribute('role') === 'combobox') return; // Frappe Autocomplete handles its own enter key
+
+     e.preventDefault();
+     const focusableElements = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, textarea, button, [tabindex]:not([tabindex="-1"])'))
+      .filter((el: any) => !el.disabled && el.offsetParent !== null) as HTMLElement[];
+      
+     const index = focusableElements.indexOf(target);
+     if (index > -1 && index < focusableElements.length - 1) {
+       focusableElements[index + 1].focus();
+     }
+  }
+}
 const licenseData = ref<any | null>(null);
 
 function handleLicenseLoaded(data: any) {
@@ -495,7 +516,7 @@ async function saveTask() {
 /* Fix Frappe UI Autocomplete hover highlight issue */
 li[role="option"]:hover,
 li[role="option"][data-headlessui-state*="active"] {
-  background-color: #f3f4f6 !important;
+  background-color: #d1d5db !important;
   cursor: pointer;
 }
 </style>

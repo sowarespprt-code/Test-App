@@ -377,7 +377,7 @@ async function saveAlert() {
 /* Fix Frappe UI Autocomplete hover highlight issue */
 li[role="option"]:hover,
 li[role="option"][data-headlessui-state*="active"] {
-  background-color: #f3f4f6 !important;
+  background-color: #d1d5db !important;
   cursor: pointer;
 }
 </style>

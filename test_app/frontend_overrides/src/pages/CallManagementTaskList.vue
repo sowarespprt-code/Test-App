@@ -95,11 +95,15 @@
               <tr
                 v-for="task in filteredTasks"
                 :key="task.name"
-                class="hover:bg-blue-50/50 cursor-pointer transition-colors duration-150"
-                @click="openTaskDetail(task.name)"
+                class="transition-colors duration-150 hover:bg-gray-50/50"
+                :class="{'animate-row-blink': task.status === 'Open'}"
               >
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-sm font-semibold text-blue-600 hover:underline">
+                  <span 
+                    class="text-sm font-semibold hover:underline cursor-pointer"
+                    :class="task.status === 'Open' ? 'text-orange-900' : 'text-blue-600'"
+                    @click="openTaskDetail(task.name)"
+                  >
                     {{ task.name }}
                   </span>
                 </td>
@@ -158,17 +162,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { call, Button, Badge } from "frappe-ui";
 import { useAuthStore } from "@/stores/auth";
-import LucidePlus from "~icons/lucide/plus";
 import LucideSearch from "~icons/lucide/search";
 import LucideFileText from "~icons/lucide/file-text";
 
 const router = useRouter();
 const tasks = ref<any[]>([]);
 const isLoading = ref(false);
+const authStore = useAuthStore();
+const isManager = computed(() => authStore.isManager);
 
 // Filters
 const searchQuery = ref("");
@@ -178,13 +183,21 @@ const dateFilter = ref("All");
 
 onMounted(async () => {
   await fetchTasks();
+  
+  // Auto refresh every 30 seconds
+  refreshInterval = window.setInterval(() => {
+    fetchTasks();
+  }, 30000);
 });
 
+onUnmounted(() => {
+  if (refreshInterval) window.clearInterval(refreshInterval);
+});
+
+let refreshInterval: number | null = null;
 async function fetchTasks() {
   isLoading.value = true;
   try {
-    const authStore = useAuthStore();
-    
     let queryFilters: Record<string, any> = {};
     if (!authStore.isManager) {
       queryFilters["assigned_to"] = authStore.userId;
@@ -355,3 +368,13 @@ function getPriorityBg(priority: string) {
   }
 }
 </script>
+
+<style>
+@keyframes row-blink {
+  0%, 100% { background-color: #ffedd5; } /* orange-100 */
+  50% { background-color: #fdba74; } /* orange-300 */
+}
+.animate-row-blink {
+  animation: row-blink 1.2s ease-in-out infinite;
+}
+</style>

@@ -58,15 +58,18 @@
                 v-for="task in filteredTasks"
                 :key="task.name"
                 :class="getRowClass(task.next_follow_up_date)"
-                class="cursor-pointer transition-colors duration-150"
-                @click="openTaskDetail(task.name)"
+                class="transition-colors duration-150"
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
                   {{ formatDate(task.next_follow_up_date) || '—' }}
                   <span v-if="isToday(task.next_follow_up_date)" class="ml-2 text-[10px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold">Today</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-sm font-semibold text-blue-600 hover:underline">
+                  <span 
+                    class="text-sm font-semibold hover:underline cursor-pointer"
+                    :class="isToday(task.next_follow_up_date) ? 'text-orange-900' : 'text-blue-600'"
+                    @click="openTaskDetail(task.name)"
+                  >
                     {{ task.name }}
                   </span>
                 </td>
@@ -114,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { call, Badge } from "frappe-ui";
 import { useAuthStore } from "@/stores/auth";
@@ -129,8 +132,18 @@ const todayStr = new Date().toISOString().split('T')[0];
 
 onMounted(async () => {
   await fetchTasks();
+  
+  // Auto refresh every 30 seconds
+  refreshInterval = window.setInterval(() => {
+    fetchTasks();
+  }, 30000);
 });
 
+onUnmounted(() => {
+  if (refreshInterval) window.clearInterval(refreshInterval);
+});
+
+let refreshInterval: number | null = null;
 async function fetchTasks() {
   isLoading.value = true;
   try {
@@ -224,12 +237,16 @@ function isToday(dateStr: string) {
 }
 
 function getRowClass(dateStr: string) {
-  if (!dateStr) return "hover:bg-blue-50/50";
-  // Highlight if today or overdue (past)
-  if (dateStr <= todayStr) {
+  if (!dateStr) return "hover:bg-gray-50/50";
+  // Highlight if today
+  if (dateStr === todayStr) {
+    return "animate-row-blink";
+  }
+  // Highlight if overdue (past)
+  if (dateStr < todayStr) {
     return "bg-red-50 hover:bg-red-100";
   }
-  return "hover:bg-blue-50/50";
+  return "hover:bg-gray-50/50";
 }
 
 function openTaskDetail(taskName: string) {
@@ -301,3 +318,13 @@ function getPriorityBg(priority: string) {
   }
 }
 </script>
+
+<style>
+@keyframes row-blink {
+  0%, 100% { background-color: #ffedd5; } /* orange-100 */
+  50% { background-color: #fdba74; } /* orange-300 */
+}
+.animate-row-blink {
+  animation: row-blink 1.2s ease-in-out infinite;
+}
+</style>

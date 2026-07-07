@@ -116,10 +116,10 @@ const _activities = computed(() => {
   const historyProps = [
     ...(activities.value.history || []),
     ...(activities.value.views || []),
-  ].map((h: any) => {
+  ].map((h: any, index: number) => {
     return {
       type: "history",
-      key: h.creation,
+      key: (h.name || h.creation) + '-' + index,
       content: h.action ? h.action : "viewed this",
       creation: h.creation,
       user: h.user?.name || h.owner,
@@ -130,39 +130,7 @@ const _activities = computed(() => {
     (a, b) => new Date(a.creation).getTime() - new Date(b.creation).getTime()
   );
 
-  const data: any[] = [];
-  let i = 0;
-
-  while (i < sorted.length) {
-    const currentActivity = sorted[i];
-
-    if (currentActivity.type === "history") {
-      currentActivity.relatedActivities = [];
-      for (let j = i + 1; j < sorted.length + 1; j++) {
-        const nextActivity = sorted[j];
-
-        if (
-          nextActivity &&
-          nextActivity.type === "history" &&
-          nextActivity.user === currentActivity.user &&
-          nextActivity.content !== "viewed this" &&
-          currentActivity.content !== "viewed this" &&
-          new Date(nextActivity.creation).getTime() - new Date(currentActivity.creation).getTime() < 5000 // Group if within 5 seconds
-        ) {
-          currentActivity.relatedActivities.push(nextActivity);
-        } else {
-          data.push(currentActivity);
-          i = j - 1;
-          break;
-        }
-      }
-    } else {
-      data.push(currentActivity);
-    }
-    i++;
-  }
-
-  return data;
+  return sorted;
 });
 
 onMounted(() => {

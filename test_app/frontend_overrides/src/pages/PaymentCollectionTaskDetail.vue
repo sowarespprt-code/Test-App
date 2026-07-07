@@ -29,9 +29,9 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <Button v-if="isManager" variant="subtle" class="text-red-600 bg-red-50 hover:bg-red-100" @click="deleteTask">
-          <template #prefix><LucideTrash2 class="w-4 h-4" /></template>
-          Delete
+        <Button v-if="isManager && task.status !== 'Cancelled'" variant="subtle" class="text-red-600 bg-red-50 hover:bg-red-100" @click="cancelTask">
+          <template #prefix><LucideBan class="w-4 h-4" /></template>
+          Cancel Task
         </Button>
         <select
           v-model="task.status"
@@ -57,8 +57,9 @@
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-sm font-medium text-gray-500">Total Receivable</span>
-              <button v-if="isManager" @click="openEditTaskModal" class="text-gray-400 hover:text-blue-500 transition" title="Edit Amount">
-                <LucideEdit class="w-4 h-4" />
+              <button @click="openEditTaskModal" class="flex items-center gap-1.5 px-2 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded transition shadow-sm" title="Edit Amount">
+                <LucideEdit class="w-3.5 h-3.5" />
+                Edit
               </button>
             </div>
             <span class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(task.payment_amount) }}</span>
@@ -194,6 +195,7 @@
                     <tr class="bg-gray-50 border-b border-gray-200">
                       <th class="py-3 px-4 font-semibold text-gray-600">Promise Date</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Amount Promised</th>
+                      <th class="py-3 px-4 font-semibold text-gray-600">Balance Amount</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Expected Date</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Status</th>
                       <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
@@ -201,9 +203,13 @@
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200">
-                    <tr v-for="c in task.payment_commitments" :key="c.name" class="hover:bg-gray-50/50">
+                    <tr v-for="c in sortedCommitments" :key="c.name" class="hover:bg-gray-50/50">
                       <td class="py-3 px-4 text-gray-600">{{ formatDate(c.commitment_date) }}</td>
                       <td class="py-3 px-4 font-semibold text-gray-900">{{ formatCurrency(c.promised_amount) }}</td>
+                      <td class="py-3 px-4 font-bold text-red-600">
+                        <span v-if="c.status === 'Pending'">{{ formatCurrency(task.outstanding_amount) }}</span>
+                        <span v-else class="text-gray-400 font-normal">—</span>
+                      </td>
                       <td class="py-3 px-4 text-gray-900 font-medium">{{ formatDate(c.promised_payment_date) }}</td>
                       <td class="py-3 px-4">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" :class="getCommitmentStatusClass(c.status)">
@@ -281,7 +287,7 @@
                       <td class="py-3 px-4 text-gray-600">{{ getUserFullName(r.received_by) }}</td>
                       <td class="py-3 px-4 text-gray-500">{{ r.remarks || '—' }}</td>
                       <td class="py-3 px-4 text-right">
-                        <button @click="openEditReceiptModal(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition" title="Edit Receipt">
+                        <button v-if="isManager" @click="openEditReceiptModal(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition" title="Edit Receipt">
                           <LucideEdit class="w-4 h-4" />
                         </button>
                       </td>
@@ -535,6 +541,12 @@
     >
       <template #body-content>
         <div class="space-y-4 p-1">
+          <!-- Read-only Total Outstanding Balance -->
+          <div class="bg-red-50 border border-red-100 rounded-lg p-3 flex justify-between items-center">
+            <span class="text-sm font-semibold text-red-800">Total Outstanding Balance (To Be Paid):</span>
+            <span class="text-lg font-bold text-red-600">{{ formatCurrency(task?.outstanding_amount || 0) }}</span>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Amount Received -->
             <div>
@@ -559,6 +571,7 @@
               <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode <span class="text-red-500">*</span></label>
               <select
                 v-model="receiptForm.payment_mode"
+                @change="handlePaymentModeChange"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
                 required
               >
@@ -572,7 +585,10 @@
 
             <!-- Reference Number -->
             <div class="col-span-1 md:col-span-2">
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Transaction Reference (e.g. UTR / Cheque No.)</label>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">
+                Transaction Reference (e.g. UTR / Cheque No.)
+                <span v-if="receiptForm.payment_mode !== 'Cash'" class="text-red-500">*</span>
+              </label>
               <input
                 v-model="receiptForm.transaction_reference"
                 type="text"
@@ -580,6 +596,7 @@
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
                 :class="{'bg-gray-100 text-gray-400': receiptForm.payment_mode === 'Cash'}"
                 :disabled="receiptForm.payment_mode === 'Cash'"
+                :required="receiptForm.payment_mode !== 'Cash'"
               />
             </div>
 
@@ -723,6 +740,7 @@ import LucideTrash2 from "~icons/lucide/trash-2";
 import LucideEdit from "~icons/lucide/edit";
 import CustomerSearchPopup from "@/components/CustomerSearchPopup.vue";
 import TaskActivityPanel from "@/components/TaskActivityPanel.vue";
+import LucideBan from "~icons/lucide/ban";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
@@ -736,7 +754,12 @@ const router = useRouter();
 const { isManager } = useAuthStore();
 const task = ref<any>(null);
 const customerName = ref("");
-const activeTab = ref("receipts");
+const activeTab = ref("calls");
+
+const sortedCommitments = computed(() => {
+  if (!task.value || !task.value.payment_commitments) return [];
+  return [...task.value.payment_commitments].reverse();
+});
 const isRightSidebarCollapsed = ref(false);
 
 // Cache maps
@@ -848,15 +871,14 @@ function getUserFullName(email: string) {
   return userMap.value[email] || email;
 }
 
-// Actions
-async function deleteTask() {
-  if (!confirm("Are you sure you want to permanently delete this Payment Collection Task?")) return;
+async function cancelTask() {
+  if (!confirm("Are you sure you want to cancel this Payment Collection Task? This will also cancel all pending commitments.")) return;
   try {
-    await call("frappe.client.delete", { doctype: "Payment Collection Task", name: props.taskId });
-    router.push({ name: 'PaymentCollectionTaskList' });
+    await call("test_app.api.cancel_task", { doctype: "Payment Collection Task", task_id: props.taskId });
+    await fetchTaskDetails();
   } catch (err: any) {
-    console.error("Failed to delete task:", err);
-    alert(err.message || "Failed to delete task.");
+    console.error("Failed to cancel task:", err);
+    alert(err.message || "Failed to cancel task.");
   }
 }
 
@@ -971,6 +993,14 @@ function openReceiptModalForCommitment(commitmentId: string, promisedAmount: num
   };
   isReceiptAmountReadonly.value = !isPartial;
   receiptModalOpen.value = true;
+}
+
+function handlePaymentModeChange() {
+  if (receiptForm.value.payment_mode === 'Cash') {
+    receiptForm.value.transaction_reference = "";
+    receiptForm.value.next_follow_up_date = "";
+    receiptForm.value.remarks = "";
+  }
 }
 
 async function saveReceipt() {
@@ -1135,12 +1165,21 @@ function openEditReceiptModal(receipt: any) {
     amount_received: receipt.amount_received || 0,
     payment_mode: receipt.payment_mode || "Bank Transfer",
     transaction_reference: receipt.transaction_reference || "",
-    remarks: receipt.remarks || ""
+    remarks: receipt.remarks || "",
+    original_amount: receipt.amount_received || 0
   };
   editReceiptModalOpen.value = true;
 }
 
 async function saveEditReceipt() {
+  const newAmount = Number(editReceiptForm.value.amount_received || 0);
+  const maxAllowed = Number(task.value.outstanding_amount || 0) + Number(editReceiptForm.value.original_amount || 0);
+  
+  if (newAmount > maxAllowed) {
+    alert("Amount received cannot make the total collected greater than the total receivable.");
+    return;
+  }
+
   isReceiptEditing.value = true;
   try {
     const updatedDoc = await call("test_app.api.update_receipt_details", {

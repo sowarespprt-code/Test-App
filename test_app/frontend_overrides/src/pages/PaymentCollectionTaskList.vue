@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-semibold text-gray-900">Payment Collection Tasks</h1>
         <p class="text-sm text-gray-500 mt-1">Assign, track, and manage customer payment collections and commitments.</p>
       </div>
-      <Button variant="solid" @click="createNewTask">
+      <Button v-if="isManager" variant="solid" @click="createNewTask">
         <template #prefix>
           <LucidePlus class="h-4 w-4" />
         </template>
@@ -102,11 +102,15 @@
               <tr
                 v-for="task in filteredTasks"
                 :key="task.name"
-                class="hover:bg-blue-50/50 cursor-pointer transition-colors duration-150"
-                @click="openTaskDetail(task.name)"
+                class="transition-colors duration-150 hover:bg-gray-50/50"
+                :class="{'animate-row-blink': task.status === 'Open'}"
               >
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-sm font-semibold text-blue-600 hover:underline">
+                  <span 
+                    class="text-sm font-semibold hover:underline cursor-pointer"
+                    :class="task.status === 'Open' ? 'text-orange-900' : 'text-blue-600'"
+                    @click="openTaskDetail(task.name)"
+                  >
                     {{ task.name }}
                   </span>
                 </td>
@@ -147,11 +151,11 @@
                 <td class="px-6 py-4 whitespace-nowrap text-right">
                   <button
                     v-if="isManager"
-                    @click.stop="deleteTask(task.name)"
+                    @click.stop="cancelTask(task.name)"
                     class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    title="Delete Task"
+                    title="Cancel Task"
                   >
-                    <LucideTrash2 class="w-4 h-4" />
+                    <LucideXCircle class="w-4 h-4" />
                   </button>
                 </td>
               </tr>
@@ -168,7 +172,7 @@
           <p class="text-sm text-gray-500 mb-4 max-w-sm text-center">
             There are no payment collection tasks matching your current filters. Create one to get started!
           </p>
-          <Button variant="solid" @click="createNewTask">
+          <Button v-if="isManager" variant="solid" @click="createNewTask">
             <template #prefix>
               <LucidePlus class="h-4 w-4" />
             </template>
@@ -181,13 +185,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { call, Button, Badge } from "frappe-ui";
 import LucidePlus from "~icons/lucide/plus";
 import LucideSearch from "~icons/lucide/search";
 import LucideFileText from "~icons/lucide/file-text";
-import LucideTrash2 from "~icons/lucide/trash-2";
+import LucideXCircle from "~icons/lucide/x-circle";
 import { useAuthStore } from "@/stores/auth";
 const router = useRouter();
 const authStore = useAuthStore();
@@ -203,8 +207,18 @@ const dateFilter = ref("All");
 
 onMounted(async () => {
   await fetchTasks();
+  
+  // Auto refresh every 30 seconds
+  refreshInterval = window.setInterval(() => {
+    fetchTasks();
+  }, 30000);
 });
 
+onUnmounted(() => {
+  if (refreshInterval) window.clearInterval(refreshInterval);
+});
+
+let refreshInterval: number | null = null;
 async function fetchTasks() {
   isLoading.value = true;
   try {
@@ -319,14 +333,17 @@ function openTaskDetail(taskName: string) {
   router.push({ name: 'PaymentCollectionTaskDetail', params: { taskId: taskName } });
 }
 
-async function deleteTask(taskName: string) {
-  if (!confirm("Are you sure you want to permanently delete this task?")) return;
+async function cancelTask(taskId: string) {
+  if (!confirm(`Are you sure you want to cancel the task ${taskId}? This will also cancel all pending commitments.`)) {
+    return;
+  }
+  
   try {
-    await call("frappe.client.delete", { doctype: "Payment Collection Task", name: taskName });
+    await call("test_app.api.cancel_task", { doctype: "Payment Collection Task", task_id: taskId });
     await fetchTasks();
-  } catch (err: any) {
-    console.error("Failed to delete task:", err);
-    alert(err.message || "Failed to delete task.");
+  } catch (error) {
+    console.error("Failed to cancel task:", error);
+    alert("Failed to cancel task. See console for details.");
   }
 }
 
@@ -396,3 +413,13 @@ function getPriorityBg(priority: string) {
   }
 }
 </script>
+
+<style>
+@keyframes row-blink {
+  0%, 100% { background-color: #ffedd5; } /* orange-100 */
+  50% { background-color: #fdba74; } /* orange-300 */
+}
+.animate-row-blink {
+  animation: row-blink 1.2s ease-in-out infinite;
+}
+</style>

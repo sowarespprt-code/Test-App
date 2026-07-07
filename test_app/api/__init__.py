@@ -30,83 +30,112 @@ def get_payment_dashboard_metrics():
         import datetime
         from frappe.utils import getdate
 
+        user = frappe.session.user
+        is_admin = "System Manager" in frappe.get_roles(user) or user == "Administrator"
+
         today_dt = datetime.date.today()
         today = today_dt.isoformat()
         start_of_month = today_dt.replace(day=1).isoformat()
 
+        cond = ""
+        t_cond = ""
+        r_cond = ""
+        params_outstanding = []
+        params_collected = [start_of_month]
+        params_failed = [today]
+        params_staff = []
+
+        if not is_admin:
+            cond = " AND assigned_to = %s"
+            t_cond = " AND t.assigned_to = %s"
+            r_cond = " AND r.received_by = %s"
+            params_outstanding.append(user)
+            params_collected.append(user)
+            params_failed.append(user)
+            params_staff.append(user)
+
         # 1. Total Outstanding Amount
-        total_outstanding = frappe.db.sql("""
+        total_outstanding = frappe.db.sql(f"""
             SELECT SUM(outstanding_amount) 
             FROM `tabPayment Collection Task` 
-            WHERE status NOT IN ('Completed', 'Cancelled')
-        """)[0][0] or 0.0
+            WHERE status NOT IN ('Completed', 'Cancelled') {cond}
+        """, tuple(params_outstanding))[0][0] or 0.0
 
         # 2. Total Collected This Month
-        total_collected_month = frappe.db.sql("""
-            SELECT SUM(amount_received) 
-            FROM `tabPayment Collection Receipt` 
-            WHERE receipt_date >= %s AND parenttype = 'Payment Collection Task'
-        """, (start_of_month,))[0][0] or 0.0
+        total_collected_month = frappe.db.sql(f"""
+            SELECT SUM(r.amount_received) 
+            FROM `tabPayment Collection Receipt` r
+            JOIN `tabPayment Collection Task` t ON r.parent = t.name
+            WHERE r.receipt_date >= %s AND r.parenttype = 'Payment Collection Task' {t_cond}
+        """, tuple(params_collected))[0][0] or 0.0
 
         # 3. Open Collection Tasks
-        open_tasks = frappe.db.count("Payment Collection Task", {
-            "status": ["not in", ["Completed", "Cancelled"]]
-        })
+        open_filters = {"status": ["not in", ["Completed", "Cancelled"]]}
+        if not is_admin: open_filters["assigned_to"] = user
+        open_tasks = frappe.db.count("Payment Collection Task", open_filters)
 
         # 4. Overdue Follow-ups
-        overdue_follow_ups = frappe.db.count("Payment Collection Task", {
-            "status": ["not in", ["Completed", "Cancelled"]],
-            "next_follow_up_date": ["<", today]
-        })
+        overdue_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": ["<", today]}
+        if not is_admin: overdue_filters["assigned_to"] = user
+        overdue_follow_ups = frappe.db.count("Payment Collection Task", overdue_filters)
 
         # 5. Pending Commitments
-        pending_commitments = frappe.db.sql("""
+        pending_commitments = frappe.db.sql(f"""
             SELECT COUNT(*) 
-            FROM `tabPayment Collection Commitment` 
-            WHERE status = 'Pending' AND parenttype = 'Payment Collection Task'
-        """)[0][0] or 0
+            FROM `tabPayment Collection Commitment` c
+            JOIN `tabPayment Collection Task` t ON c.parent = t.name
+            WHERE c.status = 'Pending' AND c.parenttype = 'Payment Collection Task' {t_cond}
+        """, tuple(params_outstanding))[0][0] or 0
 
         # 6. Failed Commitments
-        failed_commitments = frappe.db.sql("""
+        failed_commitments = frappe.db.sql(f"""
             SELECT COUNT(*) 
-            FROM `tabPayment Collection Commitment` 
-            WHERE parenttype = 'Payment Collection Task'
-              AND (status = 'Not Received' OR (status = 'Pending' AND promised_payment_date < %s))
-        """, (today,))[0][0] or 0
+            FROM `tabPayment Collection Commitment` c
+            JOIN `tabPayment Collection Task` t ON c.parent = t.name
+            WHERE c.parenttype = 'Payment Collection Task'
+              AND (c.status = 'Not Received' OR (c.status = 'Pending' AND c.promised_payment_date < %s))
+            {t_cond}
+        """, tuple(params_failed))[0][0] or 0
 
         # 7. Staff-wise Collection Performance
-        staff_performance = frappe.db.sql("""
+        staff_performance = frappe.db.sql(f"""
             SELECT r.received_by as staff, u.full_name as staff_name, SUM(r.amount_received) as collected 
             FROM `tabPayment Collection Receipt` r
             LEFT JOIN `tabUser` u ON r.received_by = u.name
-            WHERE r.parenttype = 'Payment Collection Task'
+            WHERE r.parenttype = 'Payment Collection Task' {r_cond}
             GROUP BY r.received_by
             ORDER BY collected DESC
-        """, as_dict=True)
+        """, tuple(params_staff), as_dict=True)
 
         # 8. Customer-wise Outstanding Amount
-        customer_outstanding = frappe.db.sql("""
+        customer_outstanding = frappe.db.sql(f"""
             SELECT t.customer as customer_name, c.customer_name as customer_display, SUM(t.outstanding_amount) as outstanding
             FROM `tabPayment Collection Task` t
             LEFT JOIN `tabHD Customer` c ON t.customer = c.name
-            WHERE t.status NOT IN ('Completed', 'Cancelled')
+            WHERE t.status NOT IN ('Completed', 'Cancelled') {t_cond}
             GROUP BY t.customer
             ORDER BY outstanding DESC
-        """, as_dict=True)
+        """, tuple(params_outstanding), as_dict=True)
 
         # 9. Reminders Lists
+        daily_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": today}
+        if not is_admin: daily_filters["assigned_to"] = user
         daily_reminders_list = frappe.db.get_list("Payment Collection Task",
-            filters={"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": today},
+            filters=daily_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status"]
         )
 
+        overdue_rem_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": ["<", today]}
+        if not is_admin: overdue_rem_filters["assigned_to"] = user
         overdue_reminders_list = frappe.db.get_list("Payment Collection Task",
-            filters={"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": ["<", today]},
+            filters=overdue_rem_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status", "next_follow_up_date"]
         )
 
+        upcoming_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": [">", today]}
+        if not is_admin: upcoming_filters["assigned_to"] = user
         upcoming_follow_ups_list = frappe.db.get_list("Payment Collection Task",
-            filters={"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": [">", today]},
+            filters=upcoming_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status", "next_follow_up_date"]
         )
 
@@ -207,14 +236,49 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
                         c.amount_paid = amount_received
                     if next_follow_up_date:
                         c.next_follow_up_date = next_follow_up_date
+
                     break
                     
         task.save()
+        
+        # Auto-create new commitment if there is still an outstanding balance
+        if commitment_row_id and commitment_status in ["Received", "Partially Paid"]:
+            collected_amt = sum(float(r.amount_received or 0) for r in task.payment_receipts)
+            outstanding_amt = float(task.payment_amount or 0) - collected_amt
+            if outstanding_amt > 0:
+                task.append("payment_commitments", {
+                    "commitment_date": frappe.utils.today(),
+                    "promised_payment_date": next_follow_up_date,
+                    "promised_amount": outstanding_amt,
+                    "status": "Pending",
+                    "remarks": f"Auto-generated for remaining balance after payment on {frappe.utils.today()}"
+                })
+                task.save()
         frappe.db.commit()
         return task.as_dict()
     except Exception as e:
         frappe.log_error(f"Error recording receipt: {str(e)}")
         frappe.throw(f"Failed to record receipt: {str(e)}")
+
+@frappe.whitelist()
+def cancel_task(doctype, task_id):
+    """Cancel a task and all its pending commitments"""
+    try:
+        task = frappe.get_doc(doctype, task_id)
+        task.status = "Cancelled"
+        
+        if hasattr(task, "payment_commitments"):
+            for c in task.payment_commitments:
+                if c.status == "Pending":
+                    c.status = "Cancelled"
+                    c.remarks = "Auto-cancelled with task"
+                    
+        task.save()
+        frappe.db.commit()
+        return task.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error cancelling task: {str(e)}")
+        frappe.throw(f"Failed to cancel task: {str(e)}")
 
 @frappe.whitelist()
 def update_commitment_status(task_id, commitment_row_id, status, remarks=None, amount_paid=None, next_follow_up_date=None):

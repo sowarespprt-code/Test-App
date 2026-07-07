@@ -254,7 +254,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { call, Button } from "frappe-ui";
 import LucideRefreshCw from "~icons/lucide/refresh-cw";
@@ -271,8 +271,18 @@ const isLoading = ref(false);
 
 onMounted(async () => {
   await fetchMetrics();
+  
+  // Auto refresh every 30 seconds
+  refreshInterval = window.setInterval(() => {
+    fetchMetrics();
+  }, 30000);
 });
 
+onUnmounted(() => {
+  if (refreshInterval) window.clearInterval(refreshInterval);
+});
+
+let refreshInterval: number | null = null;
 async function fetchMetrics() {
   isLoading.value = true;
   try {
