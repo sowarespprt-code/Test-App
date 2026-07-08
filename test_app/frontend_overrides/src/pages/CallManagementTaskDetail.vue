@@ -601,10 +601,15 @@
 
             <!-- Next Follow-up Date -->
             <div class="col-span-1 md:col-span-2">
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date (Optional)</label>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">
+                Next Follow-up Date
+                <span v-if="Number(receiptForm.amount_received || 0) >= Number(task?.outstanding_amount || 0)" class="text-gray-500 font-normal ml-1">(Optional)</span>
+                <span v-else class="text-red-500">*</span>
+              </label>
               <input
                 v-model="receiptForm.next_follow_up_date"
                 type="date"
+                :required="Number(receiptForm.amount_received || 0) < Number(task?.outstanding_amount || 0)"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
               />
             </div>

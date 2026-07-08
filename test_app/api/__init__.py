@@ -218,6 +218,14 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
             
         task = frappe.get_doc("Payment Collection Task", task_id)
         
+        # Validate next follow up date if there will be a remaining balance
+        current_collected = sum(float(r.amount_received or 0) for r in task.payment_receipts)
+        new_outstanding = float(task.payment_amount or 0) - (current_collected + float(amount_received))
+        if new_outstanding > 0 and not next_follow_up_date:
+            msg = "Next Follow-up Date is mandatory since there is a remaining outstanding balance."
+            frappe.local.response['_error_message'] = msg
+            frappe.throw(msg)
+        
         # Add to Payment Receipts
         task.append("payment_receipts", {
             "receipt_date": frappe.utils.today(),
@@ -247,18 +255,18 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
         task.save()
         
         # Auto-create new commitment if there is still an outstanding balance
-        if commitment_row_id and commitment_status in ["Received", "Partially Paid"]:
-            collected_amt = sum(float(r.amount_received or 0) for r in task.payment_receipts)
-            outstanding_amt = float(task.payment_amount or 0) - collected_amt
-            if outstanding_amt > 0:
-                task.append("payment_commitments", {
-                    "commitment_date": frappe.utils.today(),
-                    "promised_payment_date": next_follow_up_date,
-                    "promised_amount": outstanding_amt,
-                    "status": "Pending",
-                    "remarks": f"Auto-generated for remaining balance after payment on {frappe.utils.today()}"
-                })
-                task.save()
+        # if commitment_row_id and commitment_status in ["Received", "Partially Paid"]:
+        #     collected_amt = sum(float(r.amount_received or 0) for r in task.payment_receipts)
+        #     outstanding_amt = float(task.payment_amount or 0) - collected_amt
+        #     if outstanding_amt > 0:
+        #         task.append("payment_commitments", {
+        #             "commitment_date": frappe.utils.today(),
+        #             "promised_payment_date": next_follow_up_date,
+        #             "promised_amount": outstanding_amt,
+        #             "status": "Pending",
+        #             "remarks": f"Auto-generated for remaining balance after payment on {frappe.utils.today()}"
+        #         })
+        #         task.save()
         frappe.db.commit()
         return task.as_dict()
     except Exception as e:
