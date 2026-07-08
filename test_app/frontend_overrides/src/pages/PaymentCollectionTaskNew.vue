@@ -501,7 +501,7 @@ async function saveTask() {
       }
     });
     if (res && res.name) {
-      router.push({ name: "PaymentCollectionTaskDetail", params: { taskId: res.name } });
+      router.push({ name: "PaymentCollectionTaskList" });
     }
   } catch (err: any) {
     console.error("Failed to save task:", err);

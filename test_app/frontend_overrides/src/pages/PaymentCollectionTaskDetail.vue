@@ -232,12 +232,6 @@
                             Not Paid
                           </button>
                           <button
-                            @click="updateCommitment(c.name, 'Cancelled')"
-                            class="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 px-2 py-1 rounded font-medium border border-gray-200 transition"
-                          >
-                            Cancel
-                          </button>
-                          <button
                             @click="openReceiptModalForCommitment(c.name, c.promised_amount, true)"
                             class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium border border-blue-200 transition"
                           >
@@ -1048,6 +1042,8 @@ async function saveReceipt() {
 // Update commitment status
 async function updateCommitment(commitmentId: string, status: string) {
   const remarks = prompt(`Enter optional remarks/feedback for marking this promise as ${status}:`);
+  if (remarks === null) return; // User cancelled the prompt
+  
   try {
     const updatedDoc = await call("test_app.api.update_commitment_status", {
       task_id: props.taskId,
