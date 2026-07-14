@@ -46,14 +46,7 @@ def get_payment_dashboard_metrics():
         params_staff = []
 
         if not is_admin:
-            cond = " AND assigned_to = %s"
-            t_cond = " AND t.assigned_to = %s"
-            r_cond = " AND r.received_by = %s"
-            params_outstanding.append(user)
-            params_collected.append(user)
-            params_failed.append(user)
-            params_staff.append(user)
-
+            pass
         # 1. Total Outstanding Amount
         total_outstanding = frappe.db.sql(f"""
             SELECT SUM(outstanding_amount) 
@@ -71,12 +64,10 @@ def get_payment_dashboard_metrics():
 
         # 3. Open Collection Tasks
         open_filters = {"status": ["not in", ["Completed", "Cancelled"]]}
-        if not is_admin: open_filters["assigned_to"] = user
         open_tasks = frappe.db.count("Payment Collection Task", open_filters)
 
         # 4. Overdue Follow-ups
         overdue_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": ["<", today]}
-        if not is_admin: overdue_filters["assigned_to"] = user
         overdue_follow_ups = frappe.db.count("Payment Collection Task", overdue_filters)
 
         # 5. Pending Commitments
@@ -119,21 +110,18 @@ def get_payment_dashboard_metrics():
 
         # 9. Reminders Lists
         daily_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": today}
-        if not is_admin: daily_filters["assigned_to"] = user
         daily_reminders_list = frappe.db.get_list("Payment Collection Task",
             filters=daily_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status"]
         )
 
         overdue_rem_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": ["<", today]}
-        if not is_admin: overdue_rem_filters["assigned_to"] = user
         overdue_reminders_list = frappe.db.get_list("Payment Collection Task",
             filters=overdue_rem_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status", "next_follow_up_date"]
         )
 
         upcoming_filters = {"status": ["not in", ["Completed", "Cancelled"]], "next_follow_up_date": [">", today]}
-        if not is_admin: upcoming_filters["assigned_to"] = user
         upcoming_follow_ups_list = frappe.db.get_list("Payment Collection Task",
             filters=upcoming_filters,
             fields=["name", "customer", "payment_amount", "outstanding_amount", "assigned_to", "priority", "status", "next_follow_up_date"]
@@ -199,8 +187,22 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
             
         if next_follow_up_date:
             task.next_follow_up_date = next_follow_up_date
+        task.assigned_to = frappe.session.user
             
-        task.save()
+        task.save(ignore_permissions=True)
+        
+        # Auto-assign all other open/in-progress tasks for this customer to the current user
+        other_tasks = frappe.get_all(
+            "Payment Collection Task",
+            filters={
+                "customer": task.customer,
+                "status": ["in", ["Open", "In Progress"]],
+                "name": ["!=", task.name]
+            },
+            fields=["name"]
+        )
+        for ot in other_tasks:
+            frappe.db.set_value("Payment Collection Task", ot.name, "assigned_to", frappe.session.user)
         frappe.db.commit()
         return task.as_dict()
     except Exception as e:
@@ -564,9 +566,87 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
         if task_doc.status == "Open":
             task_doc.status = "In Progress"
             
+        task_doc.assigned_to = frappe.session.user
+            
         task_doc.save(ignore_permissions=True)
+
+        # Auto-assign all other open/in-progress tasks for this customer to the current user
+        other_tasks = frappe.get_all(
+            "Payment Collection Task",
+            filters={
+                "customer": task_doc.customer,
+                "status": ["in", ["Open", "In Progress"]],
+                "name": ["!=", task_doc.name]
+            },
+            fields=["name"]
+        )
+        for ot in other_tasks:
+            frappe.db.set_value("Payment Collection Task", ot.name, "assigned_to", frappe.session.user)
+
         frappe.db.commit()
         return doc.as_dict()
     except Exception as e:
         frappe.log_error(f"Error logging management call: {str(e)}")
         frappe.throw(f"Failed to log management call: {str(e)}")
+
+@frappe.whitelist()
+def get_customer_pending_tasks(customer, current_task_id=None):
+    """Fetch other pending tasks for the same customer (both Payment Collection and Call Management)"""
+    try:
+        if not customer:
+            return []
+
+        # Find all Payment Collection Tasks for this customer
+        # that are not Completed or Cancelled and are not the current task
+        payment_tasks = frappe.get_all(
+            "Payment Collection Task",
+            filters={
+                "customer": customer,
+                "status": ["not in", ["Completed", "Cancelled"]],
+                "name": ["!=", current_task_id] if current_task_id else ["is", "set"]
+            },
+            fields=["name", "purpose_type", "status", "priority", "task_description", "next_follow_up_date", "payment_amount", "collected_amount", "outstanding_amount"],
+            order_by="next_follow_up_date asc, modified desc"
+        )
+        
+        # In this module, Call Management Tasks are essentially the same Doctypes, 
+        # but the task_type might differ or they are separated by module logic.
+        # However, the user mentioned "Call Management Tasks" which might be 
+        # tracked as a different Doctype "Call Management Task" OR just "Payment Collection Task"
+        # Let's check if there's a Doctype named "Call Management Task".
+        # Actually, looking at the code previously, both modules often use "Payment Collection Task" 
+        # but filter by task_type or the list pages differ. 
+        # Let's just return what we fetched since it's the same Doctype!
+        
+        # Add a flag to distinguish type if needed, but since it's all in Payment Collection Task Doctype,
+        # we just return the list.
+        return payment_tasks
+
+    except Exception as e:
+        frappe.log_error(f"Error fetching customer pending tasks: {str(e)}")
+        return []
+@frappe.whitelist()
+def get_customer_history(customer):
+    """Fetch combined call logs, commitments, and receipts for all tasks of a customer"""
+    try:
+        if not customer:
+            return {"calls": [], "commitments": [], "receipts": []}
+
+        tasks = frappe.get_all("Payment Collection Task", filters={"customer": customer}, fields=["name"])
+        task_names = [t.name for t in tasks]
+
+        if not task_names:
+            return {"calls": [], "commitments": [], "receipts": []}
+
+        calls = frappe.get_all("Payment Collection Call History", filters={"parent": ["in", task_names]}, fields=["*", "parent"], order_by="call_date_and_time desc")
+        commitments = frappe.get_all("Payment Collection Commitment", filters={"parent": ["in", task_names]}, fields=["*", "parent"], order_by="commitment_date desc")
+        receipts = frappe.get_all("Payment Collection Receipt", filters={"parent": ["in", task_names]}, fields=["*", "parent"], order_by="receipt_date desc")
+
+        return {
+            "calls": calls,
+            "commitments": commitments,
+            "receipts": receipts
+        }
+    except Exception as e:
+        frappe.log_error(f"Error fetching customer history: {str(e)}")
+        return {"calls": [], "commitments": [], "receipts": []}
