@@ -191,12 +191,11 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
             
         task.save(ignore_permissions=True)
         
-        # Auto-assign all other open/in-progress tasks for this customer to the current user
+        # Auto-assign all other tasks for this customer to the current user
         other_tasks = frappe.get_all(
             "Payment Collection Task",
             filters={
                 "customer": task.customer,
-                "status": ["in", ["Open", "In Progress"]],
                 "name": ["!=", task.name]
             },
             fields=["name"]
@@ -570,12 +569,11 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             
         task_doc.save(ignore_permissions=True)
 
-        # Auto-assign all other open/in-progress tasks for this customer to the current user
+        # Auto-assign ALL other tasks for this customer to the current user
         other_tasks = frappe.get_all(
             "Payment Collection Task",
             filters={
                 "customer": task_doc.customer,
-                "status": ["in", ["Open", "In Progress"]],
                 "name": ["!=", task_doc.name]
             },
             fields=["name"]
@@ -597,12 +595,11 @@ def get_customer_pending_tasks(customer, current_task_id=None):
             return []
 
         # Find all Payment Collection Tasks for this customer
-        # that are not Completed or Cancelled and are not the current task
+        # that are not the current task
         payment_tasks = frappe.get_all(
             "Payment Collection Task",
             filters={
                 "customer": customer,
-                "status": ["not in", ["Completed", "Cancelled"]],
                 "name": ["!=", current_task_id] if current_task_id else ["is", "set"]
             },
             fields=["name", "purpose_type", "status", "priority", "task_description", "next_follow_up_date", "payment_amount", "collected_amount", "outstanding_amount"],
