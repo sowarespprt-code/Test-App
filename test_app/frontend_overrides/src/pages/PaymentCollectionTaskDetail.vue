@@ -263,7 +263,7 @@
             <div v-if="activeTab === 'commitments'" class="space-y-4">
               <h3 class="font-bold text-gray-800 mb-2">Customer Payment Promises</h3>
 
-              <div v-if="task.payment_commitments && task.payment_commitments.length" class="overflow-x-auto">
+              <div v-if="customerHistory.commitments && customerHistory.commitments.length" class="overflow-x-auto">
                 <table class="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
@@ -283,7 +283,7 @@
                       <td class="py-3 px-4 text-gray-600">{{ formatDate(c.commitment_date) }}</td>
                       <td class="py-3 px-4 font-semibold text-gray-900">{{ formatCurrency(c.promised_amount) }}</td>
                       <td class="py-3 px-4 font-bold text-red-600">
-                        <span v-if="c.status === 'Pending'">{{ formatCurrency(task.outstanding_amount) }}</span>
+                        <span v-if="c.status === 'Pending'">{{ formatCurrency(getOutstandingAmount(c.parent)) }}</span>
                         <span v-else class="text-gray-400 font-normal">—</span>
                       </td>
                       <td class="py-3 px-4 text-gray-900 font-medium">{{ formatDate(c.promised_payment_date) }}</td>
@@ -296,19 +296,19 @@
                       <td class="py-3 px-4 text-right">
                         <div v-if="c.status === 'Pending'" class="inline-flex gap-2">
                           <button
-                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, false)"
+                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, false, c.parent)"
                             class="text-xs bg-green-50 hover:bg-green-100 text-green-700 px-2 py-1 rounded font-medium border border-green-200 transition"
                           >
                             Received
                           </button>
                           <button
-                            @click="updateCommitment(c.name, 'Not Received')"
+                            @click="updateCommitment(c.name, 'Not Received', c.parent)"
                             class="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1 rounded font-medium border border-red-200 transition"
                           >
                             Not Paid
                           </button>
                           <button
-                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, true)"
+                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, true, c.parent)"
                             class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium border border-blue-200 transition"
                           >
                             Partially Paid
@@ -738,6 +738,12 @@ const totalCollectedAmount = computed(() => {
 const totalOutstandingAmount = computed(() => {
   return allPendingTasks.value.reduce((sum, t) => sum + (Number(t.outstanding_amount) || 0), 0);
 });
+
+function getOutstandingAmount(taskId: string) {
+  const targetTask = allPendingTasks.value.find(t => t.name === taskId);
+  return targetTask ? targetTask.outstanding_amount : 0;
+}
+
 const isRightSidebarCollapsed = ref(false);
 
 // Cache maps
@@ -977,7 +983,7 @@ function openReceiptModal() {
   receiptModalOpen.value = true;
 }
 
-function openReceiptModalForCommitment(commitmentId: string, promisedAmount: number, isPartial: boolean) {
+function openReceiptModalForCommitment(commitmentId: string, promisedAmount: number, isPartial: boolean, parentTask: string = "") {
   receiptForm.value = {
     amount_received: isPartial ? '' : promisedAmount,
     payment_mode: "Bank Transfer",
@@ -985,7 +991,8 @@ function openReceiptModalForCommitment(commitmentId: string, promisedAmount: num
     remarks: "",
     next_follow_up_date: "",
     commitment_row_id: commitmentId,
-    commitment_status: isPartial ? "Partially Paid" : "Received"
+    commitment_status: isPartial ? "Partially Paid" : "Received",
+    target_task_id: parentTask
   };
   isReceiptAmountReadonly.value = !isPartial;
   receiptModalOpen.value = true;
@@ -1019,7 +1026,7 @@ async function saveReceipt() {
   isReceiptSaving.value = true;
   try {
     const updatedDoc = await call("test_app.api.record_payment_receipt", {
-      task_id: props.taskId,
+      task_id: receiptForm.value.target_task_id || props.taskId,
       ...receiptForm.value
     });
     if (updatedDoc) {
@@ -1037,13 +1044,13 @@ async function saveReceipt() {
 }
 
 // Update commitment status
-async function updateCommitment(commitmentId: string, status: string) {
+async function updateCommitment(commitmentId: string, status: string, parentTask: string = "") {
   const remarks = prompt(`Enter optional remarks/feedback for marking this promise as ${status}:`);
   if (remarks === null) return; // User cancelled the prompt
   
   try {
     const updatedDoc = await call("test_app.api.update_commitment_status", {
-      task_id: props.taskId,
+      task_id: parentTask || props.taskId,
       commitment_row_id: commitmentId,
       status,
       remarks: remarks || ""
