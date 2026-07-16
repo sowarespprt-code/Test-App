@@ -74,8 +74,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Assigned To",
-   "options": "User",
-   "reqd": 1
+   "options": "User"
   },
   {
    "fieldname": "next_follow_up_date",
@@ -163,7 +162,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-02 10:37:04.835073",
+ "modified": "2026-07-14 13:04:48.657023",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Payment Collection Task",

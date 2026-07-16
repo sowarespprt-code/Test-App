@@ -588,6 +588,24 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
         frappe.throw(f"Failed to log management call: {str(e)}")
 
 @frappe.whitelist()
+def update_task_follow_up_date(task_id, call_log_id, next_follow_up_date):
+    try:
+        task_doc = frappe.get_doc("Payment Collection Task", task_id)
+        if next_follow_up_date:
+            task_doc.next_follow_up_date = next_follow_up_date
+            task_doc.save(ignore_permissions=True)
+            
+            if call_log_id:
+                frappe.db.set_value("Payment Collection Call History", call_log_id, "next_follow_up_date", next_follow_up_date)
+            
+            frappe.db.commit()
+            
+        return task_doc.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error updating follow up date: {str(e)}")
+        frappe.throw(f"Failed to update follow up date: {str(e)}")
+
+@frappe.whitelist()
 def get_customer_pending_tasks(customer, current_task_id=None):
     """Fetch other pending tasks for the same customer (both Payment Collection and Call Management)"""
     try:
@@ -647,3 +665,45 @@ def get_customer_history(customer):
     except Exception as e:
         frappe.log_error(f"Error fetching customer history: {str(e)}")
         return {"calls": [], "commitments": [], "receipts": []}
+
+@frappe.whitelist()
+def update_customer_contact_details(customer, contact_person=None, mobile_number=None, alternate_mobile=None):
+    try:
+        tasks = frappe.get_all(
+            "Payment Collection Task",
+            filters={
+                "customer": customer,
+                "status": ["in", ["Open", "In Progress"]]
+            },
+            fields=["name"]
+        )
+        for t in tasks:
+            doc = frappe.get_doc("Payment Collection Task", t.name)
+            changed = False
+            changes = []
+            
+            if contact_person is not None and doc.contact_person != contact_person:
+                changes.append(f"Contact Person from '{doc.contact_person}' to '{contact_person}'")
+                doc.contact_person = contact_person
+                changed = True
+                
+            if mobile_number is not None and doc.mobile_number != mobile_number:
+                changes.append(f"Mobile Number from '{doc.mobile_number}' to '{mobile_number}'")
+                doc.mobile_number = mobile_number
+                changed = True
+                
+            if alternate_mobile is not None and doc.alternate_mobile != alternate_mobile:
+                changes.append(f"Alternate Mobile from '{doc.alternate_mobile}' to '{alternate_mobile}'")
+                doc.alternate_mobile = alternate_mobile
+                changed = True
+                
+            if changed:
+                doc.flags.ignore_permissions = True
+                doc.save()
+                doc.add_comment("Comment", "Updated Customer Contact Details: " + ", ".join(changes))
+        
+        frappe.db.commit()
+        return {"status": "success"}
+    except Exception as e:
+        frappe.log_error(f"Error updating customer contact details: {str(e)}")
+        frappe.throw(f"Failed to update customer contact details: {str(e)}")

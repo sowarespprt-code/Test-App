@@ -199,9 +199,6 @@ async function fetchTasks() {
   isLoading.value = true;
   try {
     let queryFilters: Record<string, any> = {};
-    if (!authStore.isManager) {
-      queryFilters["assigned_to"] = authStore.userId;
-    }
 
     const list = await call("frappe.client.get_list", {
       doctype: "Payment Collection Task",

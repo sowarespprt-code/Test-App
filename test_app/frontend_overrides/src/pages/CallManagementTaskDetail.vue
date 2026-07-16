@@ -32,15 +32,19 @@
         
         <!-- Contact Info Section -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-          <h4 class="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
-            <LucideUser class="w-4 h-4" /> Customer Contact Details
+          <h4 class="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <LucideUser class="w-4 h-4" /> Customer Contact Details
+            </div>
+            <Button variant="solid" :loading="isSavingContact" @click="saveContactDetails" class="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-3 h-8">
+              Save Changes
+            </Button>
           </h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <span class="text-gray-500 block text-xs mb-1">Primary Contact</span>
               <input
                 v-model="task.contact_person"
-                @blur="updateField('contact_person', task.contact_person)"
                 type="text"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-gray-900 bg-white"
               />
@@ -50,7 +54,6 @@
               <div class="flex gap-2">
                 <input
                   v-model="task.mobile_number"
-                  @blur="updateField('mobile_number', task.mobile_number)"
                   type="text"
                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-blue-600 bg-white"
                 />
@@ -61,7 +64,6 @@
               <div class="flex gap-2">
                 <input
                   v-model="task.alternate_mobile"
-                  @blur="updateField('alternate_mobile', task.alternate_mobile)"
                   type="text"
                   placeholder="Optional"
                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-gray-700 bg-white"
@@ -138,11 +140,14 @@
                    <td class="py-3 px-4 text-right text-red-600 font-bold whitespace-nowrap align-top">
                      {{ formatCurrency(ot.outstanding_amount || 0) }}
                    </td>
-                   <td class="py-3 px-4 text-center align-top">
-                     <Button variant="solid" class="bg-gray-900 text-white hover:bg-gray-800 text-xs py-1 px-2 h-7 mt-1" @click="openLogCallModal(ot.name)">
-                       Log Call
-                     </Button>
-                   </td>
+                    <td class="py-3 px-4 text-center align-top">
+                      <div class="flex items-center justify-center gap-1.5 mt-1">
+                        <Button variant="solid" :disabled="temporarilyLoggedCalls[ot.name]" class="bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-xs py-1 px-2 h-7" @click="openLogCallModal(ot.name)">
+                          Log Call
+                        </Button>
+                        <LucideCheckCircle v-if="temporarilyLoggedCalls[ot.name]" class="w-4 h-4 text-green-500" title="Call logged in this session" />
+                      </div>
+                    </td>
                  </tr>
                </tbody>
              </table>
@@ -199,17 +204,13 @@
           <div class="p-6 flex-1 overflow-y-auto">
             <!-- TAB 0: ACTIVITY LOG -->
             <div v-if="activeTab === 'activity'" class="h-full">
-              <TaskActivityPanel doctype="Payment Collection Task" :docname="task.name" />
+              <TaskActivityPanel ref="activityPanelRef" doctype="Payment Collection Task" :docname="task.name" />
             </div>
 
             <!-- TAB 1: CALL HISTORY -->
             <div v-if="activeTab === 'calls'" class="space-y-4">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="font-bold text-gray-800">Call Logs</h3>
-                <Button variant="solid" class="bg-gray-900 text-white hover:bg-gray-800" @click="openLogCallModal(task.name)">
-                  <template #prefix><LucidePhone class="w-4 h-4" /></template>
-                  Log Call
-                </Button>
               </div>
 
               <div v-if="customerHistory.calls && customerHistory.calls.length" class="space-y-4">
@@ -400,7 +401,8 @@
                 v-model="callForm.customer_response"
                 type="text"
                 placeholder="e.g. Promised payment / Asked to call back"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                :disabled="isCallLogReadonly"
                 required
               />
             </div>
@@ -412,7 +414,8 @@
                 v-model="callForm.call_outcome"
                 type="text"
                 placeholder="e.g. Commitment recorded / Postponed / Not connected"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                :disabled="isCallLogReadonly"
               />
             </div>
 
@@ -462,7 +465,8 @@
               v-model="callForm.discussion_summary"
               rows="3"
               placeholder="Write detailed call summary of the conversation with customer..."
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              :disabled="isCallLogReadonly"
               required
             ></textarea>
           </div>
@@ -471,7 +475,9 @@
       <template #actions>
         <div class="flex justify-end gap-2 mt-4">
           <Button variant="subtle" @click="callModalOpen = false">Close</Button>
-          <Button variant="solid" :loading="isCallSaving" @click="saveCallLog" class="bg-blue-600 text-white hover:bg-blue-700">Save Call</Button>
+          <Button variant="solid" :loading="isCallSaving" @click="saveCallLog" class="bg-blue-600 text-white hover:bg-blue-700">
+            {{ isCallLogReadonly ? 'Update Date' : 'Save Call' }}
+          </Button>
         </div>
       </template>
     </Dialog>
@@ -685,6 +691,7 @@ import LucideUser from "~icons/lucide/user";
 import LucidePhoneCall from "~icons/lucide/phone-call";
 import LucidePlus from "~icons/lucide/plus";
 import LucideCheck from "~icons/lucide/check";
+import LucideCheckCircle from "~icons/lucide/check-circle";
 
 import LucidePhone from "~icons/lucide/phone";
 import LucideCalendar from "~icons/lucide/calendar";
@@ -709,6 +716,7 @@ const customerName = ref("");
 const otherPendingTasks = ref<any[]>([]);
 const customerHistory = ref<any>({ calls: [], commitments: [], receipts: [] });
 const activeTab = ref("calls");
+const activityPanelRef = ref(null);
 
 const sortedCommitments = computed(() => {
   if (!customerHistory.value.commitments) return [];
@@ -747,11 +755,36 @@ const isRightSidebarCollapsed = ref(false);
 
 // Cache maps
 const userMap = ref<Record<string, string>>({});
+const isSavingContact = ref(false);
 
-// Modals
-const showCustomerSearch = ref(false);
+async function saveContactDetails() {
+  if (!task.value) return;
+  isSavingContact.value = true;
+  try {
+    await call("test_app.api.update_customer_contact_details", {
+      customer: task.value.customer,
+      contact_person: task.value.contact_person,
+      mobile_number: task.value.mobile_number,
+      alternate_mobile: task.value.alternate_mobile
+    });
+    alert("Contact details saved successfully for all pending tasks of this customer.");
+    await fetchTaskDetails();
+  } catch (err: any) {
+    console.error("Failed to save contact details:", err);
+    alert(err.message || "Failed to save contact details.");
+  } finally {
+    isSavingContact.value = false;
+  }
+}
+
+
+
+// Log Call Modal state
 const callModalOpen = ref(false);
 const isCallSaving = ref(false);
+const isCallLogReadonly = ref(false);
+const temporarilyLoggedCalls = ref<Record<string, boolean>>({});
+const existingCallLogId = ref("");
 const callForm = ref({
   discussion_summary: "",
   customer_response: "",
@@ -838,7 +871,12 @@ async function fetchTaskDetails() {
     }
   } catch (err) {
     console.error("Failed to load task details:", err);
-    alert("Failed to load payment collection task details.");
+    alert("Failed to load call management task details.");
+  } finally {
+    if (activityPanelRef.value) {
+      // @ts-ignore
+      activityPanelRef.value.fetchActivities();
+    }
   }
 }
 
@@ -929,6 +967,8 @@ const currentLogCallTaskId = ref("");
 
 function openLogCallModal(targetTaskId: string) {
   currentLogCallTaskId.value = targetTaskId || props.taskId;
+  isCallLogReadonly.value = false;
+  existingCallLogId.value = "";
   callForm.value = {
     discussion_summary: "",
     customer_response: "",
@@ -941,16 +981,24 @@ function openLogCallModal(targetTaskId: string) {
 }
 
 async function saveCallLog() {
-  if (!callForm.value.customer_response || !callForm.value.discussion_summary) {
+  if (!isCallLogReadonly.value && (!callForm.value.customer_response || !callForm.value.discussion_summary)) {
     alert("Please fill in the customer response and discussion summary.");
     return;
   }
   isCallSaving.value = true;
   try {
-    await call("test_app.api.log_management_call", {
-      task_id: currentLogCallTaskId.value,
-      ...callForm.value
-    });
+    if (isCallLogReadonly.value) {
+      await call("test_app.api.update_task_follow_up_date", {
+        task_id: currentLogCallTaskId.value,
+        call_log_id: existingCallLogId.value,
+        next_follow_up_date: callForm.value.next_follow_up_date
+      });
+    } else {
+      await call("test_app.api.log_management_call", {
+        task_id: currentLogCallTaskId.value,
+        ...callForm.value
+      });
+    }
     callModalOpen.value = false;
     
     // Only update local state if we logged call for the currently viewed task
@@ -958,6 +1006,7 @@ async function saveCallLog() {
       task.value.status = 'In Progress';
     }
     
+    temporarilyLoggedCalls.value[currentLogCallTaskId.value] = true;
     await fetchTaskDetails(); // Full sync
   } catch (err: any) {
     console.error("Failed to log call:", err);

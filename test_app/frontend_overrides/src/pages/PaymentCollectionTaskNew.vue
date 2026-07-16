@@ -191,7 +191,7 @@
               <!-- Assignee Selection -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Assigned To (Staff Member) <span class="text-red-500">*</span>
+                  Assigned To (Staff Member)
                 </label>
                 <Autocomplete
                   v-if="userOptions && userOptions.length > 0"
@@ -481,17 +481,13 @@ async function saveTask() {
     alert("Please enter a valid Payment Amount greater than 0.");
     return;
   }
-  if (!selectedAssignee.value) {
-    alert("Please assign this task to a staff member.");
-    return;
-  }
   if (!task.value.task_description.trim()) {
     alert("Please enter a task description.");
     return;
   }
 
   isSaving.value = true;
-  task.value.assigned_to = selectedAssignee.value.value;
+  task.value.assigned_to = selectedAssignee.value ? selectedAssignee.value.value : "";
 
   try {
     const res = await call("frappe.client.insert", {
