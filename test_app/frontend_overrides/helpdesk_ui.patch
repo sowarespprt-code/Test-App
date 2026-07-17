@@ -5943,7 +5943,7 @@ index 1260d60..bf60c85 100644
  const { isMobileView } = useScreenSize();
  
  export const LOGIN_PAGE = "/login?redirect-to=/helpdesk";
-@@ -81,6 +82,57 @@ const routes = [
+@@ -81,6 +82,62 @@ const routes = [
      name: "ContactList",
      component: () => import("@/pages/desk/contact/Contacts.vue"),
    },
@@ -5997,6 +5997,11 @@ index 1260d60..bf60c85 100644
 +    path: "/payment-dashboard",
 +    name: "PaymentCollectionDashboard",
 +    component: () => import("@/pages/PaymentCollectionDashboard.vue"),
++  },
++  {
++    path: "/accounts/commitments",
++    name: "AccountsCommitmentList",
++    component: () => import("@/pages/AccountsCommitmentList.vue"),
 +  },
    {
      path: "/agents",
