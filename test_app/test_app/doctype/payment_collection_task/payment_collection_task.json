@@ -146,7 +146,8 @@
    "fieldname": "payment_commitments",
    "fieldtype": "Table",
    "label": "Payment Commitments",
-   "options": "Payment Collection Commitment"
+   "options": "Payment Collection Commitment",
+   "permlevel": 1
   },
   {
    "fieldname": "receipts_section",
@@ -157,12 +158,13 @@
    "fieldname": "payment_receipts",
    "fieldtype": "Table",
    "label": "Payment Receipts",
-   "options": "Payment Collection Receipt"
+   "options": "Payment Collection Receipt",
+   "permlevel": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-14 13:04:48.657023",
+ "modified": "2026-07-17 14:09:20.446168",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Payment Collection Task",

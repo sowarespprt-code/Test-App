@@ -178,25 +178,6 @@
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'calls' ? 'bg-white/20 text-white' : 'bg-blue-200 text-blue-800'">{{ customerHistory.calls?.length || 0 }}</span>
               </button>
 
-              <!-- Commitments Tab -->
-              <button
-                @click="activeTab = 'commitments'"
-                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
-                :class="activeTab === 'commitments' ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100 hover:border-red-200 hover:text-red-700'"
-              >
-                <LucideCalendarClock class="w-4 h-4" /> Payment Commitments
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'commitments' ? 'bg-white/20 text-white' : 'bg-red-200 text-red-800'">{{ customerHistory.commitments?.length || 0 }}</span>
-              </button>
-
-              <!-- Receipts Tab -->
-              <button
-                @click="activeTab = 'receipts'"
-                class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 border whitespace-nowrap"
-                :class="activeTab === 'receipts' ? 'bg-orange-500 text-white border-orange-600 shadow-md' : 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 hover:border-orange-200 hover:text-orange-700'"
-              >
-                <LucideReceipt class="w-4 h-4" /> Receipts & Payments
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeTab === 'receipts' ? 'bg-white/20 text-white' : 'bg-orange-200 text-orange-800'">{{ customerHistory.receipts?.length || 0 }}</span>
-              </button>
             </div>
           </div>
 
@@ -260,118 +241,6 @@
               </div>
             </div>
 
-            <!-- TAB 2: COMMITMENTS -->
-            <div v-if="activeTab === 'commitments'" class="space-y-4">
-              <h3 class="font-bold text-gray-800 mb-2">Customer Payment Promises</h3>
-
-              <div v-if="customerHistory.commitments && customerHistory.commitments.length" class="overflow-x-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200">
-                      <th class="py-3 px-4 font-semibold text-gray-600">Task</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Promise Date</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Amount Promised</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Balance Amount</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Expected Date</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Status</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    <tr v-for="c in sortedCommitments" :key="c.name" class="hover:bg-gray-50/50">
-                      <td class="py-3 px-4 text-xs font-bold text-gray-700">{{ c.parent }}</td>
-                      <td class="py-3 px-4 text-gray-600">{{ formatDate(c.commitment_date) }}</td>
-                      <td class="py-3 px-4 font-semibold text-gray-900">{{ formatCurrency(c.promised_amount) }}</td>
-                      <td class="py-3 px-4 font-bold text-red-600">
-                        <span v-if="c.status === 'Pending'">{{ formatCurrency(getOutstandingAmount(c.parent)) }}</span>
-                        <span v-else class="text-gray-400 font-normal">—</span>
-                      </td>
-                      <td class="py-3 px-4 text-gray-900 font-medium">{{ formatDate(c.promised_payment_date) }}</td>
-                      <td class="py-3 px-4">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" :class="getCommitmentStatusClass(c.status)">
-                          {{ c.status }}
-                        </span>
-                      </td>
-                      <td class="py-3 px-4 text-gray-500 max-w-xs truncate" :title="c.remarks">{{ c.remarks || '—' }}</td>
-                      <td class="py-3 px-4 text-right">
-                        <div v-if="c.status === 'Pending'" class="inline-flex gap-2">
-                          <button
-                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, false, c.parent)"
-                            class="text-xs bg-green-50 hover:bg-green-100 text-green-700 px-2 py-1 rounded font-medium border border-green-200 transition"
-                          >
-                            Received
-                          </button>
-                          <button
-                            @click="updateCommitment(c.name, 'Not Received', c.parent)"
-                            class="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1 rounded font-medium border border-red-200 transition"
-                          >
-                            Not Paid
-                          </button>
-                          <button
-                            @click="openReceiptModalForCommitment(c.name, c.promised_amount, true, c.parent)"
-                            class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium border border-blue-200 transition"
-                          >
-                            Partially Paid
-                          </button>
-                        </div>
-                        <span v-else class="text-xs text-gray-400">Locked</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div v-else class="text-center py-10 text-gray-500 border border-dashed rounded-lg">
-                No payment commitments recorded.
-              </div>
-            </div>
-
-            <!-- TAB 3: RECEIPTS -->
-            <div v-if="activeTab === 'receipts'" class="space-y-4">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="font-bold text-gray-800">Payment Collection Receipts</h3>
-                <Button variant="solid" @click="openReceiptModal" class="bg-green-600 hover:bg-green-700 text-white">
-                  <template #prefix><LucideCheck class="h-4 w-4" /></template>
-                  Record Receipt
-                </Button>
-              </div>
-
-              <div v-if="customerHistory.receipts && customerHistory.receipts.length" class="overflow-x-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200">
-                      <th class="py-3 px-4 font-semibold text-gray-600">Task</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Receipt Date</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Amount Received</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Mode</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Ref No.</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Received By</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600">Remarks</th>
-                      <th class="py-3 px-4 font-semibold text-gray-600 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    <tr v-for="(r, idx) in customerHistory.receipts" :key="idx" class="hover:bg-gray-50/50">
-                      <td class="py-3 px-4 text-xs font-bold text-gray-700">{{ r.parent }}</td>
-                      <td class="py-3 px-4 text-gray-600">{{ formatDate(r.receipt_date) }}</td>
-                      <td class="py-3 px-4 font-bold text-green-700">{{ formatCurrency(r.amount_received) }}</td>
-                      <td class="py-3 px-4 text-gray-800">{{ r.payment_mode }}</td>
-                      <td class="py-3 px-4 text-gray-500 font-mono text-xs">{{ r.transaction_reference || '—' }}</td>
-                      <td class="py-3 px-4 text-gray-600">{{ getUserFullName(r.received_by) }}</td>
-                      <td class="py-3 px-4 text-gray-500">{{ r.remarks || '—' }}</td>
-                      <td class="py-3 px-4 text-right">
-                        <button v-if="isManager" @click="openEditReceiptModal(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition" title="Edit Receipt">
-                          <LucideEdit class="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div v-else class="text-center py-10 text-gray-500 border border-dashed rounded-lg">
-                No payments recorded yet. Click "Record Receipt" to register a payment.
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -985,6 +854,20 @@ async function saveCallLog() {
     alert("Please fill in the customer response and discussion summary.");
     return;
   }
+  
+  if (callForm.value.promised_amount) {
+    const promisedAmt = Number(callForm.value.promised_amount);
+    if (promisedAmt <= 0) {
+      alert("Promised amount must be greater than zero.");
+      return;
+    }
+    const taskAmount = Number(getOutstandingAmount(currentLogCallTaskId.value));
+    if (promisedAmt > taskAmount) {
+      alert(`Promised amount cannot exceed the task's outstanding amount (₹${taskAmount}).`);
+      return;
+    }
+  }
+
   isCallSaving.value = true;
   try {
     if (isCallLogReadonly.value) {

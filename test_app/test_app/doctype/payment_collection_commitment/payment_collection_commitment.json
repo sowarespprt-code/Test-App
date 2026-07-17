@@ -32,7 +32,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Promised Payment Date",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "default": "Pending",

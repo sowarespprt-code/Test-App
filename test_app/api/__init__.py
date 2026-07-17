@@ -173,7 +173,7 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
         })
         
         # If promised details are entered, also create a Payment Commitment entry
-        if promised_amount and promised_payment_date:
+        if promised_amount:
             task.append("payment_commitments", {
                 "commitment_date": frappe.utils.today(),
                 "promised_amount": promised_amount,
@@ -306,10 +306,6 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None, a
                 c.status = status
                 if remarks:
                     c.remarks = remarks
-                if amount_paid:
-                    c.amount_paid = amount_paid
-                if next_follow_up_date:
-                    c.next_follow_up_date = next_follow_up_date
                 found = True
                 break
                 
@@ -318,6 +314,41 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None, a
             
         if next_follow_up_date:
             task.next_follow_up_date = next_follow_up_date
+            
+        task.save()
+        frappe.db.commit()
+        return task.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error updating commitment: {str(e)}")
+        frappe.throw(f"Failed to update commitment: {str(e)}")
+@frappe.whitelist()
+def edit_commitment(task_id, commitment_row_id, promised_amount=None, expected_date=None, next_follow_up_date=None):
+    """Edit fields of a Payment Commitment and optionally the Task's next follow up date"""
+    try:
+        task = frappe.get_doc("Payment Collection Task", task_id)
+        
+        found = False
+        for c in task.payment_commitments:
+            if c.name == commitment_row_id:
+                if promised_amount:
+                    c.promised_amount = promised_amount
+                if expected_date:
+                    c.promised_payment_date = expected_date
+                found = True
+                break
+                
+        if not found:
+            frappe.throw(f"Commitment row {commitment_row_id} not found in task {task_id}")
+            
+        if next_follow_up_date:
+            task.next_follow_up_date = next_follow_up_date
+            
+        task.save(ignore_permissions=True)
+        frappe.db.commit()
+        return task.as_dict()
+    except Exception as e:
+        frappe.log_error(f"Error editing commitment: {str(e)}")
+        frappe.throw(f"Failed to edit commitment: {str(e)}")
             
         task.save()
         frappe.db.commit()
@@ -707,3 +738,34 @@ def update_customer_contact_details(customer, contact_person=None, mobile_number
     except Exception as e:
         frappe.log_error(f"Error updating customer contact details: {str(e)}")
         frappe.throw(f"Failed to update customer contact details: {str(e)}")
+
+@frappe.whitelist()
+def get_all_commitments_and_receipts():
+    """Fetch all payment commitments and receipts across all customers for Accounts team view"""
+    
+    commitments = frappe.db.sql("""
+        SELECT 
+            c.name, c.parent as task, c.commitment_date, c.promised_amount, 
+            c.promised_payment_date, c.status, c.remarks,
+            cust.customer_name as customer, t.outstanding_amount, t.payment_amount, t.collected_amount, t.next_follow_up_date as task_next_follow_up_date
+        FROM `tabPayment Collection Commitment` c
+        JOIN `tabPayment Collection Task` t ON c.parent = t.name
+        LEFT JOIN `tabHD Customer` cust ON t.customer = cust.name
+        ORDER BY c.promised_payment_date ASC, c.creation DESC
+    """, as_dict=True)
+    
+    receipts = frappe.db.sql("""
+        SELECT 
+            r.name, r.parent as task, r.receipt_date, r.amount_received, 
+            r.payment_mode, r.transaction_reference, r.remarks,
+            cust.customer_name as customer
+        FROM `tabPayment Collection Receipt` r
+        JOIN `tabPayment Collection Task` t ON r.parent = t.name
+        LEFT JOIN `tabHD Customer` cust ON t.customer = cust.name
+        ORDER BY r.receipt_date DESC, r.creation DESC
+    """, as_dict=True)
+    
+    return {
+        "commitments": commitments,
+        "receipts": receipts
+    }
