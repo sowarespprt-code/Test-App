@@ -934,7 +934,7 @@ diff --git a/desk/src/components/layouts/layoutSettings.ts b/desk/src/components
 index 1c0b6fd..ae6f256 100644
 --- a/desk/src/components/layouts/layoutSettings.ts
 +++ b/desk/src/components/layouts/layoutSettings.ts
-@@ -1,9 +1,18 @@
+@@ -1,9 +1,19 @@
 +import LucideTicket from "~icons/lucide/ticket";
  import LucideBookOpen from "~icons/lucide/book-open";
  import LucideCloudLightning from "~icons/lucide/cloud-lightning";
@@ -952,11 +952,12 @@ index 1c0b6fd..ae6f256 100644
 +import LucideTrendingUp from "~icons/lucide/trending-up";
 +import LucidePhoneCall from "~icons/lucide/phone-call";
 +import LucideCalendar from "~icons/lucide/calendar";
++import LucideReceipt from "~icons/lucide/receipt";
 +
  
  export const agentPortalSidebarOptions = [
    {
-@@ -31,11 +40,51 @@ export const agentPortalSidebarOptions = [
+@@ -31,11 +40,56 @@ export const agentPortalSidebarOptions = [
      icon: LucideContact2,
      to: "ContactList",
    },
