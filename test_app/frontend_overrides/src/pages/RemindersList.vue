@@ -222,12 +222,32 @@ async function fetchTasks() {
 }
 
 const filteredTasks = computed(() => {
-  return tasks.value.filter((task) => {
+  let filtered = tasks.value.filter((task) => {
     // Search filter
     return task.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
            task.customer.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
            (task.customer_display_name &&
             task.customer_display_name.toLowerCase().includes(searchQuery.value.toLowerCase()));
+  });
+
+  return filtered.sort((a, b) => {
+    const getGroup = (dateStr: string) => {
+      if (!dateStr) return 3; // No date
+      if (dateStr === todayStr) return 0; // Today
+      if (dateStr > todayStr) return 1; // Future
+      return 2; // Past
+    };
+
+    const groupA = getGroup(a.next_follow_up_date);
+    const groupB = getGroup(b.next_follow_up_date);
+
+    if (groupA !== groupB) {
+      return groupA - groupB;
+    }
+    
+    const timeA = a.next_follow_up_date ? new Date(a.next_follow_up_date).getTime() : 0;
+    const timeB = b.next_follow_up_date ? new Date(b.next_follow_up_date).getTime() : 0;
+    return timeA - timeB;
   });
 });
 
