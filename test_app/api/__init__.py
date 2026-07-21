@@ -222,7 +222,7 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
         # Validate next follow up date if there will be a remaining balance
         current_collected = sum(float(r.amount_received or 0) for r in task.payment_receipts)
         new_outstanding = float(task.payment_amount or 0) - (current_collected + float(amount_received))
-        if new_outstanding > 0 and not next_follow_up_date:
+        if new_outstanding > 0 and commitment_status == 'Partially Paid' and not next_follow_up_date:
             msg = "Next Follow-up Date is mandatory since there is a remaining outstanding balance."
             frappe.local.response['_error_message'] = msg
             frappe.throw(msg)
@@ -762,7 +762,7 @@ def get_all_commitments_and_receipts():
         FROM `tabPayment Collection Receipt` r
         JOIN `tabPayment Collection Task` t ON r.parent = t.name
         LEFT JOIN `tabHD Customer` cust ON t.customer = cust.name
-        ORDER BY r.receipt_date DESC, r.creation DESC
+        ORDER BY r.receipt_date DESC, r.modified DESC, r.idx DESC
     """, as_dict=True)
     
     return {

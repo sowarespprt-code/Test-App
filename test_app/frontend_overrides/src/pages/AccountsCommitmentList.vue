@@ -135,11 +135,11 @@
            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                <label class="block text-sm font-semibold text-gray-700 mb-1">Amount Received (INR) <span class="text-red-500">*</span></label>
-               <input v-model="receiptForm.amount_received" type="text" inputmode="decimal" @input="receiptForm.amount_received = $event.target.value.replace(/[^0-9.]/g, '')" :disabled="!isPartialReceipt" :class="{'bg-gray-100 text-gray-500': !isPartialReceipt}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+               <input id="receipt_amount" @keydown.enter.prevent="focusElementById('receipt_payment_mode')" v-model="receiptForm.amount_received" type="text" inputmode="decimal" @input="receiptForm.amount_received = $event.target.value.replace(/[^0-9.]/g, '')" :disabled="!isPartialReceipt" :class="{'bg-gray-100 text-gray-500': !isPartialReceipt}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Payment Mode <span class="text-red-500">*</span></label>
-                <select v-model="receiptForm.payment_mode" @change="handlePaymentModeChange" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white">
+                <select id="receipt_payment_mode" @keydown.enter.prevent="focusElementById(receiptForm.payment_mode === 'Cash' ? (isPartialReceipt ? 'receipt_next_follow_up_date' : 'receipt_remarks') : 'receipt_transaction_reference')" v-model="receiptForm.payment_mode" @change="handlePaymentModeChange" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white">
                   <option value="Bank Transfer">Bank Transfer</option>
                   <option value="UPI">UPI</option>
                   <option value="Cheque">Cheque</option>
@@ -148,15 +148,15 @@
              </div>
              <div v-if="receiptForm.payment_mode !== 'Cash'">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Reference Number <span class="text-red-500">*</span></label>
-                <input v-model="receiptForm.transaction_reference" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="receipt_transaction_reference" @keydown.enter.prevent="focusElementById(isPartialReceipt ? 'receipt_next_follow_up_date' : 'receipt_remarks')" v-model="receiptForm.transaction_reference" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div v-if="isPartialReceipt">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date <span class="text-red-500">*</span></label>
-                <input v-model="receiptForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="receipt_next_follow_up_date" @keydown.enter.prevent="focusElementById('receipt_remarks')" v-model="receiptForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div class="md:col-span-2">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Remarks</label>
-                <textarea v-model="receiptForm.remarks" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></textarea>
+                <textarea id="receipt_remarks" @keydown.enter.prevent="focusElementById('receipt_submit_btn')" v-model="receiptForm.remarks" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></textarea>
              </div>
            </div>
         </div>
@@ -164,7 +164,7 @@
       <template #actions>
          <div class="flex justify-end gap-2 mt-4">
            <Button variant="subtle" @click="showReceiptModal = false">Cancel</Button>
-           <Button variant="solid" :loading="isSaving" @click="saveReceipt" class="bg-green-600 text-white hover:bg-green-700 shadow-sm">Record Payment</Button>
+           <Button id="receipt_submit_btn" variant="solid" :loading="isSaving" @click="saveReceipt" class="bg-green-600 text-white hover:bg-green-700 shadow-sm">Record Payment</Button>
          </div>
       </template>
     </Dialog>
@@ -181,15 +181,15 @@
            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                <label class="block text-sm font-semibold text-gray-700 mb-1">Promised Amount (INR) <span class="text-red-500">*</span></label>
-               <input v-model="editCommitmentForm.promised_amount" type="text" inputmode="decimal" @input="editCommitmentForm.promised_amount = $event.target.value.replace(/[^0-9.]/g, '')" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+               <input id="edit_promised_amount" @keydown.enter.prevent="focusElementById('edit_expected_date')" v-model="editCommitmentForm.promised_amount" type="text" inputmode="decimal" @input="editCommitmentForm.promised_amount = $event.target.value.replace(/[^0-9.]/g, '')" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Expected Date</label>
-                <input v-model="editCommitmentForm.expected_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="edit_expected_date" @keydown.enter.prevent="focusElementById('edit_next_follow_up_date')" v-model="editCommitmentForm.expected_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date (Task)</label>
-                <input v-model="editCommitmentForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="edit_next_follow_up_date" @keydown.enter.prevent="focusElementById('edit_submit_btn')" v-model="editCommitmentForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
            </div>
         </div>
@@ -197,7 +197,7 @@
       <template #actions>
          <div class="flex justify-end gap-2 mt-4">
            <Button variant="subtle" @click="showEditCommitmentModal = false">Cancel</Button>
-           <Button variant="solid" :loading="isEditing" @click="saveEditCommitment" class="bg-blue-600 text-white hover:bg-blue-700 shadow-sm">Save Changes</Button>
+           <Button id="edit_submit_btn" variant="solid" :loading="isEditing" @click="saveEditCommitment" class="bg-blue-600 text-white hover:bg-blue-700 shadow-sm">Save Changes</Button>
          </div>
       </template>
     </Dialog>
@@ -221,6 +221,13 @@ const showReceiptModal = ref(false);
 const showEditCommitmentModal = ref(false);
 const isSaving = ref(false);
 const isEditing = ref(false);
+
+function focusElementById(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.focus();
+  }
+}
 const selectedCommitment = ref<any>(null);
 const isPartialReceipt = ref(false);
 
@@ -290,8 +297,9 @@ function handlePaymentModeChange() {
 function openReceiptModalForCommitment(c: any, partial: boolean) {
   selectedCommitment.value = c;
   isPartialReceipt.value = partial;
+  const defaultAmount = Math.min(Number(c.promised_amount || 0), Number(c.outstanding_amount || 0));
   receiptForm.value = {
-    amount_received: partial ? "" : String(c.promised_amount),
+    amount_received: partial ? "" : String(defaultAmount),
     payment_mode: "Bank Transfer",
     transaction_reference: "",
     next_follow_up_date: "",
@@ -350,11 +358,11 @@ async function saveReceipt() {
     alert("Please enter a reference number.");
     return;
   }
-  if (isPartialReceipt.value && !receiptForm.value.next_follow_up_date) {
+  const outstanding = Number(selectedCommitment.value?.outstanding_amount || 0);
+  if (isPartialReceipt.value && !receiptForm.value.next_follow_up_date && amt < outstanding) {
     alert("Please select the next follow up date for the remaining balance.");
     return;
   }
-  const outstanding = Number(selectedCommitment.value?.outstanding_amount || 0);
   if (amt > outstanding) {
     alert(`Amount received cannot be greater than the task's outstanding amount (₹${outstanding}).`);
     return;
@@ -366,7 +374,7 @@ async function saveReceipt() {
       task_id: selectedCommitment.value.task,
       ...receiptForm.value,
       commitment_row_id: selectedCommitment.value.name,
-      commitment_status: amt >= outstanding ? 'Received' : 'Partially Paid'
+      commitment_status: amt >= outstanding ? 'Received' : (isPartialReceipt.value ? 'Partially Paid' : 'Received')
     });
     toast.success("Payment recorded successfully");
     showReceiptModal.value = false;
