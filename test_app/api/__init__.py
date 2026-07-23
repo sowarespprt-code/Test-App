@@ -155,7 +155,7 @@ def get_payment_dashboard_metrics():
         frappe.throw(f"Error fetching dashboard metrics: {str(e)}")
 
 @frappe.whitelist()
-def log_payment_call(task_id, discussion_summary, customer_response, call_outcome=None, promised_amount=None, promised_payment_date=None, next_follow_up_date=None):
+def log_payment_call(task_id, discussion_summary, customer_response, call_outcome=None, promised_amount=None, promised_payment_date=None, next_follow_up_date=None, contact_person=None, contact_number=None, is_initial_log=0):
     """Log a customer follow-up call under a Payment Collection Task"""
     try:
         task = frappe.get_doc("Payment Collection Task", task_id)
@@ -169,7 +169,9 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
             "call_outcome": call_outcome,
             "promised_amount": promised_amount,
             "promised_payment_date": promised_payment_date,
-            "next_follow_up_date": next_follow_up_date
+            "next_follow_up_date": next_follow_up_date,
+            "contact_person": contact_person,
+            "contact_number": contact_number
         })
         
         # If promised details are entered, also create a Payment Commitment entry
@@ -187,22 +189,26 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
             
         if next_follow_up_date:
             task.next_follow_up_date = next_follow_up_date
-        task.assigned_to = frappe.session.user
+            
+        if not int(is_initial_log):
+            task.assigned_to = frappe.session.user
             
         task.save(ignore_permissions=True)
         
-        # Auto-assign all other tasks for this customer to the current user
-        other_tasks = frappe.get_all(
-            "Payment Collection Task",
-            filters={
-                "customer": task.customer,
-                "name": ["!=", task.name]
-            },
-            fields=["name"]
-        )
-        for ot in other_tasks:
-            frappe.db.set_value("Payment Collection Task", ot.name, "assigned_to", frappe.session.user)
-        frappe.db.commit()
+        if not int(is_initial_log):
+            # Auto-assign all other tasks for this customer to the current user
+            other_tasks = frappe.get_all(
+                "Payment Collection Task",
+                filters={
+                    "customer": task.customer,
+                    "name": ["!=", task.name]
+                },
+                fields=["name"]
+            )
+            for ot in other_tasks:
+                frappe.db.set_value("Payment Collection Task", ot.name, "assigned_to", frappe.session.user)
+            frappe.db.commit()
+            
         return task.as_dict()
     except Exception as e:
         frappe.log_error(f"Error logging call: {str(e)}")
@@ -553,7 +559,7 @@ def get_call_management_logs(task_id):
         return []
 
 @frappe.whitelist()
-def log_management_call(task_id, discussion_summary, customer_response, call_outcome=None, promised_amount=None, promised_payment_date=None, next_follow_up_date=None):
+def log_management_call(task_id, discussion_summary, customer_response, call_outcome=None, promised_amount=None, promised_payment_date=None, next_follow_up_date=None, contact_person=None, contact_number=None):
     """Log a standalone call in Call Management Log"""
     try:
         doc = frappe.get_doc({
@@ -566,7 +572,9 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "call_outcome": call_outcome,
             "promised_amount": promised_amount,
             "promised_payment_date": promised_payment_date,
-            "next_follow_up_date": next_follow_up_date
+            "next_follow_up_date": next_follow_up_date,
+            "contact_person": contact_person,
+            "contact_number": contact_number
         })
         doc.insert(ignore_permissions=True)
         
@@ -578,7 +586,9 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "customer_response": doc.customer_response,
             "call_outcome": doc.call_outcome,
             "discussion_summary": doc.discussion_summary,
-            "next_follow_up_date": doc.next_follow_up_date
+            "next_follow_up_date": doc.next_follow_up_date,
+            "contact_person": doc.contact_person,
+            "contact_number": doc.contact_number
         })
         
         if promised_amount or promised_payment_date:

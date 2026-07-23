@@ -211,7 +211,7 @@ onMounted(async () => {
   // Auto refresh every 30 seconds
   refreshInterval = window.setInterval(() => {
     fetchTasks();
-  }, 30000);
+  }, 300000);
 });
 
 onUnmounted(() => {

@@ -221,6 +221,19 @@
                 </select>
               </div>
 
+              <!-- Next Follow-up Date -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Next Follow-up Date <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="task.next_follow_up_date"
+                  type="date"
+                  required
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
               <!-- Description -->
               <div class="col-span-1 md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -282,6 +295,7 @@ const task = ref({
   customer_code: "",
   purpose_type: "Software Payment",
   task_description: "",
+  next_follow_up_date: "",
   assigned_to: "",
   contact_person: "",
   mobile_number: "",
@@ -485,6 +499,10 @@ async function saveTask() {
     alert("Please enter a task description.");
     return;
   }
+  if (!task.value.next_follow_up_date) {
+    alert("Please select a Next Follow-up Date.");
+    return;
+  }
 
   isSaving.value = true;
   task.value.assigned_to = selectedAssignee.value ? selectedAssignee.value.value : "";
@@ -497,6 +515,18 @@ async function saveTask() {
       }
     });
     if (res && res.name) {
+      if (task.value.next_follow_up_date) {
+        await call("test_app.api.log_payment_call", {
+          task_id: res.name,
+          discussion_summary: `[Initial Task Creation] ${task.value.task_description}`,
+          customer_response: "System Note: Auto-created during task assignment",
+          call_outcome: "",
+          next_follow_up_date: task.value.next_follow_up_date,
+          contact_person: task.value.contact_person,
+          contact_number: task.value.mobile_number,
+          is_initial_log: 1
+        });
+      }
       router.push({ name: "PaymentCollectionTaskList" });
     }
   } catch (err: any) {

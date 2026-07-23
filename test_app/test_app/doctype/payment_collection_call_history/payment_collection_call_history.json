@@ -9,6 +9,8 @@
   "call_date_and_time",
   "staff_member",
   "customer_response",
+  "contact_person",
+  "contact_number",
   "call_outcome",
   "promised_amount",
   "promised_payment_date",
@@ -37,6 +39,16 @@
    "in_list_view": 1,
    "label": "Customer Response",
    "reqd": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Data",
+   "label": "Contact Person"
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number"
   },
   {
    "fieldname": "call_outcome",

@@ -10,16 +10,38 @@
 
     <!-- Filter Bar -->
     <div class="border-b px-5 py-3 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3 flex-1 max-w-2xl">
+      <div class="flex items-center gap-3 flex-1 max-w-4xl">
         <!-- Search -->
         <div class="relative flex-1">
           <input
             v-model="searchQuery"
+            @keyup.enter="applyFilter"
             type="text"
             placeholder="Search by customer name or task number..."
             class="w-full px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
           />
           <LucideSearch class="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        </div>
+
+        <!-- Date Filter -->
+        <div class="flex items-center gap-2">
+          <input
+            v-model="fromDate"
+            type="date"
+            class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          />
+          <span class="text-sm text-gray-500">to</span>
+          <input
+            v-model="toDate"
+            type="date"
+            class="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          />
+          <button
+            @click="applyFilter"
+            class="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          >
+            Filter
+          </button>
         </div>
       </div>
 
@@ -128,15 +150,20 @@ const router = useRouter();
 const tasks = ref<any[]>([]);
 const isLoading = ref(false);
 const searchQuery = ref("");
+const appliedSearchQuery = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const appliedFromDate = ref("");
+const appliedToDate = ref("");
 const todayStr = new Date().toISOString().split('T')[0];
 
 onMounted(async () => {
   await fetchTasks();
   
-  // Auto refresh every 30 seconds
+  // Auto refresh every 5 minutes
   refreshInterval = window.setInterval(() => {
     fetchTasks();
-  }, 30000);
+  }, 300000);
 });
 
 onUnmounted(() => {
@@ -174,7 +201,7 @@ async function fetchTasks() {
         "next_follow_up_date",
         "assigned_to"
       ],
-      order_by: "next_follow_up_date asc",
+      order_by: "next_follow_up_date desc",
       limit_page_length: 500
     });
 
@@ -223,33 +250,40 @@ async function fetchTasks() {
 
 const filteredTasks = computed(() => {
   let filtered = tasks.value.filter((task) => {
-    // Search filter
-    return task.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-           task.customer.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    let matchesSearch = task.name.toLowerCase().includes(appliedSearchQuery.value.toLowerCase()) ||
+           task.customer.toLowerCase().includes(appliedSearchQuery.value.toLowerCase()) ||
+           (task.customer_code && task.customer_code.toLowerCase().includes(appliedSearchQuery.value.toLowerCase())) ||
            (task.customer_display_name &&
-            task.customer_display_name.toLowerCase().includes(searchQuery.value.toLowerCase()));
+            task.customer_display_name.toLowerCase().includes(appliedSearchQuery.value.toLowerCase()));
+            
+    // Date filter
+    let matchesDate = true;
+    if (appliedFromDate.value && task.next_follow_up_date) {
+      if (task.next_follow_up_date < appliedFromDate.value) {
+        matchesDate = false;
+      }
+    }
+    if (appliedToDate.value && task.next_follow_up_date) {
+      if (task.next_follow_up_date > appliedToDate.value) {
+        matchesDate = false;
+      }
+    }
+    
+    return matchesSearch && matchesDate;
   });
 
   return filtered.sort((a, b) => {
-    const getGroup = (dateStr: string) => {
-      if (!dateStr) return 3; // No date
-      if (dateStr === todayStr) return 0; // Today
-      if (dateStr > todayStr) return 1; // Future
-      return 2; // Past
-    };
-
-    const groupA = getGroup(a.next_follow_up_date);
-    const groupB = getGroup(b.next_follow_up_date);
-
-    if (groupA !== groupB) {
-      return groupA - groupB;
-    }
-    
     const timeA = a.next_follow_up_date ? new Date(a.next_follow_up_date).getTime() : 0;
     const timeB = b.next_follow_up_date ? new Date(b.next_follow_up_date).getTime() : 0;
-    return timeA - timeB;
+    return timeB - timeA;
   });
 });
+
+function applyFilter() {
+  appliedFromDate.value = fromDate.value;
+  appliedToDate.value = toDate.value;
+  appliedSearchQuery.value = searchQuery.value;
+}
 
 function isToday(dateStr: string) {
   if (!dateStr) return false;

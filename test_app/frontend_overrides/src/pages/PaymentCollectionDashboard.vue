@@ -272,10 +272,10 @@ const isLoading = ref(false);
 onMounted(async () => {
   await fetchMetrics();
   
-  // Auto refresh every 30 seconds
+  // Auto refresh every 5 minutes
   refreshInterval = window.setInterval(() => {
     fetchMetrics();
-  }, 30000);
+  }, 300000);
 });
 
 onUnmounted(() => {

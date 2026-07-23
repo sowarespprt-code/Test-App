@@ -206,7 +206,7 @@
 
 <script setup lang="ts">
 import LucideEdit from "~icons/lucide/edit";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { Dialog, Button, call, toast } from "frappe-ui";
 import { useRouter } from "vue-router";
 
@@ -423,7 +423,16 @@ function getStatusClass(status: string) {
   }
 }
 
+let refreshInterval: number | null = null;
+
 onMounted(() => {
   fetchData();
+  refreshInterval = window.setInterval(() => {
+    fetchData();
+  }, 300000);
+});
+
+onUnmounted(() => {
+  if (refreshInterval) window.clearInterval(refreshInterval);
 });
 </script>

@@ -214,17 +214,21 @@
                     </div>
                   </div>
 
-                  <div class="text-sm text-gray-800 font-medium">
-                    Response: <span class="text-gray-600 font-normal">{{ call.customer_response }}</span>
+                  <!-- Display Call Information -->
+                  <div class="mt-2 text-sm text-gray-800 bg-gray-50 p-2 rounded border border-gray-100">
+                    <span class="font-medium">Summary:</span> {{ call.discussion_summary }}
                   </div>
-
-                  <div v-if="call.call_outcome" class="text-sm text-gray-800 font-medium mt-1">
-                    Outcome: <span class="text-gray-600 font-normal">{{ call.call_outcome }}</span>
+                  <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                    <div v-if="call.contact_person || call.contact_number" class="text-sm text-gray-800 font-medium">
+                      Contact: <span class="text-gray-600 font-normal"><template v-if="call.contact_person">{{ call.contact_person }} </template><span v-if="call.contact_number">({{ call.contact_number }})</span></span>
+                    </div>
+                    <div class="text-sm text-gray-800 font-medium">
+                      Response: <span class="text-gray-600 font-normal">{{ call.customer_response }}</span>
+                    </div>
+                    <div v-if="call.call_outcome" class="text-sm text-gray-800 font-medium">
+                      Outcome: <span class="text-gray-600 font-normal">{{ call.call_outcome }}</span>
+                    </div>
                   </div>
-
-                  <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2.5 rounded border border-gray-100 italic">
-                    "{{ call.discussion_summary }}"
-                  </p>
 
                   <!-- Promised Details inside call -->
                   <div v-if="call.promised_amount || call.next_follow_up_date" class="mt-3 pt-2.5 border-t border-gray-100 flex flex-wrap gap-4 text-xs">
@@ -257,7 +261,7 @@
       }"
     >
       <template #body-content>
-        <div class="space-y-4 p-1">
+        <div class="space-y-4 p-1" @keydown.enter.prevent="handleEnterNavigation">
           <!-- Task Number Display -->
           <div class="bg-blue-50/50 border border-blue-100 rounded-lg px-4 py-2 flex items-center justify-between">
             <span class="text-sm font-medium text-gray-600">Logging call for Task:</span>
@@ -297,6 +301,30 @@
                 v-model="callForm.next_follow_up_date"
                 type="date"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <!-- Contact Person -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Contact Person</label>
+              <input
+                v-model="callForm.contact_person"
+                type="text"
+                placeholder="Name of the person spoken to"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                :disabled="isCallLogReadonly"
+              />
+            </div>
+
+            <!-- Contact Number -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Contact Number</label>
+              <input
+                v-model="callForm.contact_number"
+                type="text"
+                placeholder="Phone number of contact"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                :disabled="isCallLogReadonly"
               />
             </div>
           </div>
@@ -662,11 +690,29 @@ const existingCallLogId = ref("");
 const callForm = ref({
   discussion_summary: "",
   customer_response: "",
+  contact_person: "",
+  contact_number: "",
   call_outcome: "",
   promised_amount: null as number | null,
   promised_payment_date: "",
   next_follow_up_date: ""
 });
+
+function handleEnterNavigation(e: KeyboardEvent) {
+  const target = e.target as HTMLElement;
+  // Let them use enter normally in textarea
+  if (target.tagName === 'TEXTAREA') return;
+  
+  const container = target.closest('.space-y-4');
+  if (!container) return;
+  
+  const focusable = Array.from(container.querySelectorAll('input:not([disabled]), textarea:not([disabled]), button:not([disabled])')) as HTMLElement[];
+  const index = focusable.indexOf(target);
+  
+  if (index > -1 && index + 1 < focusable.length) {
+    focusable[index + 1].focus();
+  }
+}
 
 const receiptModalOpen = ref(false);
 const isReceiptSaving = ref(false);
@@ -846,6 +892,8 @@ function openLogCallModal(targetTaskId: string) {
   callForm.value = {
     discussion_summary: "",
     customer_response: "",
+    contact_person: "",
+    contact_number: "",
     call_outcome: "",
     promised_amount: null,
     promised_payment_date: "",
