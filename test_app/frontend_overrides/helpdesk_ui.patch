@@ -73,28 +73,6 @@ index 4fa5298..f529a0d 100644
 +}
 +</style>
 \ No newline at end of file
-diff --git a/desk/src/components/ListViewBuilder.vue b/desk/src/components/ListViewBuilder.vue
-index 1e33115..0f59a4b 100644
---- a/desk/src/components/ListViewBuilder.vue
-+++ b/desk/src/components/ListViewBuilder.vue
-@@ -448,7 +448,7 @@ function listCell(column: any, row: any, item: any, idx: number) {
-   if (idx === 0) {
-     return h("span", {
-       class: "truncate text-base text-ink-gray-6",
--      textContent: item,
-+      textContent: finalItem,
-     });
-   }
-   if (column.type === "Datetime") {
-@@ -472,7 +472,7 @@ function listCell(column: any, row: any, item: any, idx: number) {
-   }
-   return h("span", {
-     class: "truncate flex-1",
--    textContent: item,
-+    textContent: finalItem,
-   });
- }
- 
 diff --git a/desk/src/components/desk/global/NewCustomerDialog.vue b/desk/src/components/desk/global/NewCustomerDialog.vue
 index 4073911..d3a8c8f 100644
 --- a/desk/src/components/desk/global/NewCustomerDialog.vue
