@@ -40,8 +40,8 @@ from helpdesk.utils import (
     publish_event,
 )
 
-from ..hd_notification.utils import clear as clear_notifications
-from ..hd_service_level_agreement.utils import get_sla
+from helpdesk.helpdesk.doctype.hd_notification.utils import clear as clear_notifications
+from helpdesk.helpdesk.doctype.hd_service_level_agreement.utils import get_sla
 
 
 class HDTicket(Document):

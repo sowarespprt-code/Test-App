@@ -281,8 +281,10 @@ override_vue_components = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
-override_doctype_class = {}
+override_doctype_class = {
+    "HD Customer": "test_app.overrides.hd_customer.HDCustomer",
+    "HD Ticket": "test_app.overrides.hd_ticket.HDTicket"
+}
 override_whitelisted_methods = {
     "helpdesk.api.doc.get_list_data": "test_app.overrides.doc.get_list_data",
     "helpdesk.helpdesk.doctype.hd_ticket.api.get_list_data": "test_app.overrides.doc.get_list_data"
