@@ -67,14 +67,17 @@ const options = computed(() => {
     doctype: "HD Customer",
     selectable: true,
     showSelectBanner: true,
-    defaultFilters: {
-      // Add any default filters if needed
-    },
+    defaultFilters: {},
+    columns: [
+      { label: "Customer Name", key: "customer_name" },
+      { label: "Domain", key: "domain" },
+      { label: "Created On", key: "creation" },
+      { label: "Phone Number", key: "custom_phone001" },
+    ],
     columnConfig: {
       name: {
         label: "Customer Name",
         format: (value: any, row: any) => {
-          // Show customer_name if available, otherwise fall back to name (ID)
           return row.customer_name || value;
         },
         prefix: ({ row }) => {
