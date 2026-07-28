@@ -242,7 +242,48 @@ const routes = [
       auth: true,
     },
   },
-
+  {
+    path: "/payment-collection",
+    name: "PaymentCollectionTaskList",
+    component: () => import("@/pages/PaymentCollectionTaskList.vue"),
+  },
+  {
+    path: "/payment-collection/new",
+    name: "PaymentCollectionTaskNew",
+    component: () => import("@/pages/PaymentCollectionTaskNew.vue"),
+  },
+  {
+    path: "/payment-collection/:taskId",
+    name: "PaymentCollectionTaskDetail",
+    component: () => import("@/pages/PaymentCollectionTaskDetail.vue"),
+    props: true,
+  },
+  {
+    path: "/call-management",
+    name: "CallManagementTaskList",
+    component: () => import("@/pages/CallManagementTaskList.vue"),
+  },
+  {
+    path: "/call-management/:taskId",
+    name: "CallManagementTaskDetail",
+    component: () => import("@/pages/CallManagementTaskDetail.vue"),
+    props: true,
+  },
+  {
+    path: "/payment-dashboard",
+    name: "PaymentCollectionDashboard",
+    component: () => import("@/pages/PaymentCollectionDashboard.vue"),
+  },
+  {
+    path: "/accounts-payments",
+    name: "AccountsCommitmentList",
+    component: () => import("@/pages/AccountsCommitmentList.vue"),
+  },
+  {
+    path: "/reminders",
+    name: "RemindersList",
+    component: () => import("@/pages/RemindersList.vue"),
+  },
 ];
 
 const handleMobileView = (componentName) => {

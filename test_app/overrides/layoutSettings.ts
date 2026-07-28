@@ -8,8 +8,6 @@ import PhoneIcon from "~icons/lucide/phone";
 import LucideBell from "~icons/lucide/bell";
 import LucidePanelLeft from "~icons/lucide/layout-panel-left";
 import LucideFileText from "~icons/lucide/file-text";
-
-
 import LucideDollarSign from "~icons/lucide/dollar-sign";
 import LucideTrendingUp from "~icons/lucide/trending-up";
 import LucidePhoneCall from "~icons/lucide/phone-call";
@@ -93,7 +91,6 @@ export const agentPortalSidebarOptions = [
     to: "RemindersList",
   },
 ];
-
 
 export const customerPortalSidebarOptions = [
   {
