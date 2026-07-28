@@ -420,7 +420,7 @@ async function fetchLicenseDataForTicket() {
 
   try {
     console.log("[DETAILS TAB] 🔗 Calling license API...");
-    const apiResult = await call("test_app.api.license.get_customer_license_details", {
+    const apiResult = await call("helpdesk.api.license.get_customer_license_details", {
       customer_code: customerCode,
     });
 

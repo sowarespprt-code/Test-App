@@ -8,11 +8,6 @@ import PhoneIcon from "~icons/lucide/phone";
 import LucideBell from "~icons/lucide/bell";
 import LucidePanelLeft from "~icons/lucide/layout-panel-left";
 import LucideFileText from "~icons/lucide/file-text";
-import LucideDollarSign from "~icons/lucide/dollar-sign";
-import LucideTrendingUp from "~icons/lucide/trending-up";
-import LucidePhoneCall from "~icons/lucide/phone-call";
-import LucideCalendar from "~icons/lucide/calendar";
-import LucideReceipt from "~icons/lucide/receipt";
 
 
 export const agentPortalSidebarOptions = [
@@ -65,31 +60,6 @@ export const agentPortalSidebarOptions = [
     label: "Call Logs",
     icon: PhoneIcon,
     to: "CallLogs",
-  },
-  {
-    label: "Payment Collection",
-    icon: LucideDollarSign,
-    to: "PaymentCollectionTaskList",
-  },
-  {
-    label: "Call Management",
-    icon: LucidePhoneCall,
-    to: "CallManagementTaskList",
-  },
-  {
-    label: "Payment Dashboard",
-    icon: LucideTrendingUp,
-    to: "PaymentCollectionDashboard",
-  },
-  {
-    label: "Accounts (Payments)",
-    icon: LucideReceipt,
-    to: "AccountsCommitmentList",
-  },
-  {
-    label: "Reminders",
-    icon: LucideCalendar,
-    to: "RemindersList",
   },
 ];
 

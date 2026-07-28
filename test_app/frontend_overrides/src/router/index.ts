@@ -97,48 +97,6 @@ const routes = [
     component: () => import("@/pages/CustomerAlertNew.vue"),
   },
   {
-    path: "/payment-tasks",
-    name: "PaymentCollectionTaskList",
-    component: () => import("@/pages/PaymentCollectionTaskList.vue"),
-  },
-  {
-    path: "/call-management",
-    name: "CallManagementTaskList",
-    component: () => import("@/pages/CallManagementTaskList.vue"),
-  },
-  {
-    path: "/call-management/:taskId",
-    name: "CallManagementTaskDetail",
-    component: () => import("@/pages/CallManagementTaskDetail.vue"),
-    props: true,
-  },
-  {
-    path: "/reminders",
-    name: "RemindersList",
-    component: () => import("@/pages/RemindersList.vue"),
-  },
-  {
-    path: "/payment-tasks/new",
-    name: "PaymentCollectionTaskNew",
-    component: () => import("@/pages/PaymentCollectionTaskNew.vue"),
-  },
-  {
-    path: "/payment-tasks/:taskId",
-    name: "PaymentCollectionTaskDetail",
-    component: () => import("@/pages/PaymentCollectionTaskDetail.vue"),
-    props: true,
-  },
-  {
-    path: "/payment-dashboard",
-    name: "PaymentCollectionDashboard",
-    component: () => import("@/pages/PaymentCollectionDashboard.vue"),
-  },
-  {
-    path: "/accounts/commitments",
-    name: "AccountsCommitmentList",
-    component: () => import("@/pages/AccountsCommitmentList.vue"),
-  },
-  {
     path: "/agents",
     name: "AgentList",
     redirect: "/tickets",
