@@ -167,15 +167,28 @@ async function handleCustomerSelected(customer: any) {
     ticket.value.doc.customer = customerId;
     ticket.value.doc.custom_customer_name = customerName;
     
+    // Fetch custom_customercode for the new customer so server script doesn't overwrite us with old code
+    const res = await call("frappe.client.get_value", {
+      doctype: "HD Customer",
+      filters: { name: customerId },
+      fieldname: "custom_customercode"
+    });
+    const newCode = res?.custom_customercode || "";
+    if (newCode) ticket.value.doc.custom_customercode = newCode;
+    
     // Trigger virtual field population (uses get_list, safe)
     lastProcessedCustomer.value = customerId;
     await reloadAllCustomerData();  // Populates virtuals from customer lookup
 
-    // ✅ Safe save - no get/reload needed
+    // ✅ Safe save - submit all three to bypass server script reverting
     await ticket.value.setValue.submit({
       customer: customerId,
-      custom_customer_name: customerName
+      custom_customer_name: customerName,
+      custom_customercode: newCode
     });
+    
+    // ✅ Reload ticket to fetch auto-populated fields from server script
+    await ticket.value.reload();
 
     // ✅ Refresh assignees if available (list query, not get_doc)
     if (assignees?.value) {
@@ -846,32 +859,36 @@ function getFieldValueWithVirtual(fieldname: string) {
 }
 
 function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpdated = false) {
-  // ✅ SPECIAL: Handle custom_customer_name Link field changes
-  if (fieldname === "custom_customer_name" && value) {
-    console.log("[DETAILS TAB] 🔄 custom_customer_name selected:", value);
+  // ✅ SPECIAL: Handle customer Link field changes
+  if (fieldname === "customer" && value) {
+    console.log("[DETAILS TAB] 🔄 customer selected:", value);
     
     // Fetch full customer data using the ID (value)
     call("frappe.client.get_list", {
       doctype: "HD Customer",
       filters: { name: value },  // value = customer ID (e.g., "dfi3gq0")
-      fields: ["name", "customer_name", "custom_productname"],
+      fields: ["name", "customer_name", "custom_productname", "custom_customercode", "custom_contactperson", "custom_phone001"],
       limit: 1
     }).then(async (result) => {
       if (result?.[0]) {
         const customer = result[0];
         console.log("[DETAILS TAB] ✅ Customer data:", customer);
         
-        // ✅ Save all three fields for server script
+        // ✅ Save all fields for server script (including customercode to prevent reversion)
         await ticket.value.setValue.submit({
           customer: customer.name,                      // ID for backend
           custom_customer_name: customer.customer_name, // Display name
-          custom_product: customer.custom_productname   // For server script!
+          custom_product: customer.custom_productname,  // For server script!
+          custom_customercode: customer.custom_customercode, // Prevent script overwrite!
+          custom_contactperson: customer.custom_contactperson || "",
+          custom_phone_number: customer.custom_phone001 || ""
         });
         
         console.log("[DETAILS TAB] 💾 Saved:", {
           customer: customer.name,
           display: customer.customer_name,
-          product: customer.custom_productname
+          product: customer.custom_productname,
+          code: customer.custom_customercode
         });
         
         // ✅ Wait for server script execution

@@ -376,7 +376,7 @@
   "rate_limit_count": 5,
   "rate_limit_seconds": 86400,
   "reference_doctype": "HD Ticket",
-  "script": "customer_code = (doc.custom_customercode or \"\").strip()\n\nif customer_code:\n    customer = frappe.db.get_value(\n        \"HD Customer\",\n        {\"custom_customercode\": customer_code},\n        [\"name\", \"customer_name\"],\n        as_dict=True\n    )\n\n    if customer:\n        doc.customer = customer.name\n        doc.custom_customer_name = customer.customer_name\n    else:\n        frappe.throw(f\"HD Customer not found for Customer Code: {customer_code}\")",
+  "script": "customer_code = (doc.custom_customercode or \"\").strip()\n\nif customer_code:\n    customer = frappe.db.get_value(\n        \"HD Customer\",\n        {\"custom_customercode\": customer_code},\n        [\"name\", \"customer_name\", \"custom_productname\", \"custom_contactperson\", \"custom_phone001\"],\n        as_dict=True\n    )\n\n    if customer:\n        doc.customer = customer.name\n        doc.custom_customer_name = customer.customer_name\n        \n        if customer.custom_productname:\n            doc.custom_product = customer.custom_productname\n        if customer.custom_contactperson:\n            doc.custom_contactperson = customer.custom_contactperson\n        if customer.custom_phone001:\n            doc.custom_phone_number = customer.custom_phone001\n            \n        if doc.custom_product:\n            team = frappe.db.get_value(\"Product\", doc.custom_product, \"team\")\n            if team:\n                doc.agent_group = team\n    else:\n        frappe.throw(f\"HD Customer not found for Customer Code: {customer_code}\")",
   "script_type": "DocType Event"
  }
 ]

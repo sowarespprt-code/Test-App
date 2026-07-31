@@ -150,62 +150,82 @@ function openCustomerSearchPopup() {
 }
 
 
-// ✅ FIXED: handleCustomerSelected - NO ticket.get/reload, pure memory updates
-async function handleCustomerSelected(customer: any) {
-  console.log("[DETAILS TAB] 👤 Customer selected:", customer);
-  
+// ✅ SINGLE shared function for all customer change paths (popup + dropdown)
+async function applyCustomerChange(customer: any) {
+  console.log("[DETAILS TAB] 👤 Applying customer change:", customer);
+
   if (!customer || !customer.name) {
-    console.warn("[DETAILS TAB] ⚠️ Invalid customer");
+    console.warn("[DETAILS TAB] ⚠️ Invalid customer data");
     return;
   }
 
-  const customerId = customer.name;
-  const customerName = customer.customer_name;
+  const customerId     = customer.name;
+  const customerName   = customer.customer_name || "";
+  const customerCode   = customer.custom_customercode || "";
+  const customerProduct = customer.custom_productname || "";
 
+  // ① Lock watcher so it doesn't re-trigger on our own save
+  lastProcessedCustomer.value = customerId;
+
+  // ② Update local doc memory immediately so UI refreshes
+  ticket.value.doc.customer             = customerId;
+  ticket.value.doc.custom_customer_name = customerName;
+  ticket.value.doc.custom_customercode  = customerCode;
+
+  // ③ Update virtual display fields immediately
+  virtualFields.value.custom_customercode = customerCode;
+  virtualFields.value.custom_product      = customerProduct;
+  virtualFields.value.custom_remarks      = customer.custom_remarks || "";
+
+  // ④ Persist to server in ONE atomic call with all fields
+  //    This prevents the Server Script "To Fill customer Name" from reverting us
   try {
-    // ✅ MEMORY ONLY: Update fields directly (ticket.doc already loaded)
-    ticket.value.doc.customer = customerId;
-    ticket.value.doc.custom_customer_name = customerName;
-    
-    // Trigger virtual field population (uses get_list, safe)
-    lastProcessedCustomer.value = customerId;
-    await reloadAllCustomerData();  // Populates virtuals from customer lookup
-
-    // ✅ Safe save - no get/reload needed
     await ticket.value.setValue.submit({
-      customer: customerId,
-      custom_customer_name: customerName
+      customer:              customerId,
+      custom_customer_name:  customerName,
+      custom_customercode:   customerCode,
+      custom_product:        customerProduct,
     });
-
-    // ✅ Refresh assignees if available (list query, not get_doc)
-    if (assignees?.value) {
-      assignees.value.reload();
-    }
-
-    console.log("[DETAILS TAB] ✅ Customer updated successfully");
     
+    // ✅ RELOAD from DB to fetch all the other fields (product, team, contact, phone) 
+    // that were automatically populated by the Server Script "To Fill customer Name"
+    await ticket.value.reload();
+    console.log("[DETAILS TAB] 💾 Saved customer & fetched server-populated fields:", customerId);
   } catch (error: any) {
-    console.error("[DETAILS TAB] ❌ Save error:", error);
-    
-    // Handle only TimestampMismatch (common after concurrent edits)
     if (error._server_messages?.[0]?.includes("TimestampMismatchError")) {
-      // Force reload once (doc already permitted since page loaded)
+      // Reload once then retry
       await ticket.value.reload();
-      
-      // Retry memory + save
-      ticket.value.doc.customer = customerId;
+      lastProcessedCustomer.value = customerId;
+      ticket.value.doc.customer             = customerId;
       ticket.value.doc.custom_customer_name = customerName;
+      ticket.value.doc.custom_customercode  = customerCode;
       await ticket.value.setValue.submit({
-        customer: customerId,
-        custom_customer_name: customerName
+        customer:             customerId,
+        custom_customer_name: customerName,
+        custom_customercode:  customerCode,
+        custom_product:       customerProduct,
       });
-      
-      await reloadAllCustomerData();
-      console.log("[DETAILS TAB] ✅ Retry successful");
     } else {
-      throw error;  // Re-throw for UI alert
+      console.error("[DETAILS TAB] ❌ Save error:", error);
+      throw error;
     }
   }
+
+  // ⑤ After save completes, load AMC/popup alerts without a full reload
+  await fetchLicenseDataForTicket();
+  await fetchCustomerAlerts(customerId, customerCode);
+
+  // ⑥ Refresh assignees
+  if (assignees?.value) {
+    assignees.value.reload();
+  }
+
+  console.log("[DETAILS TAB] ✅ Customer change complete");
+}
+
+// Called from CustomerSearchPopup
+async function handleCustomerSelected(customer: any) {
+  await applyCustomerChange(customer);
 }
 
 
@@ -624,22 +644,29 @@ onMounted(async () => {
   await reloadAllCustomerData();
 });
 
+// Single watcher: only fires when the ticket is first loaded (external changes)
+// NOT for changes we make ourselves (lastProcessedCustomer guards against that)
 watch(
-  () => ticket?.value?.doc?.customer, // Watch the Link field instead
+  () => ticket?.value?.doc?.customer,
   async (newCustomerId, oldCustomerId) => {
-    console.log("[DETAILS TAB] 👤 Customer ID changed:", oldCustomerId, "→", newCustomerId);
-    
+    console.log("[DETAILS TAB] 👤 ticket.customer changed:", oldCustomerId, "→", newCustomerId);
+
     if (!newCustomerId) {
       clearVirtualFields();
       lastProcessedCustomer.value = "";
       return;
     }
-    
-    if (newCustomerId !== oldCustomerId && newCustomerId !== lastProcessedCustomer.value) {
-      lastProcessedCustomer.value = newCustomerId;
-      await nextTick();
-      await reloadAllCustomerData();
+
+    // Skip if WE just set this value (avoids reload loop)
+    if (newCustomerId === lastProcessedCustomer.value) {
+      console.log("[DETAILS TAB] ⏭️ Skipping watcher (self-triggered)");
+      return;
     }
+
+    // External change (e.g. initial load, or another tab saved)
+    lastProcessedCustomer.value = newCustomerId;
+    await nextTick();
+    await reloadAllCustomerData();
   },
   { immediate: false }
 );
@@ -656,16 +683,6 @@ watch(
 );
 
 watch(
-  () => ticket?.value?.doc?.custom_customercode,
-  async (newCode) => {
-    if (newCode && newCode.length >= 3) {
-      await fetchLicenseDataForTicket();
-    }
-  },
-  { immediate: true }
-);
-
-watch(
   () => licenseData.value?.AMCEndDate,
   (newVal) => {
     if (!newVal) {
@@ -673,51 +690,13 @@ watch(
       virtualFields.value.custom_amc_status = "";
       return;
     }
-
     virtualFields.value.custom_amc_end_date = String(newVal);
     virtualFields.value.custom_amc_status = amcStatusText.value;
-
     console.log("[DETAILS TAB] 💾 AMC virtual fields updated:", {
       end: virtualFields.value.custom_amc_end_date,
       status: virtualFields.value.custom_amc_status,
     });
   }
-);
-
-watch(
-  () => ticket?.value?.doc?.customer,
-  async (newCustomerId) => {
-    if (!newCustomerId || !ticket.value) return;
-
-    console.log("[DETAILS TAB] 👤 Customer changed:", newCustomerId);
-    
-    try {
-      // ✅ Display name only (memory)
-      const result = await call("frappe.client.get_list", {
-        doctype: "HD Customer",
-        filters: { name: newCustomerId },
-        fields: ["customer_name"],
-        limit: 1,
-      });
-      if (result?.[0]) {
-        ticket.value.doc.custom_customer_name = result[0].customer_name;
-      }
-      
-      lastProcessedCustomer.value = newCustomerId;
-      await reloadAllCustomerData();
-
-      // ✅ Reload assignees
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (assignees?.value) {
-        await assignees.value.reload();
-        console.log("[DETAILS TAB] ✅ Team refreshed");
-      }
-      
-    } catch (err) {
-      console.error("[DETAILS TAB] Display error:", err);
-    }
-  },
-  { immediate: false }
 );
 
 
@@ -846,51 +825,26 @@ function getFieldValueWithVirtual(fieldname: string) {
 }
 
 function handleFieldUpdate(fieldname: string, value: FieldValue, isCoreFieldUpdated = false) {
-  // ✅ SPECIAL: Handle custom_customer_name Link field changes
+  // ✅ SPECIAL: Handle custom_customer_name Link field selection
   if (fieldname === "custom_customer_name" && value) {
-    console.log("[DETAILS TAB] 🔄 custom_customer_name selected:", value);
-    
-    // Fetch full customer data using the ID (value)
+    console.log("[DETAILS TAB] 🔄 custom_customer_name dropdown selected:", value);
+
+    // Fetch full customer object then use the shared applyCustomerChange helper
     call("frappe.client.get_list", {
       doctype: "HD Customer",
-      filters: { name: value },  // value = customer ID (e.g., "dfi3gq0")
-      fields: ["name", "customer_name", "custom_productname"],
+      filters: { name: value },
+      fields: ["name", "customer_name", "custom_productname", "custom_customercode", "custom_remarks"],
       limit: 1
     }).then(async (result) => {
       if (result?.[0]) {
-        const customer = result[0];
-        console.log("[DETAILS TAB] ✅ Customer data:", customer);
-        
-        // ✅ Save all three fields for server script
-        await ticket.value.setValue.submit({
-          customer: customer.name,                      // ID for backend
-          custom_customer_name: customer.customer_name, // Display name
-          custom_product: customer.custom_productname   // For server script!
-        });
-        
-        console.log("[DETAILS TAB] 💾 Saved:", {
-          customer: customer.name,
-          display: customer.customer_name,
-          product: customer.custom_productname
-        });
-        
-        // ✅ Wait for server script execution
-        await new Promise(resolve => setTimeout(resolve, 800));
-        await ticket.value.reload();
-        await reloadAllCustomerData();
-        
-        // ✅ Reload team dropdown
-        if (assignees?.value) {
-          await assignees.value.reload();
-          console.log("[DETAILS TAB] ✅ Team updated:", ticket.value.doc.agent_group);
-        }
+        await applyCustomerChange(result[0]);
       } else {
         console.error("[DETAILS TAB] ❌ Customer not found:", value);
       }
     }).catch(err => {
       console.error("[DETAILS TAB] ❌ Lookup error:", err);
     });
-    
+
     return; // Exit early - don't process as normal field
   }
 
