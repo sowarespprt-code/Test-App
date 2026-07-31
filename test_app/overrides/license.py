@@ -12,11 +12,10 @@ def get_customer_license_details(customer_code):
         # Log for debugging
         frappe.logger().info(f"Fetching license for customer code: {customer_code}")
         
-        # Validate input
         if not customer_code:
             frappe.throw(_("Customer code is required"))
 
-        api_customer_code = customer_code.split('_')[0] if '_' in customer_code else customer_code
+        api_customer_code = customer_code.strip()
         
         frappe.logger().info(f"Original customer code: {customer_code}, API customer code: {api_customer_code}")
         
@@ -97,7 +96,10 @@ def get_customer_license_details(customer_code):
             frappe.logger().error(f"JSON Decode Error: {str(e)}")
             frappe.log_error(f"Invalid JSON response: {response.text}", "License Fetch Error")
             frappe.throw(_("Received invalid response from server"))
-        
+            
+    except frappe.exceptions.ValidationError:
+        # Allow intentional frappe.throw() errors (like "Customer not found") to bubble up cleanly
+        raise
     except Exception as e:
         frappe.logger().error(f"Error in get_customer_license_details: {str(e)}")
         import traceback

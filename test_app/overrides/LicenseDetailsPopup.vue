@@ -333,7 +333,24 @@ async function fetchDetails() {
     licenseData.value = data;
     emit('licenseLoaded', data);
   } catch (err: any) {
-    error.value = err?.message || String(err);
+    let errMsg = err?.message || String(err);
+    if (err._server_messages && err._server_messages.length > 0) {
+      try {
+        const parsed = JSON.parse(err._server_messages[0]);
+        if (parsed && parsed.message) {
+          errMsg = parsed.message;
+          // Clean up the dictionary string if it looks like: API Error: {'ErrorText': '...'}
+          if (errMsg.includes("ErrorText")) {
+             try {
+                const dictStr = errMsg.split("API Error: ")[1].replace(/'/g, '"');
+                const dict = JSON.parse(dictStr);
+                if (dict.ErrorText) errMsg = dict.ErrorText;
+             } catch(e) {}
+          }
+        }
+      } catch (e) {}
+    }
+    error.value = errMsg;
     licenseData.value = null;
   } finally {
     loading.value = false;

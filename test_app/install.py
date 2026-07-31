@@ -73,11 +73,21 @@ def install_overrides():
         destination = os.path.join(helpdesk_dir, dest_path)
         
         if not os.path.exists(source):
-            print(f"⚠️  Source not found: {source}")
             continue
             
-        # Backup original
+        import sys
+        # If user provided arguments (e.g. `python3 install.py license.py`), only copy those files
+        if len(sys.argv) > 1 and source_file not in sys.argv[1:]:
+            continue
+            
+        # Intelligent Sync: Only copy if the override file is NEWER than the destination file
         if os.path.exists(destination):
+            src_mtime = os.path.getmtime(source)
+            dst_mtime = os.path.getmtime(destination)
+            if src_mtime <= dst_mtime and len(sys.argv) <= 1:
+                print(f"⏩ Skipped (Already up-to-date): {source_file}")
+                continue
+                
             backup = destination + ".original"
             if not os.path.exists(backup):
                 shutil.copy2(destination, backup)
@@ -87,21 +97,16 @@ def install_overrides():
         try:
             os.makedirs(os.path.dirname(destination), exist_ok=True)
             shutil.copy2(source, destination)
-            print(f"✅ Copied: {dest_path}")
+            print(f"✅ Synced: {source_file} -> {dest_path}")
         except Exception as e:
             print(f"❌ Failed to copy {source_file}: {e}")
             success = False
     
     if success:
-        print("\n✅ All files copied successfully!")
-        print("\n🔧 Next steps:")
-        print("   cd apps/helpdesk/desk")
-        print("   yarn build")
-        print("   cd ~/test-bench")
-        print("   bench restart")
+        print("\n✅ Sync completed successfully!")
         return True
     else:
-        print("\n❌ Some files failed to copy")
+        print("\n❌ Some files failed to sync")
         return False
 
 if __name__ == "__main__":
