@@ -215,9 +215,34 @@ def log_payment_call(task_id, discussion_summary, customer_response, call_outcom
         frappe.throw(f"Failed to log call: {str(e)}")
 
 @frappe.whitelist()
+def validate_today_or_future_date(
+    date_value,
+    field_label,
+):
+    if not date_value:
+        return
+
+    selected_date = frappe.utils.getdate(
+        date_value
+    )
+    current_date = frappe.utils.getdate(
+        frappe.utils.today()
+    )
+
+    if selected_date < current_date:
+        frappe.throw(
+            f"{field_label} cannot be earlier than today."
+        )
+
+@frappe.whitelist()
 def record_payment_receipt(task_id, amount_received, payment_mode, transaction_reference=None, remarks=None, next_follow_up_date=None, commitment_row_id=None, commitment_status=None):
     """Record a receipt of payment under a Payment Collection Task"""
     try:
+        validate_today_or_future_date(
+            next_follow_up_date,
+            "Next Follow-up Date",
+        )
+
         if payment_mode != "Cash" and not (transaction_reference and str(transaction_reference).strip()):
             msg = "Transaction Reference is mandatory for non-Cash payments."
             frappe.local.response['_error_message'] = msg
@@ -281,24 +306,57 @@ def record_payment_receipt(task_id, amount_received, payment_mode, transaction_r
         frappe.throw(f"Failed to record receipt: {str(e)}")
 
 @frappe.whitelist()
+def can_cancel_payment_collection_task():
+    can_cancel = frappe.has_permission(
+        "Payment Collection Task",
+        ptype="create",
+        user=frappe.session.user,
+    )
+
+    return {
+        "can_cancel": bool(can_cancel),
+        "user": frappe.session.user,
+    }
+
+@frappe.whitelist()
 def cancel_task(doctype, task_id):
-    """Cancel a task and all its pending commitments"""
     try:
-        task = frappe.get_doc(doctype, task_id)
+        task = frappe.get_doc("Payment Collection Task", task_id)
+
+        if not frappe.has_permission(
+            "Payment Collection Task",
+            ptype="create",
+            user=frappe.session.user,
+        ):
+            frappe.throw(
+                "You do not have permission to cancel Payment Collection Tasks.",
+                frappe.PermissionError,
+            )
+
+        if task.status == "Cancelled":
+            frappe.throw("This task is already cancelled.")
+
         task.status = "Cancelled"
-        
-        if hasattr(task, "payment_commitments"):
-            for c in task.payment_commitments:
-                if c.status == "Pending":
-                    c.status = "Cancelled"
-                    c.remarks = "Auto-cancelled with task"
-                    
+
+        for commitment in task.payment_commitments:
+            if commitment.status == "Pending":
+                commitment.status = "Cancelled"
+                commitment.remarks = "Auto-cancelled with task"
+
         task.save()
         frappe.db.commit()
+
         return task.as_dict()
-    except Exception as e:
-        frappe.log_error(f"Error cancelling task: {str(e)}")
-        frappe.throw(f"Failed to cancel task: {str(e)}")
+
+    except frappe.PermissionError:
+        raise
+
+    except Exception as error:
+        frappe.log_error(
+            f"Error cancelling task: {str(error)}",
+            "Payment Collection Task Cancellation",
+        )
+        frappe.throw(f"Failed to cancel task: {str(error)}")
 
 @frappe.whitelist()
 def update_commitment_status(task_id, commitment_row_id, status, remarks=None, amount_paid=None, next_follow_up_date=None):
@@ -327,10 +385,22 @@ def update_commitment_status(task_id, commitment_row_id, status, remarks=None, a
     except Exception as e:
         frappe.log_error(f"Error updating commitment: {str(e)}")
         frappe.throw(f"Failed to update commitment: {str(e)}")
+
+
 @frappe.whitelist()
 def edit_commitment(task_id, commitment_row_id, promised_amount=None, expected_date=None, next_follow_up_date=None):
     """Edit fields of a Payment Commitment and optionally the Task's next follow up date"""
     try:
+        validate_today_or_future_date(
+            expected_date,
+            "Expected Date",
+        )
+
+        validate_today_or_future_date(
+            next_follow_up_date,
+            "Next Follow-up Date",
+        )
+
         task = frappe.get_doc("Payment Collection Task", task_id)
         
         found = False
@@ -355,13 +425,6 @@ def edit_commitment(task_id, commitment_row_id, promised_amount=None, expected_d
     except Exception as e:
         frappe.log_error(f"Error editing commitment: {str(e)}")
         frappe.throw(f"Failed to edit commitment: {str(e)}")
-            
-        task.save()
-        frappe.db.commit()
-        return task.as_dict()
-    except Exception as e:
-        frappe.log_error(f"Error updating commitment: {str(e)}")
-        frappe.throw(f"Failed to update commitment: {str(e)}")
 
 @frappe.whitelist()
 def update_task_details(task_id, updates):
@@ -559,9 +622,34 @@ def get_call_management_logs(task_id):
         return []
 
 @frappe.whitelist()
-def log_management_call(task_id, discussion_summary, customer_response, call_outcome=None, promised_amount=None, promised_payment_date=None, next_follow_up_date=None, contact_person=None, contact_number=None):
+def log_management_call(
+    task_id,
+    discussion_summary,
+    customer_response,
+    call_outcome=None,
+    promised_amount=None,
+    promised_payment_date=None,
+    next_follow_up_date=None,
+    contact_person=None,
+    contact_number=None,
+):
     """Log a standalone call in Call Management Log"""
+
     try:
+        # Validate that the follow-up date is in the future.
+        if next_follow_up_date:
+            selected_date = frappe.utils.getdate(
+                next_follow_up_date
+            )
+            current_date = frappe.utils.getdate(
+                frappe.utils.today()
+            )
+
+            if selected_date <= current_date:
+                frappe.throw(
+                    "Next Follow-up Date must be a future date."
+                )
+
         doc = frappe.get_doc({
             "doctype": "Call Management Log",
             "payment_collection_task": task_id,
@@ -574,12 +662,17 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "promised_payment_date": promised_payment_date,
             "next_follow_up_date": next_follow_up_date,
             "contact_person": contact_person,
-            "contact_number": contact_number
+            "contact_number": contact_number,
         })
+
         doc.insert(ignore_permissions=True)
-        
-        # Also mirror to Payment Collection Task child tables
-        task_doc = frappe.get_doc("Payment Collection Task", task_id)
+
+        # Mirror the call to the Payment Collection Task child tables.
+        task_doc = frappe.get_doc(
+            "Payment Collection Task",
+            task_id,
+        )
+
         task_doc.append("call_history", {
             "call_date_and_time": doc.call_date_and_time,
             "staff_member": doc.staff_member,
@@ -588,63 +681,113 @@ def log_management_call(task_id, discussion_summary, customer_response, call_out
             "discussion_summary": doc.discussion_summary,
             "next_follow_up_date": doc.next_follow_up_date,
             "contact_person": doc.contact_person,
-            "contact_number": doc.contact_number
+            "contact_number": doc.contact_number,
         })
-        
+
         if promised_amount or promised_payment_date:
             task_doc.append("payment_commitments", {
                 "commitment_date": frappe.utils.nowdate(),
                 "promised_amount": promised_amount,
                 "promised_payment_date": promised_payment_date,
                 "status": "Pending",
-                "remarks": f"From Call Log: {discussion_summary}"
+                "remarks": f"From Call Log: {discussion_summary}",
             })
-            
+
         if next_follow_up_date:
             task_doc.next_follow_up_date = next_follow_up_date
-            
+
         if task_doc.status == "Open":
             task_doc.status = "In Progress"
-            
+
         task_doc.assigned_to = frappe.session.user
-            
         task_doc.save(ignore_permissions=True)
 
-        # Auto-assign ALL other tasks for this customer to the current user
+        # Auto-assign all other tasks for this customer
+        # to the current user.
         other_tasks = frappe.get_all(
             "Payment Collection Task",
             filters={
                 "customer": task_doc.customer,
-                "name": ["!=", task_doc.name]
+                "name": ["!=", task_doc.name],
             },
-            fields=["name"]
+            fields=["name"],
         )
-        for ot in other_tasks:
-            frappe.db.set_value("Payment Collection Task", ot.name, "assigned_to", frappe.session.user)
+
+        for other_task in other_tasks:
+            frappe.db.set_value(
+                "Payment Collection Task",
+                other_task.name,
+                "assigned_to",
+                frappe.session.user,
+            )
 
         frappe.db.commit()
+
         return doc.as_dict()
+
     except Exception as e:
-        frappe.log_error(f"Error logging management call: {str(e)}")
-        frappe.throw(f"Failed to log management call: {str(e)}")
+        frappe.log_error(
+            message=frappe.get_traceback(),
+            title="Error logging management call",
+        )
+        frappe.throw(
+            f"Failed to log management call: {str(e)}"
+        )
 
 @frappe.whitelist()
-def update_task_follow_up_date(task_id, call_log_id, next_follow_up_date):
+def update_task_follow_up_date(
+    task_id,
+    call_log_id,
+    next_follow_up_date=None,
+):
     try:
-        task_doc = frappe.get_doc("Payment Collection Task", task_id)
+        task_doc = frappe.get_doc(
+            "Payment Collection Task",
+            task_id,
+        )
+
+        # The date is optional.
+        # Validate it only when the user provides one.
         if next_follow_up_date:
+            selected_date = frappe.utils.getdate(
+                next_follow_up_date
+            )
+            current_date = frappe.utils.getdate(
+                frappe.utils.today()
+            )
+
+            if selected_date < current_date:
+                frappe.throw(
+                    "Next Follow-up Date cannot be earlier than today."
+                )
+
             task_doc.next_follow_up_date = next_follow_up_date
             task_doc.save(ignore_permissions=True)
-            
+
             if call_log_id:
-                frappe.db.set_value("Payment Collection Call History", call_log_id, "next_follow_up_date", next_follow_up_date)
-            
+                frappe.db.set_value(
+                    "Payment Collection Call History",
+                    call_log_id,
+                    "next_follow_up_date",
+                    next_follow_up_date,
+                )
+
             frappe.db.commit()
-            
+
         return task_doc.as_dict()
+
     except Exception as e:
-        frappe.log_error(f"Error updating follow up date: {str(e)}")
-        frappe.throw(f"Failed to update follow up date: {str(e)}")
+        frappe.db.rollback()
+
+        frappe.log_error(
+            message=frappe.get_traceback(),
+            title="Error updating follow-up date",
+        )
+
+        frappe.throw(
+            f"Failed to update follow-up date: {str(e)}"
+        )
+
 
 @frappe.whitelist()
 def get_customer_pending_tasks(customer, current_task_id=None):
