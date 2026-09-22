@@ -46,10 +46,10 @@
   },
   {
    "fieldname": "purpose_type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Purpose Type",
-   "options": "Software Payment\nAMC\nNew Feature\nCustomization\nSupport\nOther",
+   "options": "Purpose Type",
    "reqd": 1
   },
   {
@@ -162,7 +162,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-20 13:57:15.692506",
+ "modified": "2026-09-02 14:00:32.668046",
  "modified_by": "Administrator",
  "module": "Test App",
  "name": "Payment Collection Task",
