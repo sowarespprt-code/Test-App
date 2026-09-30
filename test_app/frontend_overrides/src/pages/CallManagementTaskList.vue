@@ -374,4 +374,10 @@ function getPriorityBg(priority: string) {
 .animate-row-blink {
   animation: row-blink 1.2s ease-in-out infinite;
 }
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #f9fafb;
+}
 </style>

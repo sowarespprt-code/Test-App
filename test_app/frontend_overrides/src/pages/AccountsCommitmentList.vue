@@ -1,17 +1,9 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50 overflow-hidden relative p-4">
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-800">Accounts: Payment Commitments & Receipts</h1>
-      
-      <div class="flex gap-2">
-         <select v-model="statusFilter" class="rounded-lg border-gray-300 text-sm p-2">
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Received">Received</option>
-            <option value="Partially Paid">Partially Paid</option>
-            <option value="Not Received">Not Received</option>
-         </select>
-      </div>
+    <div class="mb-4">
+      <h1 class="text-2xl font-bold text-gray-800">
+        Accounts: Payment Commitments & Receipts
+      </h1>
     </div>
     
     <div class="flex gap-4 border-b border-gray-200 mb-4">
@@ -29,6 +21,66 @@
       >
         Receipts ({{ receipts.length }})
       </button>
+    </div>
+
+    <div
+      v-if="activeTab === 'commitments'"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <div class="relative">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search customer or task..."
+          class="w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        />
+
+        <button
+          v-if="searchQuery"
+          type="button"
+          @click="searchQuery = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+          title="Clear search"
+        >
+          ×
+        </button>
+      </div>
+
+      <select
+        v-model="statusFilter"
+        class="rounded-lg border border-gray-300 bg-white p-2 text-sm"
+      >
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Received">Received</option>
+        <option value="Partially Paid">Partially Paid</option>
+        <option value="Not Received">Not Received</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div
+      v-if="activeTab === 'receipts'"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <div class="relative">
+        <input
+          v-model="receiptSearchQuery"
+          type="text"
+          placeholder="Search receipt customer or task..."
+          class="w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        />
+
+        <button
+          v-if="receiptSearchQuery"
+          type="button"
+          @click="receiptSearchQuery = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+          title="Clear search"
+        >
+          ×
+        </button>
+      </div>
     </div>
 
     <!-- Commitments Table -->
@@ -105,7 +157,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="r in receipts" :key="r.name" class="hover:bg-gray-50/50 transition">
+          <tr v-for="r in filteredReceipts" :key="r.name" class="hover:bg-gray-50/50 transition">
             <td class="py-3 px-4">
                <div class="font-medium text-indigo-600 hover:underline cursor-pointer" @click="goToTask(r.task)">{{ r.task }}</div>
                <div class="text-xs text-gray-500 mt-0.5">{{ r.customer }}</div>
@@ -115,7 +167,7 @@
             <td class="py-3 px-4 text-gray-600">{{ r.payment_mode || '-' }}</td>
             <td class="py-3 px-4 text-gray-600">{{ r.transaction_reference || '-' }}</td>
           </tr>
-          <tr v-if="!receipts.length">
+          <tr v-if="!filteredReceipts.length">
              <td colspan="5" class="py-8 text-center text-gray-500">No receipts found</td>
           </tr>
         </tbody>
@@ -152,7 +204,7 @@
              </div>
              <div v-if="isPartialReceipt">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date <span class="text-red-500">*</span></label>
-                <input id="receipt_next_follow_up_date" @keydown.enter.prevent="focusElementById('receipt_remarks')" v-model="receiptForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="receipt_next_follow_up_date" @keydown.enter.prevent="focusElementById('receipt_remarks')" v-model="receiptForm.next_follow_up_date" type="date" :min="todayDate" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div class="md:col-span-2">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Remarks</label>
@@ -185,11 +237,11 @@
              </div>
              <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Expected Date</label>
-                <input id="edit_expected_date" @keydown.enter.prevent="focusElementById('edit_next_follow_up_date')" v-model="editCommitmentForm.expected_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="edit_expected_date" @keydown.enter.prevent="focusElementById('edit_next_follow_up_date')" v-model="editCommitmentForm.expected_date" type="date" :min="todayDate" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
              <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Next Follow-up Date (Task)</label>
-                <input id="edit_next_follow_up_date" @keydown.enter.prevent="focusElementById('edit_submit_btn')" v-model="editCommitmentForm.next_follow_up_date" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                <input id="edit_next_follow_up_date" @keydown.enter.prevent="focusElementById('edit_submit_btn')" v-model="editCommitmentForm.next_follow_up_date" type="date" :min="todayDate" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
              </div>
            </div>
         </div>
@@ -215,12 +267,26 @@ const commitments = ref<any[]>([]);
 const receipts = ref<any[]>([]);
 const activeTab = ref("commitments");
 const statusFilter = ref("");
+const searchQuery = ref("");
+const receiptSearchQuery = ref("");
 const isLoading = ref(false);
 
 const showReceiptModal = ref(false);
 const showEditCommitmentModal = ref(false);
 const isSaving = ref(false);
 const isEditing = ref(false);
+
+function getTodayDate(): string {
+  const date = new Date();
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+const todayDate = getTodayDate();
 
 function focusElementById(id: string) {
   const el = document.getElementById(id);
@@ -255,23 +321,98 @@ const isPartial = computed(() => {
 });
 
 const filteredCommitments = computed(() => {
-  let list = [...commitments.value];
-  if (statusFilter.value) {
-    list = list.filter(c => c.status === statusFilter.value);
-  }
-  
-  return list.sort((a, b) => {
-    const aIsActive = (a.status === 'Pending' || a.status === 'Partially Paid') ? 1 : 0;
-    const bIsActive = (b.status === 'Pending' || b.status === 'Partially Paid') ? 1 : 0;
-    
+  const search = searchQuery.value
+    .trim()
+    .toLowerCase();
+
+  let list = commitments.value.filter(
+    (commitment) => {
+      const customerText = [
+        commitment.customer,
+        commitment.customer_name,
+        commitment.customer_display_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const taskText = String(
+        commitment.task || ""
+      ).toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        taskText.includes(search) ||
+        customerText.includes(search);
+
+      const matchesStatus =
+        !statusFilter.value ||
+        commitment.status === statusFilter.value;
+
+      return matchesSearch && matchesStatus;
+    }
+  );
+
+  return [...list].sort((a, b) => {
+    const aIsActive =
+      a.status === "Pending" ||
+      a.status === "Partially Paid"
+        ? 1
+        : 0;
+
+    const bIsActive =
+      b.status === "Pending" ||
+      b.status === "Partially Paid"
+        ? 1
+        : 0;
+
     if (aIsActive !== bIsActive) {
       return bIsActive - aIsActive;
     }
-    
-    const dateA = a.promised_payment_date ? new Date(a.promised_payment_date).getTime() : 0;
-    const dateB = b.promised_payment_date ? new Date(b.promised_payment_date).getTime() : 0;
-    
+
+    const dateA = a.promised_payment_date
+      ? new Date(
+          a.promised_payment_date
+        ).getTime()
+      : 0;
+
+    const dateB = b.promised_payment_date
+      ? new Date(
+          b.promised_payment_date
+        ).getTime()
+      : 0;
+
     return dateB - dateA;
+  });
+});
+
+const filteredReceipts = computed(() => {
+  const search = receiptSearchQuery.value
+    .trim()
+    .toLowerCase();
+
+  if (!search) {
+    return receipts.value;
+  }
+
+  return receipts.value.filter((receipt) => {
+    const taskText = String(
+      receipt.task || ""
+    ).toLowerCase();
+
+    const customerText = [
+      receipt.customer,
+      receipt.customer_name,
+      receipt.customer_display_name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      taskText.includes(search) ||
+      customerText.includes(search)
+    );
   });
 });
 
@@ -322,26 +463,71 @@ function openEditCommitmentModal(c: any) {
 }
 
 async function saveEditCommitment() {
-  const amt = Number(editCommitmentForm.value.promised_amount);
+  const amt = Number(
+    editCommitmentForm.value.promised_amount
+  );
+
   if (amt <= 0) {
     alert("Please enter a valid amount.");
     return;
   }
-  
+
+  const expectedDate = String(
+    editCommitmentForm.value.expected_date || ""
+  ).trim();
+
+  const nextFollowUpDate = String(
+    editCommitmentForm.value.next_follow_up_date || ""
+  ).trim();
+
+  if (
+    !validateTodayOrFutureDate(
+      expectedDate,
+      "Expected Date"
+    )
+  ) {
+    return;
+  }
+
+  if (
+    !validateTodayOrFutureDate(
+      nextFollowUpDate,
+      "Next Follow-up Date"
+    )
+  ) {
+    return;
+  }
+
   isEditing.value = true;
+
   try {
-    await call("test_app.api.edit_commitment", {
-      task_id: selectedCommitment.value.task,
-      commitment_row_id: selectedCommitment.value.name,
-      promised_amount: amt,
-      expected_date: editCommitmentForm.value.expected_date || null,
-      next_follow_up_date: editCommitmentForm.value.next_follow_up_date || null
-    });
-    toast.success("Commitment updated successfully");
+    await call(
+      "test_app.api.edit_commitment",
+      {
+        task_id: selectedCommitment.value.task,
+        commitment_row_id:
+          selectedCommitment.value.name,
+        promised_amount: amt,
+        expected_date: expectedDate || null,
+        next_follow_up_date:
+          nextFollowUpDate || null,
+      }
+    );
+
+    toast.success(
+      "Commitment updated successfully"
+    );
+
     showEditCommitmentModal.value = false;
     await fetchData();
   } catch (err: any) {
-    const errorMsg = (err.messages && err.messages.length > 0 && err.messages[0] !== err.message) ? err.messages[0] : (err.message || "Failed to edit commitment.");
+    const errorMsg =
+      err?.messages?.length > 0 &&
+      err.messages[0] !== err.message
+        ? err.messages[0]
+        : err?.message ||
+          "Failed to edit commitment.";
+
     alert(errorMsg);
   } finally {
     isEditing.value = false;
@@ -349,42 +535,121 @@ async function saveEditCommitment() {
 }
 
 async function saveReceipt() {
-  const amt = Number(receiptForm.value.amount_received);
+  const amt = Number(
+    receiptForm.value.amount_received
+  );
+
   if (amt <= 0) {
     alert("Please enter a valid amount.");
     return;
   }
-  if (receiptForm.value.payment_mode !== 'Cash' && !receiptForm.value.transaction_reference.trim()) {
+
+  if (
+    receiptForm.value.payment_mode !== "Cash" &&
+    !receiptForm.value.transaction_reference.trim()
+  ) {
     alert("Please enter a reference number.");
     return;
   }
-  const outstanding = Number(selectedCommitment.value?.outstanding_amount || 0);
-  if (isPartialReceipt.value && !receiptForm.value.next_follow_up_date && amt < outstanding) {
-    alert("Please select the next follow up date for the remaining balance.");
+
+  const outstanding = Number(
+    selectedCommitment.value?.outstanding_amount || 0
+  );
+
+  if (
+    isPartialReceipt.value &&
+    !receiptForm.value.next_follow_up_date &&
+    amt < outstanding
+  ) {
+    alert(
+      "Please select the next follow up date for the remaining balance."
+    );
     return;
   }
+
+  const nextFollowUpDate = String(
+    receiptForm.value.next_follow_up_date || ""
+  ).trim();
+
+  if (
+    !validateTodayOrFutureDate(
+      nextFollowUpDate,
+      "Next Follow-up Date"
+    )
+  ) {
+    return;
+  }
+
   if (amt > outstanding) {
-    alert(`Amount received cannot be greater than the task's outstanding amount (₹${outstanding}).`);
+    alert(
+      `Amount received cannot be greater than the task's outstanding amount (₹${outstanding}).`
+    );
     return;
   }
-  
+
   isSaving.value = true;
+
   try {
-    await call("test_app.api.record_payment_receipt", {
-      task_id: selectedCommitment.value.task,
-      ...receiptForm.value,
-      commitment_row_id: selectedCommitment.value.name,
-      commitment_status: amt >= outstanding ? 'Received' : (isPartialReceipt.value ? 'Partially Paid' : 'Received')
-    });
-    toast.success("Payment recorded successfully");
+    await call(
+      "test_app.api.record_payment_receipt",
+      {
+        task_id: selectedCommitment.value.task,
+        ...receiptForm.value,
+        next_follow_up_date:
+          nextFollowUpDate || null,
+        commitment_row_id:
+          selectedCommitment.value.name,
+        commitment_status:
+          amt >= outstanding
+            ? "Received"
+            : isPartialReceipt.value
+              ? "Partially Paid"
+              : "Received",
+      }
+    );
+
+    toast.success(
+      "Payment recorded successfully"
+    );
+
     showReceiptModal.value = false;
     await fetchData();
   } catch (err: any) {
-    const errorMsg = (err.messages && err.messages.length > 0 && err.messages[0] !== err.message) ? err.messages[0] : (err.message || "Failed to record receipt.");
+    const errorMsg =
+      err?.messages?.length > 0 &&
+      err.messages[0] !== err.message
+        ? err.messages[0]
+        : err?.message ||
+          "Failed to record receipt.";
+
     alert(errorMsg);
   } finally {
     isSaving.value = false;
   }
+}
+
+function isDateBeforeToday(dateValue: string): boolean {
+  return Boolean(
+    dateValue &&
+    dateValue < todayDate
+  );
+}
+
+function validateTodayOrFutureDate(
+  dateValue: string,
+  fieldLabel: string
+): boolean {
+  if (
+    dateValue &&
+    isDateBeforeToday(dateValue)
+  ) {
+    alert(
+      `${fieldLabel} cannot be earlier than today.`
+    );
+    return false;
+  }
+
+  return true;
 }
 
 function goToTask(taskId: string) {

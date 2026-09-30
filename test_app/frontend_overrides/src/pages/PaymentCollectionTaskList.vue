@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-semibold text-gray-900">Payment Collection Tasks</h1>
         <p class="text-sm text-gray-500 mt-1">Assign, track, and manage customer payment collections and commitments.</p>
       </div>
-      <Button v-if="isManager" variant="solid" @click="createNewTask">
+      <Button variant="solid" @click="createNewTask">
         <template #prefix>
           <LucidePlus class="h-4 w-4" />
         </template>
@@ -150,7 +150,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right">
                   <button
-                    v-if="isManager"
+                    v-if="canCancelTasks && task.status !== 'Cancelled'"
                     @click.stop="cancelTask(task.name)"
                     class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                     title="Cancel Task"
@@ -172,7 +172,7 @@
           <p class="text-sm text-gray-500 mb-4 max-w-sm text-center">
             There are no payment collection tasks matching your current filters. Create one to get started!
           </p>
-          <Button v-if="isManager" variant="solid" @click="createNewTask">
+          <Button variant="solid" @click="createNewTask">
             <template #prefix>
               <LucidePlus class="h-4 w-4" />
             </template>
@@ -192,12 +192,10 @@ import LucidePlus from "~icons/lucide/plus";
 import LucideSearch from "~icons/lucide/search";
 import LucideFileText from "~icons/lucide/file-text";
 import LucideXCircle from "~icons/lucide/x-circle";
-import { useAuthStore } from "@/stores/auth";
 const router = useRouter();
-const authStore = useAuthStore();
-const { isManager, userId } = authStore;
 const tasks = ref<any[]>([]);
 const isLoading = ref(false);
+const canCancelTasks = ref(false);
 
 // Filters
 const searchQuery = ref("");
@@ -205,10 +203,25 @@ const statusFilter = ref("Pending");
 const priorityFilter = ref("All");
 const dateFilter = ref("All");
 
+async function fetchCancelPermission() {
+  try {
+    const result = await call(
+      "test_app.api.can_cancel_payment_collection_task",
+    );
+
+    canCancelTasks.value = Boolean(result?.can_cancel);
+  } catch (error) {
+    console.error("Failed to check cancel permission:", error);
+    canCancelTasks.value = false;
+  }
+}
+
 onMounted(async () => {
-  await fetchTasks();
-  
-  // Auto refresh every 30 seconds
+  await Promise.all([
+    fetchTasks(),
+    fetchCancelPermission(),
+  ]);
+
   refreshInterval = window.setInterval(() => {
     fetchTasks();
   }, 300000);
@@ -222,7 +235,6 @@ let refreshInterval: number | null = null;
 async function fetchTasks() {
   isLoading.value = true;
   try {
-    const authStore = useAuthStore();
     
     let queryFilters: Record<string, any> = {};
 
@@ -419,4 +431,11 @@ function getPriorityBg(priority: string) {
 .animate-row-blink {
   animation: row-blink 1.2s ease-in-out infinite;
 }
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #f9fafb;
+}
+
 </style>
