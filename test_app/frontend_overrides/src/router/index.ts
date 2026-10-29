@@ -284,6 +284,23 @@ const routes = [
     name: "RemindersList",
     component: () => import("@/pages/RemindersList.vue"),
   },
+  {
+    path: "/daily-work-activity-report",
+    name: "DailyWorkActivityReport",
+    component: {
+      setup() {
+        if (typeof window !== "undefined") {
+          window.location.href =
+            "/app/query-report/Daily%20Work%20Activity%20Report";
+        }
+
+        return () => null;
+      },
+    },
+    meta: {
+      auth: true,
+    },
+  },
 ];
 
 const handleMobileView = (componentName) => {

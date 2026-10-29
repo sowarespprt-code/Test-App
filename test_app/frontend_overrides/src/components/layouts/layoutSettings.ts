@@ -51,9 +51,9 @@ export const agentPortalSidebarOptions = [
     to: "CustomerAlertList",
   },
   {
-    label: "Show summary",
-    icon: LucidePanelLeft,
-    to: "ShowSummary",
+    label: "Show summary",          // NEW
+    icon: LucidePanelLeft,          // NEW icon
+    to: "ShowSummary",            
   },
   {
     label: "Customer AMC Details",
@@ -90,6 +90,12 @@ export const agentPortalSidebarOptions = [
     icon: LucideCalendar,
     to: "RemindersList",
   },
+  {
+    label: "Daily Work Report",
+    icon: LucideFileText,
+    to: "DailyWorkActivityReport",
+  },
+
 ];
 
 export const customerPortalSidebarOptions = [
